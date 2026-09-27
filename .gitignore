@@ -1,0 +1,32 @@
+# PlatformIO
+.pio/
+
+# VS Code - arquivos gerados localmente
+.vscode/.browse.c_cpp.db*
+.vscode/ipch/
+.vscode/c_cpp_properties.json
+
+# Node
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Wokwi
+wokwi.vcd
+
+# Logs e arquivos temporários
+*.log
+coverage/
+
+# Sistema operacional
+Thumbs.db
+.DS_Store
