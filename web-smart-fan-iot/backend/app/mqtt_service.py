@@ -10,10 +10,12 @@ from influxdb_client import Point
 
 from app.config import settings
 from app.database import SessionLocal, write_api
+from app.io_boundary import BoundedIO
 from app.models import Device
 from app.schemas import DeviceState, TelemetryPayload
 
 logger = logging.getLogger("MQTT_SERVICE")
+telemetry_io = BoundedIO(workers=1, timeout_seconds=2)
 
 
 class MQTTManager:
@@ -111,10 +113,10 @@ class MQTTManager:
 
         persisted = True
         try:
-            write_api.write(
-                bucket=settings.INFLUXDB_BUCKET,
-                org=settings.INFLUXDB_ORG,
-                record=point,
+            telemetry_io.call(
+                lambda: write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET, org=settings.INFLUXDB_ORG, record=point
+                )
             )
         except Exception:
             # A visualização em tempo real não deve depender da disponibilidade

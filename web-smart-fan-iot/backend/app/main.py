@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import Base, engine, get_db, query_api
 from app.energy import downsample_samples, integrate_energy, series_metadata
+from app.io_boundary import BoundedIO
 from app.models import Device
 from app.mqtt_service import mqtt_manager
 from app.scheduler import scheduler, start_scheduler
@@ -36,6 +37,7 @@ MAX_ANALYSIS_HOURS = 168
 
 # Display budget; never used for integration or coverage.
 MAX_HISTORY_POINTS = 240
+history_io = BoundedIO(workers=2, timeout_seconds=3)
 
 
 def initialize_storage() -> None:
@@ -316,10 +318,7 @@ def get_metrics(
     try:
         samples = sorted(
             _iter_power_samples(
-                query_api.query(
-                    org=settings.INFLUXDB_ORG,
-                    query=query,
-                )
+                history_io.call(lambda: query_api.query(org=settings.INFLUXDB_ORG, query=query))
             )
         )
     except Exception as error:
