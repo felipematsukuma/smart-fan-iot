@@ -18,7 +18,7 @@
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-iot_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iot_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-smart_fan_db}
     ports:
       - "5432:5432"
@@ -34,10 +34,10 @@
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
       DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME:-admin}
-      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:-smartfan12345}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:?Set INFLUXDB_PASSWORD in .env}
       DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-iot_org}
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-telemetry}
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-auth-token-12345}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:?Set INFLUXDB_TOKEN in .env}
     ports:
       - "8086:8086"
     volumes:
@@ -61,10 +61,10 @@
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-iot_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iot_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-smart_fan_db}
       INFLUXDB_URL: http://influxdb:8086
-      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-auth-token-12345}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:?Set INFLUXDB_TOKEN in .env}
       INFLUXDB_ORG: ${INFLUXDB_ORG:-iot_org}
       INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-telemetry}
       MQTT_BROKER: mosquitto
