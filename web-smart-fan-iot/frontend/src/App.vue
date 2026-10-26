@@ -1,41 +1,77 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
+import {
+  Activity,
+  Gauge,
+  Menu,
+  MoonStar,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ReceiptText,
+  X,
+  Zap,
+  Clock3,
+  Wallet
+} from 'lucide-vue-next';
 import { useWebSocket } from './composables/useWebSocket';
-import RealtimeChart from './components/RealtimeChart.vue';
+import Brand from './components/dashboard/Brand.vue';
+import StatusCard from './components/dashboard/StatusCard.vue';
+import ScheduleCard from './components/dashboard/ScheduleCard.vue';
+import TariffCard from './components/dashboard/TariffCard.vue';
+import MetricCard from './components/dashboard/MetricCard.vue';
+import PeriodSelector from './components/dashboard/PeriodSelector.vue';
+import PowerChart from './components/dashboard/PowerChart.vue';
+import ThemeToggle from './components/dashboard/ThemeToggle.vue';
 import type { Device, MetricsSummary } from './types';
+import {
+  COMMAND_TIMEOUT_MS,
+  METRICS_REFRESH_MS,
+  PERIODS,
+  STATUS_TICK_MS,
+  formatLastSeen,
+  isDeviceOnline,
+  isMultiDay,
+  periodLabel as periodLabelOf,
+  type PeriodKey,
+} from './lib/freshness';
+import {
+  formatCurrency as formatCurrencyValue,
+  formatKwh as formatKwhValue,
+  projectMonthlyCost,
+  sampleIntervalMinutes,
+} from './lib/format';
 
 const DEVICE_ID = 'esp32_fan_01';
 const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8000/api';
 const WS_URL = (import.meta.env.VITE_WS_URL as string) || 'ws://localhost:8000/ws';
-const DEFAULT_PERIOD_HOURS = 8;
-const METRICS_REFRESH_MS = 5000;
 
-const toDateTimeInput = (date: Date) => {
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
+/**
+ * Tempos de frescor, período e formatação vivem em `lib/`, onde são cobertos
+ * por testes unitários. Aqui só os consumimos.
+ */
 
 const { telemetry, isConnected, lastMessageAt } = useWebSocket(WS_URL, DEVICE_ID);
 const now = ref(Date.now());
-const periodStart = ref(toDateTimeInput(new Date(Date.now() - DEFAULT_PERIOD_HOURS * 60 * 60 * 1000)));
-const periodEnd = ref(toDateTimeInput(new Date()));
-const isLivePeriod = ref(true);
+const periodKey = ref<PeriodKey>('8h');
+const showCustom = ref(false);
+const customStart = ref('');
+const customEnd = ref('');
+const railOpen = ref(true);
+const mobileOpen = ref(false);
+const isScheduleSaving = ref(false);
+const isTariffSaving = ref(false);
+const isScheduleSaved = ref(false);
+const isTariffSaved = ref(false);
+
 let statusTimer: ReturnType<typeof setInterval> | null = null;
 let metricsTimer: ReturnType<typeof setInterval> | null = null;
-let isCommandPending = ref(false);
-let feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
-type PowerAction = 'ON' | 'OFF';
-let pendingCommand: { action: PowerAction; expectedState: boolean } | null = null;
 let commandTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const clearCommandConfirmation = () => {
-  pendingCommand = null;
-  if (commandTimeout) {
-    clearTimeout(commandTimeout);
-    commandTimeout = null;
-  }
-};
+let scheduleSavedTimer: ReturnType<typeof setTimeout> | null = null;
+let tariffSavedTimer: ReturnType<typeof setTimeout> | null = null;
+let isCommandPending = false;
+let pendingCommand: { action: 'ON' | 'OFF'; expectedState: boolean } | null = null;
+const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
 const device = ref<Device>({
   id: 1,
@@ -49,7 +85,7 @@ const device = ref<Device>({
 
 const metrics = ref<MetricsSummary>({
   device_id: DEVICE_ID,
-  duration_hours: DEFAULT_PERIOD_HOURS,
+  duration_hours: 8,
   avg_power_w: 0,
   energy_wh: 0,
   estimated_kwh: 0,
@@ -57,24 +93,48 @@ const metrics = ref<MetricsSummary>({
   history: []
 });
 
-const hasTelemetry = computed(() => (
-  lastMessageAt.value !== null && now.value - lastMessageAt.value <= 10_000
+/** Fonte única de verdade sobre o estado de conexão, com regra testada. */
+const deviceOnline = computed(() => isDeviceOnline(isConnected.value, lastMessageAt.value, now.value));
+const selectedHours = computed(() => (
+  periodKey.value === 'custom' ? undefined : PERIODS[periodKey.value]
 ));
-
-watch(
-  () => telemetry.value.is_on,
-  (isOn) => {
-    if (!pendingCommand || isOn !== pendingCommand.expectedState) return;
-
-    const action = pendingCommand.action;
-    clearCommandConfirmation();
-    isCommandPending.value = false;
-    feedback.value = {
-      type: 'success',
-      text: `Comando ${action} confirmado pelo ESP32.`,
-    };
-  },
+const multiDay = computed(() => isMultiDay(periodKey.value));
+const lastSeen = computed(() => formatLastSeen(lastMessageAt.value, now.value));
+const estimatedCost = computed(() => (
+  metrics.value.estimated_kwh * Number(device.value.kwh_rate || 0)
+));
+const periodLabel = computed(() => periodLabelOf(periodKey.value));
+const sampleInterval = computed(() =>
+  sampleIntervalMinutes(metrics.value.history.map((point) => point.time))
 );
+const monthlyForecast = computed(() => projectMonthlyCost(
+  metrics.value.estimated_kwh,
+  Number(device.value.kwh_rate || 0),
+  metrics.value.duration_hours ?? selectedHours.value ?? 8
+));
+const formatKwh = (value: number) => formatKwhValue(value);
+const formatCurrency = (value: number) => formatCurrencyValue(value);
+
+const clearCommandConfirmation = () => {
+  pendingCommand = null;
+  if (commandTimeout) {
+    clearTimeout(commandTimeout);
+    commandTimeout = null;
+  }
+  isCommandPending = false;
+};
+
+const setSavedFlag = (type: 'schedule' | 'tariff') => {
+  if (type === 'schedule') {
+    isScheduleSaved.value = true;
+    if (scheduleSavedTimer) clearTimeout(scheduleSavedTimer);
+    scheduleSavedTimer = setTimeout(() => { isScheduleSaved.value = false; }, 2600);
+  } else {
+    isTariffSaved.value = true;
+    if (tariffSavedTimer) clearTimeout(tariffSavedTimer);
+    tariffSavedTimer = setTimeout(() => { isTariffSaved.value = false; }, 2600);
+  }
+};
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
@@ -86,521 +146,486 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
 const loadDeviceData = async () => {
   try {
-    const devRes = await axios.get(`${API_BASE}/device/${DEVICE_ID}`);
-    if (devRes.data?.device_id === DEVICE_ID) device.value = devRes.data;
+    const response = await axios.get(`${API_BASE}/device/${DEVICE_ID}`);
+    if (response.data?.device_id === DEVICE_ID) device.value = response.data;
   } catch (error) {
-    feedback.value = {
-      type: 'error',
-      text: getErrorMessage(error, 'Não foi possível carregar o dispositivo.')
-    };
+    feedback.value = { type: 'error', text: getErrorMessage(error, 'Não foi possível carregar o dispositivo.') };
   }
 };
 
-const updateLivePeriod = () => {
-  const current = new Date();
-  periodEnd.value = toDateTimeInput(current);
-  periodStart.value = toDateTimeInput(
-    new Date(current.getTime() - DEFAULT_PERIOD_HOURS * 60 * 60 * 1000)
-  );
-};
-
-const getSelectedPeriod = () => {
-  const start = new Date(periodStart.value);
-  const end = new Date(periodEnd.value);
+const getCustomPeriod = () => {
+  const start = new Date(customStart.value);
+  const end = new Date(customEnd.value);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    feedback.value = {
-      type: 'error',
-      text: 'Informe um início e um fim válidos para o período.'
-    };
+    feedback.value = { type: 'error', text: 'Informe um início e um fim válidos.' };
     return null;
   }
   if (start >= end) {
-    feedback.value = {
-      type: 'error',
-      text: 'O início do período deve ser anterior ao fim.'
-    };
+    feedback.value = { type: 'error', text: 'O início deve ser anterior ao fim.' };
     return null;
   }
   return { start, end };
 };
 
 const loadMetrics = async () => {
-  let period: { start: Date; end: Date } | null;
-  if (isLivePeriod.value) {
-    const end = new Date();
-    const start = new Date(end.getTime() - DEFAULT_PERIOD_HOURS * 60 * 60 * 1000);
-    periodStart.value = toDateTimeInput(start);
-    periodEnd.value = toDateTimeInput(end);
-    period = { start, end };
-  } else {
-    period = getSelectedPeriod();
-  }
-  if (!period) return false;
+  const custom = periodKey.value === 'custom' ? getCustomPeriod() : null;
+  if (periodKey.value === 'custom' && !custom) return false;
+
+  // No período personalizado, o fim é o que o usuário escolheu — usar "agora"
+  // descartaria o campo de data final e mostraria uma janela que ninguém
+  // pediu. Nos atalhos, o fim é sempre agora.
+  const end = custom ? custom.end : new Date();
+  const start = custom
+    ? custom.start
+    : new Date(end.getTime() - (selectedHours.value ?? 8) * 60 * 60 * 1000);
 
   try {
-    const metricsRes = await axios.get(
-      `${API_BASE}/device/${DEVICE_ID}/metrics`,
-      {
-        params: {
-          start: period.start.toISOString(),
-          end: period.end.toISOString()
-        }
-      }
-    );
-    metrics.value = {
-      ...metrics.value,
-      ...metricsRes.data,
-      history: metricsRes.data.history ?? []
-    };
+    const response = await axios.get(`${API_BASE}/device/${DEVICE_ID}/metrics`, {
+      params: { start: start.toISOString(), end: end.toISOString() }
+    });
+    metrics.value = { ...metrics.value, ...response.data, history: response.data.history ?? [] };
     return true;
   } catch (error) {
-    feedback.value = {
-      type: 'error',
-      text: getErrorMessage(error, 'Não foi possível carregar o consumo do InfluxDB.')
-    };
+    feedback.value = { type: 'error', text: getErrorMessage(error, 'Não foi possível carregar o consumo do InfluxDB.') };
     return false;
   }
 };
 
-const applyPeriod = async () => {
-  const period = getSelectedPeriod();
-  if (!period) return;
-  isLivePeriod.value = false;
-  if (await loadMetrics()) {
-    feedback.value = {
-      type: 'success',
-      text: 'Período aplicado. O consumo e o custo foram recalculados.'
+const selectPeriod = async (next: PeriodKey) => {
+  periodKey.value = next;
+  if (next === 'custom') {
+    const end = new Date();
+    const start = new Date(end.getTime() - 8 * 60 * 60 * 1000);
+    const toInput = (date: Date) => {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
+    customStart.value = toInput(start);
+    customEnd.value = toInput(end);
+    showCustom.value = true;
+  } else {
+    showCustom.value = false;
+    await loadMetrics();
   }
 };
 
-const selectLast8Hours = async () => {
-  isLivePeriod.value = true;
-  updateLivePeriod();
-  await loadMetrics();
+const applyCustomPeriod = async () => {
+  if (await loadMetrics()) {
+    showCustom.value = false;
+    feedback.value = { type: 'success', text: 'Período aplicado. Consumo e custo recalculados.' };
+  }
 };
 
 const togglePower = async () => {
-  if (isCommandPending.value) return;
-
-  if (!isConnected.value || !hasTelemetry.value) {
-    feedback.value = {
-      type: 'error',
-      text: 'ESP32 sem telemetria recente. Abra a aba Wokwi e deixe-a visível antes de enviar comandos.'
-    };
+  if (isCommandPending) return;
+  if (!deviceOnline.value) {
+    feedback.value = { type: 'error', text: 'ESP32 sem telemetria recente. Abra a aba Wokwi e deixe-a visível.' };
     return;
   }
 
-  const newAction: PowerAction = telemetry.value.is_on ? 'OFF' : 'ON';
-  const expectedState = newAction === 'ON';
-  isCommandPending.value = true;
-  pendingCommand = { action: newAction, expectedState };
-  feedback.value = {
-    type: 'info',
-    text: `Comando ${newAction} enviado. Aguardando confirmação do ESP32...`
-  };
-
+  const action = telemetry.value.is_on ? 'OFF' : 'ON';
+  isCommandPending = true;
+  pendingCommand = { action, expectedState: action === 'ON' };
+  feedback.value = { type: 'info', text: `Comando ${action} enviado. Aguardando confirmação do ESP32...` };
   commandTimeout = setTimeout(() => {
-    if (!pendingCommand || pendingCommand.action !== newAction) return;
+    if (!pendingCommand || pendingCommand.action !== action) return;
     clearCommandConfirmation();
-    isCommandPending.value = false;
-    feedback.value = {
-      type: 'error',
-      text: `O ESP32 não confirmou ${newAction}. A simulação Wokwi pode estar pausada; abra a aba Wokwi e tente novamente.`
-    };
-  }, 10_000);
+    feedback.value = { type: 'error', text: `O ESP32 não confirmou ${action}. A simulação Wokwi pode estar pausada.` };
+  }, COMMAND_TIMEOUT_MS);
 
   try {
-    await axios.post(`${API_BASE}/device/${DEVICE_ID}/command`, { action: newAction });
+    await axios.post(`${API_BASE}/device/${DEVICE_ID}/command`, { action });
   } catch (error) {
     clearCommandConfirmation();
-    isCommandPending.value = false;
-    feedback.value = {
-      type: 'error',
-      text: getErrorMessage(error, 'Falha ao enviar o comando.')
-    };
+    feedback.value = { type: 'error', text: getErrorMessage(error, 'Falha ao enviar o comando.') };
   }
 };
 
-const saveSchedule = async () => {
+const saveAutoShutdown = async () => {
+  isScheduleSaving.value = true;
   try {
-    await axios.put(`${API_BASE}/device/${DEVICE_ID}/schedule`, {
+    await axios.put(`${API_BASE}/device/${DEVICE_ID}/auto-shutdown`, {
       auto_off_time: device.value.auto_off_time,
-      auto_off_enabled: device.value.auto_off_enabled,
-      kwh_rate: Number(device.value.kwh_rate)
+      auto_off_enabled: device.value.auto_off_enabled
     });
-    feedback.value = {
-      type: 'success',
-      text: 'Agendamento salvo e publicado no ESP32.'
-    };
+    setSavedFlag('schedule');
+    feedback.value = { type: 'success', text: 'Desligamento automático salvo e publicado no ESP32.' };
   } catch (error) {
-    feedback.value = {
-      type: 'error',
-      text: getErrorMessage(error, 'Falha ao salvar o agendamento.')
-    };
+    feedback.value = { type: 'error', text: getErrorMessage(error, 'Falha ao salvar o desligamento automático.') };
+  } finally {
+    isScheduleSaving.value = false;
   }
 };
 
-const formatKwh = (value: number) => (
-  value >= 0.001 ? value.toFixed(3) : value.toFixed(6)
-);
+const saveTariff = async () => {
+  isTariffSaving.value = true;
+  try {
+    await axios.put(`${API_BASE}/device/${DEVICE_ID}/tariff`, { kwh_rate: Number(device.value.kwh_rate) });
+    setSavedFlag('tariff');
+    feedback.value = { type: 'success', text: 'Tarifa atualizada. O custo estimado foi recalculado.' };
+  } catch (error) {
+    feedback.value = { type: 'error', text: getErrorMessage(error, 'Falha ao salvar a tarifa.') };
+  } finally {
+    isTariffSaving.value = false;
+  }
+};
 
-const formatCurrency = (value: number) => (
-  value >= 0.1 ? value.toFixed(2) : value.toFixed(5)
-);
-
-const estimatedCost = computed(() => formatCurrency(
-  metrics.value.estimated_kwh * Number(device.value.kwh_rate || 0)
-));
+watch(() => telemetry.value.is_on, (isOn) => {
+  if (!pendingCommand || isOn !== pendingCommand.expectedState) return;
+  const action = pendingCommand.action;
+  clearCommandConfirmation();
+  feedback.value = { type: 'success', text: `Comando ${action} confirmado pelo ESP32.` };
+});
 
 onMounted(() => {
   loadDeviceData();
   loadMetrics();
-  statusTimer = setInterval(() => {
-    now.value = Date.now();
-  }, 1000);
-  metricsTimer = setInterval(() => {
-    loadMetrics();
-  }, METRICS_REFRESH_MS);
+  statusTimer = setInterval(() => { now.value = Date.now(); }, STATUS_TICK_MS);
+  metricsTimer = setInterval(loadMetrics, METRICS_REFRESH_MS);
 });
 
 onUnmounted(() => {
   if (statusTimer) clearInterval(statusTimer);
   if (metricsTimer) clearInterval(metricsTimer);
+  if (scheduleSavedTimer) clearTimeout(scheduleSavedTimer);
+  if (tariffSavedTimer) clearTimeout(tariffSavedTimer);
   clearCommandConfirmation();
 });
 </script>
 
 <template>
-  <div class="dashboard-container">
-    <header class="header">
-      <div>
-        <h1>Smart Fan IoT Dashboard</h1>
-        <p class="subtitle">Controle Térmico Noturno & Eficiência Energética</p>
-      </div>
-      <div class="status-badge" :class="{ online: isConnected && hasTelemetry }">
-        <template v-if="!isConnected">○ WebSocket reconectando...</template>
-        <template v-else-if="hasTelemetry">● ESP32/Wokwi online</template>
-        <template v-else>○ ESP32 aguardando Wokwi visível</template>
-      </div>
-    </header>
+  <div class="ventora-app">
+    <div class="app-shell">
+      <aside class="control-rail" :class="{ collapsed: !railOpen }">
+        <template v-if="railOpen">
+          <div class="rail-content">
+            <Brand />
+            <div class="rail-toolbar">
+              <span>Central de controle</span>
+              <div class="toolbar-actions">
+                <ThemeToggle />
+                <button class="rail-icon" type="button" aria-label="Recolher menu" @click="railOpen = false">
+                  <PanelLeftClose :size="16" />
+                </button>
+              </div>
+            </div>
+            <StatusCard
+              :device="device.name"
+              :online="deviceOnline"
+              :last-seen="lastSeen"
+              :is-on="telemetry.is_on"
+              :pending="isCommandPending"
+              @toggle="togglePower"
+            />
+            <ScheduleCard
+              :enabled="device.auto_off_enabled"
+              :time="device.auto_off_time"
+              :saving="isScheduleSaving"
+              :saved="isScheduleSaved"
+              @update:enabled="device.auto_off_enabled = $event"
+              @update:time="device.auto_off_time = $event"
+              @save="saveAutoShutdown"
+            />
+            <TariffCard
+              :tariff="Number(device.kwh_rate)"
+              :saving="isTariffSaving"
+              :saved="isTariffSaved"
+              @update:tariff="device.kwh_rate = Number($event)"
+              @save="saveTariff"
+            />
+            <p v-if="feedback" class="feedback" :class="`feedback-${feedback.type}`" role="status">{{ feedback.text }}</p>
+          </div>
+        </template>
+        <template v-else>
+          <div class="collapsed-rail">
+            <div class="brand-mark" aria-hidden="true">V</div>
+            <button class="rail-icon" type="button" aria-label="Expandir menu" title="Expandir menu" @click="railOpen = true"><PanelLeftOpen :size="17" /></button>
+            <div class="rail-separator" />
+            <button class="rail-icon" type="button" title="Status do dispositivo" @click="railOpen = true"><Gauge :size="17" /></button>
+            <button class="rail-icon" type="button" title="Desligamento automático" @click="railOpen = true"><MoonStar :size="17" /></button>
+            <button class="rail-icon" type="button" title="Tarifa de energia" @click="railOpen = true"><ReceiptText :size="17" /></button>
+            <div class="collapsed-theme"><ThemeToggle /></div>
+          </div>
+        </template>
+      </aside>
 
-    <div class="grid-layout">
-      <div class="card control-card">
-        <h2>Controle do Aparelho</h2>
-        <div class="switch-section">
-          <button
-            class="power-btn"
-            :class="{ active: telemetry.is_on }"
-            :disabled="isCommandPending || !isConnected || !hasTelemetry"
-            :title="!isConnected
-              ? 'Aguarde a conexão WebSocket'
-              : (!hasTelemetry ? 'Abra a aba Wokwi e deixe-a visível' : '')"
-            @click="togglePower"
-          >
-            {{ isCommandPending
-              ? 'AGUARDANDO ESP32...'
-              : (!hasTelemetry ? 'ESP32 OFFLINE' : (telemetry.is_on ? 'LIGADO' : 'DESLIGADO')) }}
-          </button>
-          <span class="device-status">
-            <template v-if="hasTelemetry">
-              Estado atual: <strong>{{ telemetry.is_on ? 'Em funcionamento' : 'Em repouso' }}</strong>
-            </template>
-            <template v-else>Estado atual: <strong>sem telemetria recente</strong></template>
-          </span>
-          <small v-if="isConnected && !hasTelemetry" class="device-hint">
-            Mantenha a aba Wokwi visível no VS Code; a extensão pausa a simulação quando ela fica oculta.
-          </small>
-        </div>
+      <main class="main-content">
+        <header class="mobile-header">
+          <Brand compact />
+          <div class="header-actions">
+            <ThemeToggle />
+            <button class="rail-icon" type="button" aria-label="Abrir controles" @click="mobileOpen = true"><Menu :size="18" /></button>
+          </div>
+        </header>
 
-        <hr class="divider" />
-
-        <h3>Desligamento Automático (Madrugada)</h3>
-        <div class="form-group">
-          <label>
-            <input type="checkbox" v-model="device.auto_off_enabled" />
-            Ativar Timer Noturno
-          </label>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Horário de Desligar:</label>
-            <input type="time" v-model="device.auto_off_time" :disabled="!device.auto_off_enabled" />
-          </div>
-          <div class="form-group">
-            <label>Tarifa (R$/kWh):</label>
-            <input type="number" step="0.01" v-model="device.kwh_rate" />
-          </div>
-        </div>
-        <button class="save-btn" @click="saveSchedule">Salvar Agendamento</button>
-        <p
-          v-if="feedback"
-          class="feedback"
-          :class="`feedback-${feedback.type}`"
-          role="status"
-        >
-          {{ feedback.text }}
-        </p>
-      </div>
-
-      <div class="card metrics-card">
-        <h2>Telemetria em Tempo Real</h2>
-        <div class="period-panel">
-          <div class="period-heading">
-            <h3>Período de análise</h3>
-            <span v-if="isLivePeriod" class="period-live">Últimas 8h</span>
-          </div>
-          <div class="period-fields">
-            <label>
-              Início
-              <input v-model="periodStart" type="datetime-local" @input="isLivePeriod = false" />
-            </label>
-            <label>
-              Fim
-              <input v-model="periodEnd" type="datetime-local" @input="isLivePeriod = false" />
-            </label>
-          </div>
-          <div class="period-actions">
-            <button class="period-btn primary" @click="applyPeriod">Aplicar período</button>
-            <button class="period-btn" @click="selectLast8Hours">Últimas 8h</button>
-          </div>
-          <p class="period-note">
-            Intervalo analisado: {{ metrics.duration_hours?.toFixed(1) || '0' }} h ·
-            {{ metrics.history_count }} amostras
-          </p>
-        </div>
-        <div class="metrics-grid">
-          <div class="metric-item">
-            <span class="metric-label">Corrente Eficaz</span>
-            <span class="metric-value">{{ telemetry.current_a.toFixed(3) }} <small>A</small></span>
-          </div>
-          <div class="metric-item">
-            <span class="metric-label">Potência Ativa</span>
-            <span class="metric-value">{{ telemetry.power_w.toFixed(1) }} <small>W</small></span>
-          </div>
-          <div class="metric-item">
-            <span class="metric-label">Consumo no Período</span>
-            <span class="metric-value">{{ formatKwh(metrics.estimated_kwh) }} <small>kWh</small></span>
-          </div>
-          <div class="metric-item highlight">
-            <span class="metric-label">Custo Estimado do Período</span>
-            <span class="metric-value">R$ {{ estimatedCost }}</span>
-          </div>
+        <div v-if="mobileOpen" class="mobile-backdrop" @click.self="mobileOpen = false">
+          <aside class="mobile-drawer" @click.stop>
+            <div class="drawer-header">
+              <Brand />
+              <div class="drawer-actions">
+                <ThemeToggle />
+                <button class="rail-icon" type="button" aria-label="Fechar controles" @click="mobileOpen = false"><X :size="18" /></button>
+              </div>
+            </div>
+            <StatusCard
+              :device="device.name"
+              :online="deviceOnline"
+              :last-seen="lastSeen"
+              :is-on="telemetry.is_on"
+              :pending="isCommandPending"
+              @toggle="togglePower"
+            />
+            <ScheduleCard
+              :enabled="device.auto_off_enabled"
+              :time="device.auto_off_time"
+              :saving="isScheduleSaving"
+              :saved="isScheduleSaved"
+              @update:enabled="device.auto_off_enabled = $event"
+              @update:time="device.auto_off_time = $event"
+              @save="saveAutoShutdown"
+            />
+            <TariffCard
+              :tariff="Number(device.kwh_rate)"
+              :saving="isTariffSaving"
+              :saved="isTariffSaved"
+              @update:tariff="device.kwh_rate = Number($event)"
+              @save="saveTariff"
+            />
+            <p v-if="feedback" class="feedback" :class="`feedback-${feedback.type}`" role="status">{{ feedback.text }}</p>
+          </aside>
         </div>
 
-        <div class="chart-wrapper">
-          <RealtimeChart
-            :currentPower="telemetry.power_w"
-            :timestamp="telemetry.timestamp"
-            :history="metrics.history"
-            :append-live="isLivePeriod"
-          />
-        </div>
-      </div>
+        <header class="page-header">
+          <div>
+            <h2>Telemetria em tempo real</h2>
+            <p>Consumo e eficiência do ventilador · {{ periodLabel }}</p>
+          </div>
+          <div class="period-area">
+            <PeriodSelector
+              :model-value="periodKey"
+              :start="customStart"
+              :end="customEnd"
+              :show-custom="showCustom"
+              @update:model-value="selectPeriod($event as PeriodKey)"
+              @update:start="customStart = $event"
+              @update:end="customEnd = $event"
+              @update:show-custom="showCustom = $event"
+              @apply="applyCustomPeriod"
+            />
+          </div>
+        </header>
+
+        <section class="metrics-grid">
+          <MetricCard label="Corrente eficaz" :value="telemetry.current_a.toFixed(3)" unit="A">
+            <template #icon><Activity :size="15" /></template>
+            <template #footer>Última leitura via WebSocket</template>
+          </MetricCard>
+          <MetricCard label="Potência ativa" :value="telemetry.power_w.toFixed(1)" unit="W" highlight>
+            <template #icon><Zap :size="15" /></template>
+            <template #footer><div class="power-bar"><span :style="{ width: `${Math.min(100, Math.max(4, telemetry.power_w / 40 * 100))}%` }" /></div></template>
+          </MetricCard>
+          <MetricCard label="Consumo no período" :value="formatKwh(metrics.estimated_kwh)" unit="kWh">
+            <template #icon><Clock3 :size="15" /></template>
+            <template #footer>{{ metrics.history_count }} amostras<template v-if="sampleInterval"> · a cada {{ sampleInterval }} min</template></template>
+          </MetricCard>
+          <MetricCard label="Custo estimado" :value="formatCurrency(estimatedCost)">
+            <template #icon><Wallet :size="15" /></template>
+            <template #footer><span class="forecast">Previsão: {{ formatCurrency(monthlyForecast) }} / mês</span></template>
+          </MetricCard>
+        </section>
+
+        <PowerChart
+          :current-power="telemetry.power_w"
+          :timestamp="telemetry.timestamp"
+          :history="metrics.history"
+          :append-live="periodKey !== 'custom'"
+          :multi-day="multiDay"
+          :period-label="periodLabel"
+          :period-start="metrics.period_start"
+          :period-end="metrics.period_end"
+        />
+      </main>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard-container {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #1e293b;
+.ventora-app { min-height: 100vh; background: var(--background); color: var(--foreground); }
+/* O shell ocupa 100% da largura para o rail encostar na borda esquerda.
+ * A largura máxima fica no conteúdo principal, não no shell. */
+.app-shell { display: flex; min-height: 100vh; }
+.control-rail {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 21rem;
+  height: 100vh;
+  flex: 0 0 auto;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+  transition: width 300ms ease;
 }
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-.subtitle { color: #64748b; margin-top: 0.25rem; }
-.status-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  background: #fee2e2;
-  color: #dc2626;
-}
-.status-badge.online {
-  background: #dcfce7;
-  color: #16a34a;
-}
-.grid-layout {
+.control-rail.collapsed { width: 5rem; }
+.rail-content {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 1.5rem;
+  gap: 1rem;
+  align-content: start;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
-.card {
-  background: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  border: 1px solid #e2e8f0;
+.rail-content::-webkit-scrollbar { width: 6px; }
+.rail-content::-webkit-scrollbar-track { background: transparent; }
+.rail-content::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--border);
 }
-.power-btn {
-  width: 100%;
-  padding: 1.2rem;
+.rail-content::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+.brand-mark {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: var(--font-display);
   font-size: 1.25rem;
-  font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background-color: #ef4444;
-  color: white;
-  transition: 0.2s ease;
-}
-.power-btn.active {
-  background-color: #22c55e;
-}
-.power-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-.device-hint {
-  max-width: 34rem;
-  color: #b45309;
-  text-align: center;
-  line-height: 1.35;
-}
-.feedback {
-  margin: 0.75rem 0 0;
-  font-size: 0.85rem;
-}
-.feedback-info {
-  color: #1d4ed8;
-}
-.feedback-success {
-  color: #15803d;
-}
-.feedback-error {
-  color: #b91c1c;
-}
-.switch-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-.divider { margin: 1.5rem 0; border: 0; border-top: 1px solid #e2e8f0; }
-.form-group { margin-bottom: 1rem; }
-.form-group label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
-.form-group input[type="time"], .form-group input[type="number"] {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-}
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.save-btn {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.period-panel {
-  margin-bottom: 1.25rem;
-  padding: 1rem;
-  border: 1px solid #dbeafe;
-  border-radius: 8px;
-  background: #f8fbff;
-}
-.period-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-.period-heading h3 {
-  margin: 0;
-  color: #1e3a8a;
-  font-size: 1rem;
-}
-.period-live {
-  color: #1d4ed8;
-  font-size: 0.8rem;
   font-weight: 700;
 }
-.period-fields {
+.rail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 0;
+  border-block: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.toolbar-actions { display: flex; align-items: center; gap: 0.25rem; }
+.rail-icon {
+  display: inline-grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.rail-icon:hover { color: var(--foreground); background: var(--muted); }
+.collapsed-rail {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 0.5rem;
+}
+.rail-separator { width: 2rem; height: 1px; margin: 0.5rem 0; background: var(--border); }
+.collapsed-theme { margin-top: auto; }
+.main-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  min-width: 0;
+  flex: 1;
+  align-content: start;
+  padding: 1rem;
+}
+@media (min-width: 640px) { .main-content { padding: 1.5rem; } }
+@media (min-width: 1024px) { .main-content { padding: 2.5rem; } }
+.mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.header-actions { display: flex; align-items: center; gap: 0.25rem; }
+.page-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; }
+.page-header > div { min-width: 0; }
+.page-header h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+@media (min-width: 1024px) { .page-header h2 { font-size: 1.875rem; } }
+.page-header p { margin: 0.25rem 0 0; color: var(--muted-foreground); font-size: 0.85rem; }
+.period-area { flex: 0 0 auto; }
+.feedback {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+.feedback-info { color: var(--primary); }
+.feedback-success { color: var(--online); }
+.feedback-error { color: #d45c5c; }
+.metrics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+@media (min-width: 640px) { .metrics-grid { gap: 1rem; } }
+@media (min-width: 1280px) { .metrics-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.power-bar { height: 0.3rem; overflow: hidden; border-radius: 999px; background: var(--muted); }
+.power-bar span { display: block; height: 100%; border-radius: inherit; background: var(--primary); transition: width 200ms ease; }
+.forecast { color: var(--primary); font-weight: 700; }
+.mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--foreground) 30%, transparent);
+  backdrop-filter: blur(4px);
+}
+.mobile-drawer {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  width: min(88vw, 340px);
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-right: 1px solid var(--border);
+  padding: 1.25rem;
+  background: var(--sidebar);
+  box-shadow: 1.25rem 0 3rem rgb(0 0 0 / 22%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.mobile-drawer::-webkit-scrollbar { width: 6px; }
+.mobile-drawer::-webkit-scrollbar-track { background: transparent; }
+.mobile-drawer::-webkit-scrollbar-thumb { border-radius: 999px; background: var(--border); }
+.drawer-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
   gap: 0.75rem;
 }
-.period-fields label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  color: #475569;
-  font-size: 0.8rem;
-  font-weight: 600;
+.drawer-actions { display: flex; align-items: center; gap: 0.25rem; }
+@media (min-width: 1024px) {
+  .control-rail { display: flex; }
+  .mobile-header { display: none; }
 }
-.period-fields input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.5rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #fff;
+@media (max-width: 1023px) {
+  .control-rail { display: none; }
 }
-.period-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-}
-.period-btn {
-  padding: 0.55rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #fff;
-  color: #334155;
-  cursor: pointer;
-  font-weight: 600;
-}
-.period-btn.primary {
-  border-color: #2563eb;
-  background: #2563eb;
-  color: #fff;
-}
-.period-note {
-  margin-top: 0.65rem;
-  color: #64748b;
-  font-size: 0.78rem;
-}
-.metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.metric-item {
-  background: #f8fafc;
-  padding: 1rem;
-  border-radius: 8px;
-  border: 1px solid #f1f5f9;
-  display: flex;
-  flex-direction: column;
-}
-.metric-item.highlight {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-}
-.metric-label { font-size: 0.8rem; color: #64748b; font-weight: 600; }
-.metric-value { font-size: 1.4rem; font-weight: bold; color: #0f172a; }
-.chart-wrapper { margin-top: 1rem; }
-@media (max-width: 900px) {
-  .grid-layout { grid-template-columns: 1fr; }
-}
-@media (max-width: 560px) {
-  .header { align-items: flex-start; flex-direction: column; gap: 1rem; }
-  .period-fields { grid-template-columns: 1fr; }
-  .period-actions { flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .main-content { padding: 0.9rem; }
+  .metrics-grid { gap: 0.6rem; }
 }
 </style>
