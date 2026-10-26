@@ -41,7 +41,7 @@ describe('isDeviceOnline — regra de frescor', () => {
       const t = ultima + gap * 1000;
       expect(
         isDeviceOnline(true, ultima, t),
-        `lacuna de ${gap}s não deveria marcar offline`
+        `lacuna de ${gap}s não deveria marcar offline`,
       ).toBe(true);
       ultima = t;
     }
@@ -87,7 +87,7 @@ describe('formatLastSeen', () => {
 
   it('até 3 s mostra "agora mesmo"', () => {
     expect(formatLastSeen(agora, agora)).toBe('agora mesmo');
-    expect(formatLastSeen(agora - 2500, agora)).toBe('agora mesmo');   // 2,5 s
+    expect(formatLastSeen(agora - 2500, agora)).toBe('agora mesmo'); // 2,5 s
     expect(formatLastSeen(agora - 2999, agora)).toBe('agora mesmo');
   });
 

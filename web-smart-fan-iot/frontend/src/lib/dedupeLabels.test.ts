@@ -3,7 +3,11 @@ import { dedupeLabels } from './chartRules';
 
 describe('dedupeLabels', () => {
   it('remove repetições consecutivas', () => {
-    expect(dedupeLabels(['a', 'a', 'b', 'b', 'b', 'c'])).toEqual(['a', 'b', 'c']);
+    expect(dedupeLabels(['a', 'a', 'b', 'b', 'b', 'c'])).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
   });
 
   it('preserva a ordem e a primeira ocorrência', () => {

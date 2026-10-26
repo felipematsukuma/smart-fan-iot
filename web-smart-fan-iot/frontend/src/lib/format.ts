@@ -51,7 +51,7 @@ export function formatCurrent(value: number): string {
 export function projectMonthlyCost(
   estimatedKwh: number,
   tariff: number,
-  durationHours: number
+  durationHours: number,
 ): number {
   if (!(durationHours > 0)) return 0;
   return (estimatedKwh * tariff * 30) / (durationHours / 24);

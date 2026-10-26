@@ -18,7 +18,9 @@ const emit = defineEmits<{
 <template>
   <article class="dashboard-card schedule-card">
     <header class="card-header">
-      <h2 class="card-title"><MoonStar :size="16" /> Desligamento automático</h2>
+      <h2 class="card-title">
+        <MoonStar :size="16" /> Desligamento automático
+      </h2>
       <button
         class="toggle"
         type="button"
@@ -32,9 +34,11 @@ const emit = defineEmits<{
     </header>
 
     <p class="card-description">
-      {{ enabled
-        ? `O ventilador desliga todos os dias às ${time}, mesmo que você esteja fora.`
-        : 'Ative para escolher uma hora fixa de desligamento.' }}
+      {{
+        enabled
+          ? `O ventilador desliga todos os dias às ${time}, mesmo que você esteja fora.`
+          : 'Ative para escolher uma hora fixa de desligamento.'
+      }}
     </p>
 
     <div class="card-fields" :class="{ disabled: !enabled }">
@@ -44,12 +48,19 @@ const emit = defineEmits<{
           :value="time"
           type="time"
           :disabled="!enabled"
-          @input="emit('update:time', ($event.target as HTMLInputElement).value)"
+          @input="
+            emit('update:time', ($event.target as HTMLInputElement).value)
+          "
         />
       </label>
     </div>
 
-    <button class="primary-button" type="button" :disabled="!enabled || saving" @click="emit('save')">
+    <button
+      class="primary-button"
+      type="button"
+      :disabled="!enabled || saving"
+      @click="emit('save')"
+    >
       <Check v-if="saved" :size="16" />
       {{ saved ? 'Agendamento salvo' : 'Salvar agendamento' }}
     </button>
@@ -61,7 +72,9 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.schedule-card { padding: 1.25rem; }
+.schedule-card {
+  padding: 1.25rem;
+}
 .card-header {
   display: flex;
   align-items: center;
@@ -80,7 +93,10 @@ const emit = defineEmits<{
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.card-title svg { color: var(--primary); flex: 0 0 auto; }
+.card-title svg {
+  color: var(--primary);
+  flex: 0 0 auto;
+}
 .card-description {
   margin: 0.5rem 0 0;
   color: var(--muted-foreground);
@@ -100,7 +116,9 @@ const emit = defineEmits<{
   cursor: pointer;
   transition: background-color 160ms ease;
 }
-.toggle[aria-checked='true'] { background: var(--primary); }
+.toggle[aria-checked='true'] {
+  background: var(--primary);
+}
 .toggle-knob {
   position: absolute;
   left: 0.1875rem;
@@ -111,15 +129,22 @@ const emit = defineEmits<{
   box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
   transition: transform 160ms ease;
 }
-.toggle-knob.on { transform: translateX(1.125rem); }
+.toggle-knob.on {
+  transform: translateX(1.125rem);
+}
 .card-fields {
   display: grid;
   gap: 0.75rem;
   margin-top: 1rem;
   transition: opacity 160ms ease;
 }
-.card-fields.disabled { pointer-events: none; opacity: 0.4; }
-.card-fields label { display: block; }
+.card-fields.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+.card-fields label {
+  display: block;
+}
 .card-fields label > span {
   display: block;
   margin-bottom: 0.375rem;
@@ -142,7 +167,9 @@ input {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   outline: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 input:focus {
   border-color: var(--primary);
@@ -165,8 +192,13 @@ input:focus {
   cursor: pointer;
   transition: filter 160ms ease;
 }
-.primary-button:not(:disabled):hover { filter: brightness(1.07); }
-.primary-button:disabled { cursor: not-allowed; opacity: 0.5; }
+.primary-button:not(:disabled):hover {
+  filter: brightness(1.07);
+}
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .save-hint {
   min-height: 1rem;
   margin: 0.5rem 0 0;

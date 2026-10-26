@@ -4,6 +4,7 @@ A integracao trapezoidal so avanca quando o intervalo entre amostras esta
 dentro da tolerancia (MAX_ENERGY_SAMPLE_GAP_SECONDS). Este modulo isola a
 regra para poder ser testada sem depender de InfluxDB.
 """
+
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -52,17 +53,13 @@ def integrate_energy(
     discarded_intervals = 0
     covered_samples = 0
 
-    for (previous_time, previous_power), (current_time, current_power) in zip(
-        samples, samples[1:]
-    ):
+    for (previous_time, previous_power), (current_time, current_power) in zip(samples, samples[1:]):
         gap_seconds = (current_time - previous_time).total_seconds()
         if gap_seconds <= 0:
             continue
 
         # Potência média do trapézio, integrada ao longo do intervalo.
-        interval_wh = (
-            (previous_power + current_power) / 2.0
-        ) * gap_seconds / 3600.0
+        interval_wh = ((previous_power + current_power) / 2.0) * gap_seconds / 3600.0
 
         if gap_seconds <= max_gap_seconds:
             energy_wh += interval_wh
@@ -230,16 +227,18 @@ def downsample_samples(
             kept[i] = take
             left -= take
         return sorted(
-            [point for (_, region), quota in zip(regions, kept)
-             for point in _pick_evenly(region, quota)],
+            [
+                point
+                for (_, region), quota in zip(regions, kept)
+                for point in _pick_evenly(region, quota)
+            ],
             key=lambda item: item[0],
         )
 
     # 2. Sobra do orçamento: proporcional à capacidade, só para quem consome.
     active_indexes = [i for i, (is_off_region, _) in enumerate(regions) if not is_off_region]
     capacities = [
-        len(regions[i][1]) - quotas[i] if i in active_indexes else 0
-        for i in range(len(regions))
+        len(regions[i][1]) - quotas[i] if i in active_indexes else 0 for i in range(len(regions))
     ]
     quotas = _spread(quotas, capacities, max_points - sum(quotas))
 
@@ -255,7 +254,7 @@ def series_metadata(samples, period_start, period_end, max_gap_seconds):
     Times are server receipt times. Missing edges and gaps are unknown, even
     when both surrounding readings are zero. Coverage never extrapolates.
     """
-    segments = []
+    segments: list[dict[str, str]] = []
     covered_seconds = 0.0
 
     def append(kind, start, end):

@@ -5,9 +5,10 @@ deixamos `app.mqtt_service` e `app.scheduler` reais. Stubbar o módulo inteiro
 seria mais fácil, mas então os testes não exercitariam a lógica de verdade —
 o erro mais comum em suítes que "passam" sem testar nada.
 """
+
 import sys
 import types
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -133,6 +134,8 @@ _fake_db = types.ModuleType("app.database")
 _fake_db.SessionLocal = fake_session_local
 _fake_db.write_api = FakeWriteApi
 _fake_db.query_api = types.SimpleNamespace(query=lambda **kw: [])
+
+
 class FakeMetaData:
     """`Base.metadata.create_all(...)` roda na importação de app.main; aqui é
     um no-op, porque o schema real é criado pelo Postgres do compose."""
@@ -214,12 +217,15 @@ class FakePahoClient:
 
     def publish(self, topic, payload, qos=0, retain=False):
         import json
-        self.published.append({
-            "topic": topic,
-            "payload": json.loads(payload) if isinstance(payload, str) else payload,
-            "qos": qos,
-            "retain": retain,
-        })
+
+        self.published.append(
+            {
+                "topic": topic,
+                "payload": json.loads(payload) if isinstance(payload, str) else payload,
+                "qos": qos,
+                "retain": retain,
+            }
+        )
         return FakePahoInfo(self.rc)
 
     def subscribe(self, topic, qos=0):
@@ -279,9 +285,16 @@ def at_brt(iso: str) -> datetime:
 
 def telemetry_payload(**over):
     base = dict(
-        device_id="esp32_fan_01", is_on=True, auto_mode=True,
-        shutdown_time="03:30", voltage_rms=127.0, current_a=0.26,
-        power_w=29.77, total_energy_wh=1.5, fan_on_time_ms=18061, timestamp=23532,
+        device_id="esp32_fan_01",
+        is_on=True,
+        auto_mode=True,
+        shutdown_time="03:30",
+        voltage_rms=127.0,
+        current_a=0.26,
+        power_w=29.77,
+        total_energy_wh=1.5,
+        fan_on_time_ms=18061,
+        timestamp=23532,
     )
     base.update(over)
     return base
@@ -306,6 +319,7 @@ def clean_state():
     FakeWriteApi.written.clear()
     DB_ROWS.clear()
     from app.mqtt_service import mqtt_manager
+
     mqtt_manager._last_is_on.clear()
     yield
     published_commands.clear()
@@ -318,4 +332,5 @@ def clean_state():
 @pytest.fixture
 def manager():
     from app.mqtt_service import mqtt_manager
+
     return mqtt_manager

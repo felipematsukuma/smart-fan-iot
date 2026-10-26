@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CalendarRange } from 'lucide-vue-next';
 
-const props = defineProps<{
+defineProps<{
   modelValue: string;
   start: string;
   end: string;
@@ -20,7 +20,7 @@ const periods = [
   { key: '8h', label: '8h' },
   { key: '24h', label: '24h' },
   { key: '7d', label: '7d' },
-  { key: 'custom', label: 'Personalizar' }
+  { key: 'custom', label: 'Personalizar' },
 ];
 </script>
 
@@ -44,11 +44,21 @@ const periods = [
     <div v-if="showCustom || modelValue === 'custom'" class="custom-period">
       <label>
         <span>De</span>
-        <input :value="start" type="datetime-local" @input="emit('update:start', ($event.target as HTMLInputElement).value)" />
+        <input
+          :value="start"
+          type="datetime-local"
+          @input="
+            emit('update:start', ($event.target as HTMLInputElement).value)
+          "
+        />
       </label>
       <label>
         <span>Até</span>
-        <input :value="end" type="datetime-local" @input="emit('update:end', ($event.target as HTMLInputElement).value)" />
+        <input
+          :value="end"
+          type="datetime-local"
+          @input="emit('update:end', ($event.target as HTMLInputElement).value)"
+        />
       </label>
       <button class="apply-period" type="button" @click="emit('apply')">
         <CalendarRange :size="15" />
@@ -133,9 +143,19 @@ const periods = [
   cursor: pointer;
 }
 @media (max-width: 640px) {
-  .period-selector { justify-items: stretch; }
-  .period-tabs { justify-content: space-between; }
-  .custom-period { align-items: stretch; flex-direction: column; }
-  .custom-period input { min-width: 0; width: 100%; }
+  .period-selector {
+    justify-items: stretch;
+  }
+  .period-tabs {
+    justify-content: space-between;
+  }
+  .custom-period {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .custom-period input {
+    min-width: 0;
+    width: 100%;
+  }
 }
 </style>

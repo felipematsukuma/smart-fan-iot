@@ -4,6 +4,7 @@ A integração trapezoidal só avança quando o intervalo entre amostras está
 dentro da tolerância (MAX_ENERGY_SAMPLE_GAP_SECONDS). A regra está isolada em
 `app.energy`, e estes testes usam a MESMA função que a API usa.
 """
+
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -60,7 +61,7 @@ def test_trapezio_interpola_entre_potencias_diferentes():
 
 def test_intervalo_dentro_da_tolerancia_e_integrado():
     r = integrate_energy(series([(0, 30), (60, 30)]), TOLERANCE)
-    assert r.energy_wh == pytest.approx(0.5, abs=0.01)   # 30 W por 60 s
+    assert r.energy_wh == pytest.approx(0.5, abs=0.01)  # 30 W por 60 s
     assert r.discarded_intervals == 0
     assert r.covered_samples == 1
 
@@ -77,8 +78,15 @@ def test_nunca_conta_mais_que_a_integracao_completa():
     """Propriedade de integridade central: em energia, subestimar é aceitável
     (ninguém perde dinheiro), inventar não é."""
     dados = [
-        (0, 29.77), (3, 29.77), (4, 0), (50, 0), (51, 29.77),
-        (700, 29.77), (701, 0), (4000, 0), (4001, 29.77),
+        (0, 29.77),
+        (3, 29.77),
+        (4, 0),
+        (50, 0),
+        (51, 29.77),
+        (700, 29.77),
+        (701, 0),
+        (4000, 0),
+        (4001, 29.77),
     ]
     restrito = integrate_energy(series(dados), TOLERANCE)
     completo = integrate_energy(series(dados), NO_GAP_LIMIT)
@@ -99,7 +107,7 @@ def test_relogio_que_retrocede_e_ignorado():
     energia negativa."""
     amostras = [
         (T0, 30.0),
-        (T0 - timedelta(seconds=10), 30.0),          # retrocesso
+        (T0 - timedelta(seconds=10), 30.0),  # retrocesso
         (T0 + timedelta(seconds=10), 30.0),
     ]
     r = integrate_energy(amostras, TOLERANCE)
@@ -110,10 +118,8 @@ def test_relogio_que_retrocede_e_ignorado():
 
 
 def test_lacuna_no_meio_nao_contamina_os_lados():
-    r = integrate_energy(
-        series([(0, 30), (10, 30), (5000, 30), (5010, 30)]), TOLERANCE
-    )
-    lateral = 30.0 * 20 / 3600   # 10 s antes + 10 s depois da lacuna
+    r = integrate_energy(series([(0, 30), (10, 30), (5000, 30), (5010, 30)]), TOLERANCE)
+    lateral = 30.0 * 20 / 3600  # 10 s antes + 10 s depois da lacuna
     assert r.energy_wh == pytest.approx(lateral, abs=0.01)
     assert r.discarded_intervals == 1
 
@@ -184,6 +190,7 @@ def test_downsample_rejeita_limite_absurdo():
 def test_historico_para_frontend_sempre_cabe_no_teto():
     """Contrato com o frontend: nunca mais que MAX_HISTORY_POINTS."""
     from app.main import MAX_HISTORY_POINTS
+
     for n in (0, 1, 2, 119, 120, 121, 241, 5000, 100000):
         dados = series([(i, 30) for i in range(n)])
         r = downsample_samples(dados, MAX_HISTORY_POINTS)
@@ -209,7 +216,7 @@ def test_trecho_desligado_ganha_somente_as_bordas():
     O gráfico comprime esse trecho; o que importa é saber QUANDO desligou e
     QUANDO religou. Com passo de 4 s, 3 h são 2700 amostras.
     """
-    dados = _off_then_on(2, 180, samples_per_minute=15)   # ~2700 amostras a 0 W
+    dados = _off_then_on(2, 180, samples_per_minute=15)  # ~2700 amostras a 0 W
     assert len(dados) > 240, "a série precisa exceder o teto para haver downsample"
     r = downsample_samples(dados, 240, gap_limit_seconds=TOLERANCE)
     desligados = [p for _, p in r if p == 0.0]
@@ -235,7 +242,7 @@ def test_nenhuma_regiao_some_do_grafico():
     formar linha. Um ponto só não desenha nada com pointRadius: 0.
     """
     dados = []
-    for burst in range(40):                       # 40 rajadas de 5 amostras
+    for burst in range(40):  # 40 rajadas de 5 amostras
         base = burst * 60
         for k in range(5):
             dados.append((base + k * 4, 29.77))
@@ -320,6 +327,7 @@ def test_tolerancia_cobre_a_pausa_real_do_dispositivo():
 
 def test_dense_eight_hours_keeps_full_coverage_after_downsampling():
     from app.energy import series_metadata
+
     start = datetime(2026, 10, 26, tzinfo=timezone.utc)
     samples = [(start + timedelta(seconds=2 * i), 30.0) for i in range(14401)]
     end = start + timedelta(hours=8)
@@ -332,6 +340,7 @@ def test_dense_eight_hours_keeps_full_coverage_after_downsampling():
 
 def test_zero_endpoints_do_not_cover_a_missing_hour():
     from app.energy import series_metadata
+
     start = datetime(2026, 10, 26, tzinfo=timezone.utc)
     end = start + timedelta(hours=1)
     metadata = series_metadata([(start, 0), (end, 0)], start, end, 80)

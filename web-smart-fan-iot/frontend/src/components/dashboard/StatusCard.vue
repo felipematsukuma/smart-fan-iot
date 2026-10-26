@@ -46,7 +46,15 @@ const emit = defineEmits<{ toggle: [] }>();
       @click="emit('toggle')"
     >
       <span class="power-indicator" aria-hidden="true" />
-      {{ !online ? 'ESP32 offline' : pending ? 'Aguardando…' : isOn ? 'Desligar ventilador' : 'Ligar ventilador' }}
+      {{
+        !online
+          ? 'ESP32 offline'
+          : pending
+            ? 'Aguardando…'
+            : isOn
+              ? 'Desligar ventilador'
+              : 'Ligar ventilador'
+      }}
     </button>
   </article>
 </template>
@@ -113,7 +121,11 @@ const emit = defineEmits<{ toggle: [] }>();
   animation: status-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 @keyframes status-ping {
-  75%, 100% { transform: scale(2.4); opacity: 0; }
+  75%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
 }
 .device-name {
   margin: 0;
@@ -162,7 +174,10 @@ const emit = defineEmits<{ toggle: [] }>();
   font-weight: 800;
   letter-spacing: 0.02em;
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
 }
 .power-button.on {
   border-color: color-mix(in srgb, #22a06b 40%, var(--border));
@@ -174,8 +189,15 @@ const emit = defineEmits<{ toggle: [] }>();
   background: color-mix(in srgb, var(--offline) 12%, var(--card));
   color: var(--offline);
 }
-.power-button:disabled { cursor: not-allowed; opacity: 0.7; }
-.power-button:not(:disabled):hover { color: var(--primary-foreground); background: var(--primary); border-color: var(--primary); }
+.power-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.power-button:not(:disabled):hover {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-color: var(--primary);
+}
 .power-indicator {
   width: 0.45rem;
   height: 0.45rem;

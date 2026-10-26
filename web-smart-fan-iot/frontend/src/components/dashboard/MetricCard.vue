@@ -45,7 +45,10 @@ header {
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
-.metric-icon { color: var(--muted-foreground); opacity: 0.75; }
+.metric-icon {
+  color: var(--muted-foreground);
+  opacity: 0.75;
+}
 .metric-value {
   display: flex;
   align-items: baseline;

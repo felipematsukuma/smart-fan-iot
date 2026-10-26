@@ -67,7 +67,10 @@ export const TARGET_GAP_AXIS_FRACTION = 0.15;
  * interrupção da outra: um trecho muito estreito vira uma descida quase
  * vertical, que é exatamente como o InfluxDB desenha.
  */
-export function chooseCompressedSpan(activeTotalMs: number, gapCount: number): number {
+export function chooseCompressedSpan(
+  activeTotalMs: number,
+  gapCount: number,
+): number {
   if (gapCount <= 0 || !(activeTotalMs > 0)) return COMPRESSED_SPAN_MS;
   const target = (activeTotalMs * TARGET_GAP_AXIS_FRACTION) / gapCount;
   return Math.max(COMPRESSED_SPAN_MS, target);
@@ -135,7 +138,7 @@ export function nextScaleState(
   state: ScaleState,
   values: number[],
   times: number[],
-  windowStartMs: number
+  windowStartMs: number,
 ): ScaleState {
   // 1. O pico que sustentava o teto saiu da janela?
   if (state.anchor && state.anchor.at < windowStartMs) {
@@ -152,16 +155,26 @@ export function nextScaleState(
   if (!state.anchor || currentMax > state.anchor.power) {
     const index = values.indexOf(currentMax);
     const at = index >= 0 ? (times[index] ?? windowStartMs) : windowStartMs;
-    return { scale: { max: ceilingFor(currentMax) }, anchor: { at, power: currentMax } };
+    return {
+      scale: { max: ceilingFor(currentMax) },
+      anchor: { at, power: currentMax },
+    };
   }
 
   // 3. O pico vigente continua na janela: mantém o teto, mesmo que ele não
   //    apareça no subconjunto atual (reamostragem por índice).
-  return { scale: { max: ceilingFor(state.anchor.power) }, anchor: state.anchor };
+  return {
+    scale: { max: ceilingFor(state.anchor.power) },
+    anchor: state.anchor,
+  };
 }
 
 export interface TimelineOptions {
-  sourceSegments?: Array<{ kind: 'active' | GapReason; from: string; to: string }>;
+  sourceSegments?: Array<{
+    kind: 'active' | GapReason;
+    from: string;
+    to: string;
+  }>;
   gapLimitMs?: number;
   offPowerW?: number;
   minOffDurationMs?: number;
@@ -237,7 +250,7 @@ export function dedupeLabels(labels: string[]): string[] {
 export function buildTimeline(
   times: number[],
   values: number[],
-  options: TimelineOptions = {}
+  options: TimelineOptions = {},
 ): Timeline {
   const {
     gapLimitMs = COVERAGE_GAP_LIMIT_MS,
@@ -247,8 +260,14 @@ export function buildTimeline(
 
   if (times.length === 0) {
     return {
-      points: [], gaps: [], segments: [], axisMs: 0,
-      offMs: 0, noDataMs: 0, xOf: () => 0, realAt: () => 0,
+      points: [],
+      gaps: [],
+      segments: [],
+      axisMs: 0,
+      offMs: 0,
+      noDataMs: 0,
+      xOf: () => 0,
+      realAt: () => 0,
     };
   }
 
@@ -350,7 +369,7 @@ export function buildTimeline(
 
   // The API knows raw continuity; sampling cadence must never redefine it.
   if (options.sourceSegments) {
-    raw = options.sourceSegments.map(segment => ({
+    raw = options.sourceSegments.map((segment) => ({
       kind: segment.kind,
       from: Date.parse(segment.from),
       to: Date.parse(segment.to),
@@ -399,7 +418,11 @@ export function buildTimeline(
   }
 
   const segments: Segment[] = merged.map((run) => ({
-    kind: run.kind, from: run.from, to: run.to, xFrom: 0, xTo: 0,
+    kind: run.kind,
+    from: run.from,
+    to: run.to,
+    xFrom: 0,
+    xTo: 0,
   }));
 
   // --- 3. Largura dos trechos interrompidos -------------------------------
@@ -411,7 +434,9 @@ export function buildTimeline(
   // Só as interrupções contam: passar o total de segmentos (ativos inclusive)
   // faria cada uma receber largura demais estreita e os marcadores se
   // fundiriam.
-  const gapCount = segments.filter((segment) => segment.kind !== 'active').length;
+  const gapCount = segments.filter(
+    (segment) => segment.kind !== 'active',
+  ).length;
   const compressedSpanMs = chooseCompressedSpan(activeTotalMs, gapCount);
 
   // --- 4. Posições no eixo ------------------------------------------------
@@ -457,7 +482,10 @@ export function buildTimeline(
   };
 
   // Preserve samples, with explicit breaks across unknown raw intervals.
-  const emitted: Point[] = times.map((time, i) => ({ x: xOf(time), y: values[i] }));
+  const emitted: Point[] = times.map((time, i) => ({
+    x: xOf(time),
+    y: values[i],
+  }));
   if (options.sourceSegments) {
     for (const segment of segments) {
       if (segment.kind === 'no-data') {
@@ -514,14 +542,19 @@ export function buildTimeline(
  * idênticos são removidos pelo chamador (`dedupeLabels`), porque dois
  * "28/09 15:42" lado a lado só gastam espaço.
  */
-export function axisTickCandidates(timeline: Timeline, maxTicks = 10): number[] {
+export function axisTickCandidates(
+  timeline: Timeline,
+  maxTicks = 10,
+): number[] {
   const { axisMs } = timeline;
-  if (!(axisMs > 0) || maxTicks < 2) return [0, axisMs].filter((x) => x <= axisMs);
+  if (!(axisMs > 0) || maxTicks < 2)
+    return [0, axisMs].filter((x) => x <= axisMs);
 
   if (maxTicks === 2) return [0, axisMs];
   const step = axisMs / (maxTicks - 1);
   const out: number[] = [];
-  for (let i = 0; i < maxTicks; i++) out.push(i === maxTicks - 1 ? axisMs : i * step);
+  for (let i = 0; i < maxTicks; i++)
+    out.push(i === maxTicks - 1 ? axisMs : i * step);
   return out;
 }
 
@@ -554,7 +587,7 @@ export function computeCoverage(
   times: number[],
   windowStartMs: number,
   windowEndMs: number,
-  gapLimitMs = COVERAGE_GAP_LIMIT_MS
+  gapLimitMs = COVERAGE_GAP_LIMIT_MS,
 ): number {
   const span = windowEndMs - windowStartMs;
   if (span <= 0 || times.length < 2) return 0;
@@ -580,7 +613,9 @@ export function computeStats(values: number[]): SeriesStats {
     return { min: 0, max: 0, mean: 0, deviation: 0 };
   }
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-  const variance = values.reduce((total, value) => total + (value - mean) ** 2, 0) / values.length;
+  const variance =
+    values.reduce((total, value) => total + (value - mean) ** 2, 0) /
+    values.length;
   return {
     min: Math.min(...values),
     max: Math.max(...values),

@@ -1,4 +1,5 @@
 """Testes dos esquemas de entrada (validação de dados que entram no sistema)."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -10,15 +11,19 @@ from app.schemas import (
     TelemetryPayload,
 )
 
-
 # ------------------------------------------------------------ DeviceCommand
 
 
-@pytest.mark.parametrize("entrada,esperado", [
-    ("ON", "ON"), ("OFF", "OFF"),
-    ("on", "ON"), ("off", "OFF"),       # normaliza caixa
-    ("On", "ON"),
-])
+@pytest.mark.parametrize(
+    "entrada,esperado",
+    [
+        ("ON", "ON"),
+        ("OFF", "OFF"),
+        ("on", "ON"),
+        ("off", "OFF"),  # normaliza caixa
+        ("On", "ON"),
+    ],
+)
 def test_comando_normaliza_caixa(entrada, esperado):
     assert DeviceCommand(action=entrada).action == esperado
 
@@ -43,18 +48,38 @@ def test_comando_rejeita_velocidade_nao_implementada(velocidade):
 # ------------------------------------------------- validação de horário HH:MM
 
 
-@pytest.mark.parametrize("hora", [
-    "00:00", "03:30", "09:05", "23:59", "12:00",
-])
+@pytest.mark.parametrize(
+    "hora",
+    [
+        "00:00",
+        "03:30",
+        "09:05",
+        "23:59",
+        "12:00",
+    ],
+)
 def test_aceita_horario_valido(hora):
     assert AutoShutdownUpdate(auto_off_time=hora, auto_off_enabled=True).auto_off_time == hora
     assert ScheduleUpdate(auto_off_time=hora, auto_off_enabled=True).auto_off_time == hora
 
 
-@pytest.mark.parametrize("hora", [
-    "24:00", "23:60", "3:30", "0330", "03-30", "03:3", "ab:cd",
-    "", " 03:30", "03:30 ", "99:99", "12:5a",
-])
+@pytest.mark.parametrize(
+    "hora",
+    [
+        "24:00",
+        "23:60",
+        "3:30",
+        "0330",
+        "03-30",
+        "03:3",
+        "ab:cd",
+        "",
+        " 03:30",
+        "03:30 ",
+        "99:99",
+        "12:5a",
+    ],
+)
 def test_rejeita_horario_invalido(hora):
     """A validação é estrita de propósito: um horário ambíguo viraria um
     desligamento no momento errado."""
@@ -89,8 +114,12 @@ def test_tarifa_rejeita_texto():
 
 def test_telemetria_valida():
     p = TelemetryPayload(
-        device_id="esp32_fan_01", is_on=True, voltage_rms=127.0,
-        current_a=0.26, power_w=29.77, timestamp=23532.0,
+        device_id="esp32_fan_01",
+        is_on=True,
+        voltage_rms=127.0,
+        current_a=0.26,
+        power_w=29.77,
+        timestamp=23532.0,
     )
     assert p.device_id == "esp32_fan_01"
     assert p.power_w == pytest.approx(29.77)
@@ -104,8 +133,12 @@ def test_telemetria_exige_todos_os_campos():
 def test_telemetria_rejeita_potencia_texto():
     with pytest.raises(ValidationError):
         TelemetryPayload(
-            device_id="d", is_on=True, voltage_rms=127.0,
-            current_a=0.26, power_w="muito", timestamp=1.0,
+            device_id="d",
+            is_on=True,
+            voltage_rms=127.0,
+            current_a=0.26,
+            power_w="muito",
+            timestamp=1.0,
         )
 
 

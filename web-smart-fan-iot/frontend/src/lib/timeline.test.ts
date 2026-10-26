@@ -22,7 +22,11 @@ const ON = 29.77;
 
 describe('buildTimeline — série sem interrupção', () => {
   it('mapeia tempo real 1:1 quando não há nada a comprimir', () => {
-    const { times, values } = build([[0, ON], [1, ON], [2, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+      [2, ON],
+    ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
       windowEndMs: T0 + 2 * MIN,
@@ -33,7 +37,11 @@ describe('buildTimeline — série sem interrupção', () => {
   });
 
   it('preserva a ordem e os valores', () => {
-    const { times, values } = build([[0, ON], [1, 20], [2, 40]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, 20],
+      [2, 40],
+    ]);
     const t = buildTimeline(times, values);
     const real = t.points.filter((p) => p.y !== null);
     expect(real.map((p) => p.y)).toEqual([ON, 20, 40]);
@@ -52,9 +60,13 @@ describe('buildTimeline — série sem interrupção', () => {
 describe('buildTimeline — desligamento', () => {
   it('comprime um trecho desligado longo', () => {
     const { times, values } = build([
-      [0, ON], [1, ON],          // ligado
-      [2, 0], [90, 0], [91, 0],  // 89 min desligado
-      [92, ON], [93, ON],        // religado
+      [0, ON],
+      [1, ON], // ligado
+      [2, 0],
+      [90, 0],
+      [91, 0], // 89 min desligado
+      [92, ON],
+      [93, ON], // religado
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -71,7 +83,10 @@ describe('buildTimeline — desligamento', () => {
 
   it('a desativação é muito menor que o tempo real', () => {
     const { times, values } = build([
-      [0, ON], [2, 0], [180, 0], [182, ON],
+      [0, ON],
+      [2, 0],
+      [180, 0],
+      [182, ON],
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -87,7 +102,12 @@ describe('buildTimeline — desligamento', () => {
     // Pedido explícito: linha conectando os pontos, como no InfluxDB, e sem
     // marcadores. O vale a 0 W vem das próprias amostras de 0 W.
     const { times, values } = build([
-      [0, ON], [1, ON], [2, 0], [60, 0], [61, ON], [62, ON],
+      [0, ON],
+      [1, ON],
+      [2, 0],
+      [60, 0],
+      [61, ON],
+      [62, ON],
     ]);
     const t = buildTimeline(times, values);
     expect(t.points.every((p) => p.y !== null)).toBe(true);
@@ -97,7 +117,12 @@ describe('buildTimeline — desligamento', () => {
   });
 
   it('o desligamento aparece como vale a 0 W, como no InfluxDB', () => {
-    const { times, values } = build([[0, ON], [2, 0], [60, 0], [61, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [2, 0],
+      [60, 0],
+      [61, ON],
+    ]);
     const t = buildTimeline(times, values);
     // As amostras a 0 W entram na linha: a queda a zero é a leitura.
     expect(t.points.some((p) => p.y === 0)).toBe(true);
@@ -106,9 +131,15 @@ describe('buildTimeline — desligamento', () => {
   });
 
   it('conectado, o espaço do trecho comprimido fica vazio de pontos', () => {
-    const { times, values } = build([[0, ON], [1, ON], [200, ON], [201, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+      [200, ON],
+      [201, ON],
+    ]);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: T0 + 201 * MIN,
+      windowStartMs: T0,
+      windowEndMs: T0 + 201 * MIN,
     });
     const vazio = t.gaps.find((g) => g.reason === 'no-data')!;
     const dentro = t.points.filter((p) => p.x > vazio.xFrom && p.x < vazio.xTo);
@@ -129,8 +160,14 @@ describe('buildTimeline — desligamento', () => {
   it('realAt fora do eixo devolve um instante plausível, não NaN', () => {
     // Guarda de segurança: se algo pedir uma posição além do fim, o rótulo
     // não pode virar "Invalid Date" na tela.
-    const { times, values } = build([[0, ON], [1, ON]]);
-    const t = buildTimeline(times, values, { windowStartMs: T0, windowEndMs: T0 + MIN });
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+    ]);
+    const t = buildTimeline(times, values, {
+      windowStartMs: T0,
+      windowEndMs: T0 + MIN,
+    });
     const fora = t.realAt(t.axisMs * 3);
     expect(Number.isFinite(fora)).toBe(true);
     expect(fora).toBeGreaterThanOrEqual(T0);
@@ -138,7 +175,11 @@ describe('buildTimeline — desligamento', () => {
 
   it('não comprime 0 W isolado, para não apagar um pico real', () => {
     // Uma única leitura a 0 W entre dois trechos ligados é ruído, não desligamento.
-    const { times, values } = build([[0, ON], [1, 0], [2, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, 0],
+      [2, ON],
+    ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
       windowEndMs: T0 + 2 * MIN,
@@ -152,9 +193,15 @@ describe('buildTimeline — desligamento', () => {
   it('as amostras das bordas de um vão continuam sendo desenhadas', () => {
     // A amostra que fecha um vão é uma medição real e precisa aparecer, senão
     // o gráfico perderia a transição.
-    const { times, values } = build([[0, ON], [1, ON], [200, ON], [201, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+      [200, ON],
+      [201, ON],
+    ]);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: T0 + 201 * MIN,
+      windowStartMs: T0,
+      windowEndMs: T0 + 201 * MIN,
     });
     expect(t.points).toHaveLength(4);
   });
@@ -166,7 +213,8 @@ describe('buildTimeline — desligamento', () => {
     for (let m = 0; m < 60; m += 4) pares.push([m, ON]);
     const { times, values } = build(pares);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: T0 + 60 * MIN,
+      windowStartMs: T0,
+      windowEndMs: T0 + 60 * MIN,
     });
     // Todas as amostras são desenhadas e ligadas, em tempo real.
     expect(t.points).toHaveLength(15);
@@ -177,7 +225,10 @@ describe('buildTimeline — desligamento', () => {
   it('respeita o limite de duração mínima', () => {
     // 20 s desligado fica ABAIXO de MIN_OFF_DURATION_MS
     const { times, values } = build([
-      [0, ON], [0.2, 0], [0.5, 0], [1, ON],
+      [0, ON],
+      [0.2, 0],
+      [0.5, 0],
+      [1, ON],
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -188,7 +239,10 @@ describe('buildTimeline — desligamento', () => {
 
   it('acima do limite, comprime', () => {
     const { times, values } = build([
-      [0, ON], [0.2, 0], [1, 0], [1.2, ON],
+      [0, ON],
+      [0.2, 0],
+      [1, 0],
+      [1.2, ON],
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -199,7 +253,10 @@ describe('buildTimeline — desligamento', () => {
 
   it('tolera ruído de ponto flutuante em torno de 0', () => {
     const { times, values } = build([
-      [0, ON], [2, 0.0000001], [40, 0.4], [41, ON],
+      [0, ON],
+      [2, 0.0000001],
+      [40, 0.4],
+      [41, ON],
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -212,8 +269,14 @@ describe('buildTimeline — desligamento', () => {
 
   it('acumula o tempo total desligado', () => {
     const { times, values } = build([
-      [0, ON], [2, 0], [32, 0], [33, ON],   // 30 min
-      [34, ON], [35, 0], [45, 0], [46, ON], // 10 min
+      [0, ON],
+      [2, 0],
+      [32, 0],
+      [33, ON], // 30 min
+      [34, ON],
+      [35, 0],
+      [45, 0],
+      [46, ON], // 10 min
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -225,7 +288,12 @@ describe('buildTimeline — desligamento', () => {
 
 describe('buildTimeline — falta de telemetria', () => {
   it('comprime e classifica como no-data, nunca como 0 W', () => {
-    const { times, values } = build([[0, ON], [1, ON], [10, ON], [11, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+      [10, ON],
+      [11, ON],
+    ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
       windowEndMs: T0 + 11 * MIN,
@@ -239,8 +307,11 @@ describe('buildTimeline — falta de telemetria', () => {
 
   it('separa desligado de sem telemetria', () => {
     const { times, values } = build([
-      [0, ON], [2, 0], [40, 0],       // desligado
-      [300, ON], [301, ON],            // 260 min sem telemetria
+      [0, ON],
+      [2, 0],
+      [40, 0], // desligado
+      [300, ON],
+      [301, ON], // 260 min sem telemetria
     ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -256,7 +327,10 @@ describe('buildTimeline — falta de telemetria', () => {
   });
 
   it('comprime o espaço antes da primeira e depois da última amostra', () => {
-    const { times, values } = build([[100, ON], [101, ON]]);
+    const { times, values } = build([
+      [100, ON],
+      [101, ON],
+    ]);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
       windowEndMs: T0 + 200 * MIN,
@@ -273,8 +347,8 @@ describe('buildTimeline — o eixo fica utilizável', () => {
   it('a atividade real ganha a largura que o tempo morto perde', () => {
     // Caso real do projeto: 1 h de telemetria densa dentro de uma janela de 10 h.
     const pares: Array<[number, number]> = [];
-    for (let s = 0; s < 3600; s += 4) pares.push([s / 60, ON]);        // 0 -> 60 min
-    for (let s = 24000; s < 24600; s += 4) pares.push([s / 60, ON]);   // 400 -> 410 min
+    for (let s = 0; s < 3600; s += 4) pares.push([s / 60, ON]); // 0 -> 60 min
+    for (let s = 24000; s < 24600; s += 4) pares.push([s / 60, ON]); // 400 -> 410 min
     const { times, values } = build(pares);
     const t = buildTimeline(times, values, {
       windowStartMs: T0,
@@ -312,19 +386,28 @@ describe('buildTimeline — o eixo fica utilizável', () => {
   });
 
   it('nunca deixa o eixo vazio nem com largura zero', () => {
-    const { times, values } = build([[0, ON], [1, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+    ]);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: T0 + MIN,
+      windowStartMs: T0,
+      windowEndMs: T0 + MIN,
     });
     expect(t.axisMs).toBeGreaterThan(0);
   });
 
   it('xOf e realAt são inversos um do outro', () => {
     const { times, values } = build([
-      [0, ON], [2, 0], [100, 0], [101, ON], [102, ON],
+      [0, ON],
+      [2, 0],
+      [100, 0],
+      [101, ON],
+      [102, ON],
     ]);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: T0 + 102 * MIN,
+      windowStartMs: T0,
+      windowEndMs: T0 + 102 * MIN,
     });
     for (const tempo of [0, 1, 2, 50, 100, 101, 102]) {
       const real = T0 + tempo * MIN;
@@ -334,10 +417,16 @@ describe('buildTimeline — o eixo fica utilizável', () => {
 
   it('os trechos são contíguos e não se sobrepõem', () => {
     const { times, values } = build([
-      [0, ON], [2, 0], [100, 0], [101, ON], [500, ON], [501, ON],
+      [0, ON],
+      [2, 0],
+      [100, 0],
+      [101, ON],
+      [500, ON],
+      [501, ON],
     ]);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: T0 + 501 * MIN,
+      windowStartMs: T0,
+      windowEndMs: T0 + 501 * MIN,
     });
     for (let i = 1; i < t.segments.length; i++) {
       expect(t.segments[i].from).toBe(t.segments[i - 1].to);
@@ -347,9 +436,14 @@ describe('buildTimeline — o eixo fica utilizável', () => {
 
   it('o eixo termina exatamente no fim da janela', () => {
     const fim = T0 + 500 * MIN;
-    const { times, values } = build([[0, ON], [1, ON], [2, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+      [2, ON],
+    ]);
     const t = buildTimeline(times, values, {
-      windowStartMs: T0, windowEndMs: fim,
+      windowStartMs: T0,
+      windowEndMs: fim,
     });
     expect(t.realAt(t.axisMs)).toBeCloseTo(fim, -2);
   });
@@ -402,8 +496,15 @@ describe('casos limite — 0 e 1 ponto', () => {
 
 describe('axisTickCandidates', () => {
   it('sempre inclui os extremos', () => {
-    const { times, values } = build([[0, ON], [1, ON], [2, ON]]);
-    const t = buildTimeline(times, values, { windowStartMs: T0, windowEndMs: T0 + 2 * MIN });
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+      [2, ON],
+    ]);
+    const t = buildTimeline(times, values, {
+      windowStartMs: T0,
+      windowEndMs: T0 + 2 * MIN,
+    });
     const ticks = axisTickCandidates(t, 6);
     expect(ticks[0]).toBe(0);
     expect(ticks[ticks.length - 1]).toBe(t.axisMs);
@@ -413,12 +514,18 @@ describe('axisTickCandidates', () => {
     const pares: Array<[number, number]> = [];
     for (let i = 0; i < 60; i++) pares.push([i * 2, ON], [i * 2 + 40, 0]);
     const { times, values } = build(pares);
-    const t = buildTimeline(times, values, { windowStartMs: T0, windowEndMs: T0 + 130 * MIN });
+    const t = buildTimeline(times, values, {
+      windowStartMs: T0,
+      windowEndMs: T0 + 130 * MIN,
+    });
     expect(axisTickCandidates(t, 8).length).toBeLessThanOrEqual(8);
   });
 
   it('não repete posições', () => {
-    const { times, values } = build([[0, ON], [1, ON]]);
+    const { times, values } = build([
+      [0, ON],
+      [1, ON],
+    ]);
     const t = buildTimeline(times, values);
     const ticks = axisTickCandidates(t, 10);
     expect(new Set(ticks).size).toBe(ticks.length);
@@ -441,22 +548,37 @@ describe('formatDuration', () => {
   });
 });
 
-
 it('respects raw continuity after display downsampling', () => {
   const t = Date.parse('2026-10-26T00:00:00Z');
-  const times = Array.from({ length: 240 }, (_, i) => t + i * 28800000 / 239);
-  const timeline = buildTimeline(times, times.map(() => 30), {
-    sourceSegments: [{kind: 'active', from: new Date(t).toISOString(), to: new Date(t + 28800000).toISOString()}],
-  });
+  const times = Array.from({ length: 240 }, (_, i) => t + (i * 28800000) / 239);
+  const timeline = buildTimeline(
+    times,
+    times.map(() => 30),
+    {
+      sourceSegments: [
+        {
+          kind: 'active',
+          from: new Date(t).toISOString(),
+          to: new Date(t + 28800000).toISOString(),
+        },
+      ],
+    },
+  );
   expect(timeline.noDataMs).toBe(0);
 });
 
 it('breaks the trace across a raw gap even with zero endpoints', () => {
   const t = Date.parse('2026-10-26T00:00:00Z');
   const timeline = buildTimeline([t, t + 3600000], [0, 0], {
-    sourceSegments: [{kind: 'no-data', from: new Date(t).toISOString(), to: new Date(t + 3600000).toISOString()}],
+    sourceSegments: [
+      {
+        kind: 'no-data',
+        from: new Date(t).toISOString(),
+        to: new Date(t + 3600000).toISOString(),
+      },
+    ],
   });
   expect(timeline.offMs).toBe(0);
   expect(timeline.noDataMs).toBe(3600000);
-  expect(timeline.points.some(point => point.y === null)).toBe(true);
+  expect(timeline.points.some((point) => point.y === null)).toBe(true);
 });

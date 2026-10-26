@@ -36,7 +36,7 @@ export const STATUS_TICK_MS = 1_000;
 export function isDeviceOnline(
   socketConnected: boolean,
   lastMessageAt: number | null,
-  now: number
+  now: number,
 ): boolean {
   if (!socketConnected) return false;
   if (lastMessageAt === null) return false;
@@ -44,7 +44,10 @@ export function isDeviceOnline(
 }
 
 /** Texto de "último sinal" a partir da idade da última mensagem. */
-export function formatLastSeen(lastMessageAt: number | null, now: number): string {
+export function formatLastSeen(
+  lastMessageAt: number | null,
+  now: number,
+): string {
   if (lastMessageAt === null) return 'sem sinal';
   const age = Math.max(0, (now - lastMessageAt) / 1000);
   // O limiar compara a idade real, e não a arredondada: com 2,5 s a tela

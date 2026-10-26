@@ -28,11 +28,18 @@ const emit = defineEmits<{
         min="0"
         step="0.01"
         inputmode="decimal"
-        @input="emit('update:tariff', ($event.target as HTMLInputElement).value)"
+        @input="
+          emit('update:tariff', ($event.target as HTMLInputElement).value)
+        "
       />
     </label>
 
-    <button class="primary-button" type="button" :disabled="saving" @click="emit('save')">
+    <button
+      class="primary-button"
+      type="button"
+      :disabled="saving"
+      @click="emit('save')"
+    >
       <Check v-if="saved" :size="16" />
       {{ saved ? 'Tarifa salva' : 'Salvar tarifa' }}
     </button>
@@ -44,7 +51,9 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.tariff-card { padding: 1.25rem; }
+.tariff-card {
+  padding: 1.25rem;
+}
 .card-title {
   display: inline-flex;
   align-items: center;
@@ -56,14 +65,20 @@ const emit = defineEmits<{
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.card-title svg { color: var(--primary); flex: 0 0 auto; }
+.card-title svg {
+  color: var(--primary);
+  flex: 0 0 auto;
+}
 .card-description {
   margin: 0.5rem 0 0;
   color: var(--muted-foreground);
   font-size: 0.75rem;
   line-height: 1.5;
 }
-.card-field { display: block; margin-top: 1rem; }
+.card-field {
+  display: block;
+  margin-top: 1rem;
+}
 .card-field > span {
   display: block;
   margin-bottom: 0.375rem;
@@ -86,7 +101,9 @@ input {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   outline: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 input:focus {
   border-color: var(--primary);
@@ -109,8 +126,13 @@ input:focus {
   cursor: pointer;
   transition: filter 160ms ease;
 }
-.primary-button:not(:disabled):hover { filter: brightness(1.07); }
-.primary-button:disabled { cursor: not-allowed; opacity: 0.5; }
+.primary-button:not(:disabled):hover {
+  filter: brightness(1.07);
+}
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 .save-hint {
   min-height: 1rem;
   margin: 0.5rem 0 0;

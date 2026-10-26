@@ -31,7 +31,9 @@ const { isDark, toggleTheme } = useTheme();
   background: transparent;
   color: var(--muted-foreground);
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 .icon-button:hover {
   background: var(--muted);

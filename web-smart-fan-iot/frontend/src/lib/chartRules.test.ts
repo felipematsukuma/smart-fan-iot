@@ -14,10 +14,18 @@ import {
 const H = 3600_000;
 const T = Date.parse('2026-09-28T18:00:00Z');
 
-const blank = (): ScaleState => ({ scale: { max: DEFAULT_CEILING }, anchor: null });
+const blank = (): ScaleState => ({
+  scale: { max: DEFAULT_CEILING },
+  anchor: null,
+});
 
 /** Série de N pontos com passo de 4 min, e um pico no meio. */
-function series(count: number, peak: number | null, stepMs = 4 * 60_000, startMs = T) {
+function series(
+  count: number,
+  peak: number | null,
+  stepMs = 4 * 60_000,
+  startMs = T,
+) {
   const times: number[] = [];
   const values: number[] = [];
   for (let i = 0; i < count; i++) {
@@ -124,7 +132,12 @@ describe('nextScaleState — histerese do teto', () => {
   it('nunca corta o pico: o teto é sempre >= pico + folga', () => {
     let s = blank();
     for (const pico of [0, 5, 29.77, 32, 45, 60, 100, 250, 900, 1500]) {
-      const { times, values } = series(21, pico === 0 ? 0 : pico, 4 * 60_000, T - 1 * H);
+      const { times, values } = series(
+        21,
+        pico === 0 ? 0 : pico,
+        4 * 60_000,
+        T - 1 * H,
+      );
       s = nextScaleState(s, values, times, T - 8 * H);
       const max = Math.max(...values);
       expect(s.scale.max).toBeGreaterThanOrEqual(max);
@@ -134,7 +147,7 @@ describe('nextScaleState — histerese do teto', () => {
 
 describe('computeCoverage — cobertura da janela', () => {
   it('série sem lacuna cobre tudo', () => {
-    const { times } = series(120, null, 4000);   // ~8 min
+    const { times } = series(120, null, 4000); // ~8 min
     const c = computeCoverage(times, T, T + 8 * H);
     expect(c).toBeLessThanOrEqual(1);
     expect(c).toBeGreaterThan(0);

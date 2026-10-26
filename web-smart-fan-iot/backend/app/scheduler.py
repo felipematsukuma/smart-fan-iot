@@ -23,11 +23,15 @@ async def check_auto_turn_off() -> None:
     now_str = datetime.now(app_timezone).strftime("%H:%M")
     db = SessionLocal()
     try:
-        devices = db.query(Device).filter(
-            Device.auto_off_enabled.is_(True),
-            Device.auto_off_time == now_str,
-            Device.is_on.is_(True),
-        ).all()
+        devices = (
+            db.query(Device)
+            .filter(
+                Device.auto_off_enabled.is_(True),
+                Device.auto_off_time == now_str,
+                Device.is_on.is_(True),
+            )
+            .all()
+        )
 
         # `is_on` reflete a telemetria atual (ver mqtt_service._sync_is_on),
         # então o comando só sai quando o ventilador está realmente ligado.

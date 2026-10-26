@@ -100,14 +100,18 @@ describe('sampleIntervalMinutes — intervalo entre amostras', () => {
     // 10 amostras em 45 s => 9 intervalos de 5 s; arredonda para 0, mas o piso
     // evita exibir "a cada 0 min" na tela.
     const t0 = Date.parse('2026-09-28T18:00:00Z');
-    const iso = Array.from({ length: 10 }, (_, i) => new Date(t0 + i * 5000).toISOString());
+    const iso = Array.from({ length: 10 }, (_, i) =>
+      new Date(t0 + i * 5000).toISOString(),
+    );
     expect(sampleIntervalMinutes(iso)).toBe(1);
   });
 
   it('calcula intervalos de minutos corretamente', () => {
     const t0 = Date.parse('2026-09-28T18:00:00Z');
     // 61 amostras em 60 passos de 1 min
-    const iso = Array.from({ length: 61 }, (_, i) => new Date(t0 + i * 60_000).toISOString());
+    const iso = Array.from({ length: 61 }, (_, i) =>
+      new Date(t0 + i * 60_000).toISOString(),
+    );
     expect(sampleIntervalMinutes(iso)).toBe(1);
   });
 
@@ -117,15 +121,16 @@ describe('sampleIntervalMinutes — intervalo entre amostras', () => {
   });
 
   it('devolve null quando o relógio retrocede', () => {
-    expect(sampleIntervalMinutes([
-      '2026-09-28T18:00:10Z',
-      '2026-09-28T18:00:00Z',
-    ])).toBeNull();
+    expect(
+      sampleIntervalMinutes(['2026-09-28T18:00:10Z', '2026-09-28T18:00:00Z']),
+    ).toBeNull();
   });
 
   it('calcula intervalos de horas em janelas longas', () => {
     const t0 = Date.parse('2026-09-21T18:00:00Z');
-    const iso = Array.from({ length: 8 }, (_, i) => new Date(t0 + i * 24 * 3600_000).toISOString());
+    const iso = Array.from({ length: 8 }, (_, i) =>
+      new Date(t0 + i * 24 * 3600_000).toISOString(),
+    );
     // 7 intervalos de 24 h
     expect(sampleIntervalMinutes(iso)).toBe(1440);
   });

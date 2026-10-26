@@ -20,8 +20,12 @@ withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
   font-weight: 700;
   letter-spacing: -0.03em;
 }
-.brand h1.full { font-size: 1.8rem; }
-.brand h1.compact { font-size: 1.5rem; }
+.brand h1.full {
+  font-size: 1.8rem;
+}
+.brand h1.compact {
+  font-size: 1.5rem;
+}
 .brand-sub {
   display: flex;
   align-items: center;
