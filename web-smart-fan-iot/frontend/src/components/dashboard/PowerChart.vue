@@ -10,7 +10,7 @@ import {
   LineElement,
   Filler,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js';
 import type { MetricPoint, SeriesSegment } from '../../types';
 import {
@@ -27,7 +27,15 @@ import {
 } from '../../lib/chartRules';
 import { formatCoverage } from '../../lib/format';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+);
 
 const props = defineProps<{
   coverage?: number;
@@ -65,14 +73,17 @@ interface TooltipLineItem {
   datasetIndex: number;
   parsed: { x: number | null; y: number | null };
 }
-const FALLBACK: Record<'light' | 'dark', Record<string, [number, number, number]>> = {
+const FALLBACK: Record<
+  'light' | 'dark',
+  Record<string, [number, number, number]>
+> = {
   light: {
     '--chart-1': [46, 156, 138],
     '--chart-2': [31, 168, 119],
     '--muted-foreground': [93, 120, 121],
     '--border': [198, 220, 216],
     '--popover': [255, 255, 255],
-    '--foreground': [25, 48, 57]
+    '--foreground': [25, 48, 57],
   },
   dark: {
     '--chart-1': [120, 214, 194],
@@ -80,8 +91,8 @@ const FALLBACK: Record<'light' | 'dark', Record<string, [number, number, number]
     '--muted-foreground': [165, 193, 192],
     '--border': [58, 84, 90],
     '--popover': [32, 52, 58],
-    '--foreground': [230, 244, 240]
-  }
+    '--foreground': [230, 244, 240],
+  },
 };
 
 /** O canvas não resolve `var(--x)` nem `color-mix()`, então as cores do tema
@@ -95,7 +106,9 @@ const SENTINEL = 'rgb(1, 2, 3)';
 
 const resolveToken = (name: string): [number, number, number] => {
   const dark = document.documentElement.classList.contains('dark');
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   const fallback = (dark ? FALLBACK.dark : FALLBACK.light)[name] ?? [0, 0, 0];
   if (!raw) return fallback;
 
@@ -107,7 +120,7 @@ const resolveToken = (name: string): [number, number, number] => {
   probe.style.color = raw;
   let resolved = getComputedStyle(probe).color;
   if (resolved === SENTINEL) {
-  // Não parseou (ex.: "120, 214, 194") — tenta a forma explícita rgb().
+    // Não parseou (ex.: "120, 214, 194") — tenta a forma explícita rgb().
     probe.style.color = `rgb(${raw})`;
     resolved = getComputedStyle(probe).color;
   }
@@ -124,7 +137,7 @@ const readTheme = () => ({
   tick: resolveToken('--muted-foreground'),
   grid: resolveToken('--border'),
   popover: resolveToken('--popover'),
-  foreground: resolveToken('--foreground')
+  foreground: resolveToken('--foreground'),
 });
 
 const theme = ref(readTheme());
@@ -140,7 +153,10 @@ let themeObserver: MutationObserver | null = null;
 onMounted(() => {
   refreshTheme();
   themeObserver = new MutationObserver(refreshTheme);
-  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  themeObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
 });
 onBeforeUnmount(() => themeObserver?.disconnect());
 
@@ -151,14 +167,19 @@ const formatInstant = (ms: number) =>
     day: props.multiDay ? '2-digit' : undefined,
     month: props.multiDay ? '2-digit' : undefined,
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   });
 
 const powerGradient = (context: { chart: ChartJS }) => {
   const { ctx, chartArea } = context.chart;
   const color = theme.value.power;
   if (!chartArea) return rgba(color, 0.24);
-  const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  const gradient = ctx.createLinearGradient(
+    0,
+    chartArea.top,
+    0,
+    chartArea.bottom,
+  );
   gradient.addColorStop(0, rgba(color, 0.32));
   gradient.addColorStop(0.95, rgba(color, 0.02));
   return gradient;
@@ -168,7 +189,12 @@ const bandGradient = (context: { chart: ChartJS }) => {
   const { ctx, chartArea } = context.chart;
   const color = theme.value.average;
   if (!chartArea) return 'rgba(0, 0, 0, 0)';
-  const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  const gradient = ctx.createLinearGradient(
+    0,
+    chartArea.top,
+    0,
+    chartArea.bottom,
+  );
   gradient.addColorStop(0, rgba(color, 0.16));
   gradient.addColorStop(1, rgba(color, 0.04));
   return gradient;
@@ -182,14 +208,18 @@ const times = ref<number[]>([]);
  * o intervalo das amostras: é isso que faz 6 h sem telemetria aparecerem como
  * espaço vazio em vez de serem comprimidas fora da vista. */
 const windowStartMs = computed(() => {
-  const parsed = props.periodStart ? new Date(props.periodStart).getTime() : NaN;
+  const parsed = props.periodStart
+    ? new Date(props.periodStart).getTime()
+    : NaN;
   if (Number.isFinite(parsed)) return parsed;
   return times.value.length ? times.value[0] : Date.now();
 });
 const windowEndMs = computed(() => {
   const parsed = props.periodEnd ? new Date(props.periodEnd).getTime() : NaN;
   if (Number.isFinite(parsed)) return parsed;
-  const last = times.value.length ? times.value[times.value.length - 1] : Date.now();
+  const last = times.value.length
+    ? times.value[times.value.length - 1]
+    : Date.now();
   return Math.max(last, windowStartMs.value + 1);
 });
 
@@ -209,18 +239,23 @@ const timeline = computed(() =>
     windowStartMs: windowStartMs.value,
     windowEndMs: windowEndMs.value,
     sourceSegments: props.sourceSegments,
-  })
+  }),
 );
 
-  /** Cobertura medida em TEMPO REAL — a compressão é visual, não contábil. */
-const coverage = computed(() =>
-  props.coverage ?? computeCoverage(times.value, windowStartMs.value, windowEndMs.value)
+/** Cobertura medida em TEMPO REAL — a compressão é visual, não contábil. */
+const coverage = computed(
+  () =>
+    props.coverage ??
+    computeCoverage(times.value, windowStartMs.value, windowEndMs.value),
 );
 const hasCoverageGap = computed(() => coverage.value < 0.98);
 
 /** Duração da janela em horas, arredondada. Só para o rótulo curto. */
 const windowHours = computed(() =>
-  Math.max(1, Math.round((windowEndMs.value - windowStartMs.value) / 3_600_000))
+  Math.max(
+    1,
+    Math.round((windowEndMs.value - windowStartMs.value) / 3_600_000),
+  ),
 );
 
 /** "de 8h", "de 24h", "de 168h". Sem ruído decimal, como os atalhos da API. */
@@ -239,10 +274,12 @@ const coverageDetail = computed(() => {
     `Sem telemetria: ${formatDuration(timeline.value.noDataMs)}.`,
   ];
   if (timeline.value.offMs > 0) {
-    linhas.push(`Ventilador desligado: ${formatDuration(timeline.value.offMs)}.`);
+    linhas.push(
+      `Ventilador desligado: ${formatDuration(timeline.value.offMs)}.`,
+    );
   }
   linhas.push(
-    'No eixo, os trechos sem medição são comprimidos para caber na largura; o tempo real de cada um está nos rótulos. Uma linha contínua atravessando um trecho comprimido é interpolação, não medição.'
+    'O eixo comprime intervalos desligados e sem dados. Lacunas reais interrompem a linha; a cobertura é calculada antes da redução visual.',
   );
   return linhas.join(' ');
 });
@@ -254,15 +291,23 @@ const maximum = computed(() => props.rawMaximum ?? stats.value.max);
 
 /** No período personalizado o rótulo fixo não serve, então o intervalo real
  *  é exibido no rodapé. */
-const isCustomPeriod = computed(() => props.periodLabel === 'Período personalizado');
+const isCustomPeriod = computed(
+  () => props.periodLabel === 'Período personalizado',
+);
 const samplesCount = computed(() => props.rawCount ?? props.history.length);
 
 const range = computed(() => {
   const s = new Date(windowStartMs.value).toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   });
   const e = new Date(windowEndMs.value).toLocaleString('pt-BR', {
-    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   });
   return `${s} — ${e}`;
 });
@@ -270,11 +315,14 @@ const range = computed(() => {
 const buildDatasets = () => {
   const { power, average } = theme.value;
   const low = Math.max(0, mean.value - deviation.value);
-  const high = Math.min(yScale.value.max, mean.value + deviation.value);
+  const high = Math.min(axisMaximum.value, mean.value + deviation.value);
   // Mesmo esqueleto com quebras, mas com o nível constante: a faixa de desvio
   // e a média também não podem atravessar um trecho interrompido.
   const flatAt = (level: number) =>
-    timeline.value.points.map((p) => ({ x: p.x, y: p.y === null ? null : level }));
+    timeline.value.points.map((p) => ({
+      x: p.x,
+      y: p.y === null ? null : level,
+    }));
 
   return [
     {
@@ -285,7 +333,7 @@ const buildDatasets = () => {
       fill: true,
       // `connectGaps` liga a linha através dos trechos comprimidos (leitura do
       // InfluxDB, e o que foi pedido). Não há `null` na série, então a opção é
-    // irrelevante aqui — mas fica explícita caso a série volte a ter quebras.
+      // irrelevante aqui — mas fica explícita caso a série volte a ter quebras.
       spanGaps: false,
       tension: 0.35,
       // Sem marcadores de amostra: os trechos desligados não entram como 0 W,
@@ -295,7 +343,7 @@ const buildDatasets = () => {
       pointHoverRadius: 4,
       pointHoverBackgroundColor: rgba(power, 1),
       pointHoverBorderColor: rgba(power, 1),
-      borderWidth: 2
+      borderWidth: 2,
     },
     {
       label: 'Média',
@@ -308,7 +356,7 @@ const buildDatasets = () => {
       tension: 0.35,
       pointRadius: 0,
       pointHoverRadius: 0,
-      borderWidth: 1.5
+      borderWidth: 1.5,
     },
     {
       label: 'Desvio superior',
@@ -320,7 +368,7 @@ const buildDatasets = () => {
       tension: 0.35,
       pointRadius: 0,
       pointHoverRadius: 0,
-      borderWidth: 0
+      borderWidth: 0,
     },
     {
       label: 'Desvio inferior',
@@ -332,8 +380,8 @@ const buildDatasets = () => {
       tension: 0.35,
       pointRadius: 0,
       pointHoverRadius: 0,
-      borderWidth: 0
-    }
+      borderWidth: 0,
+    },
   ];
 };
 
@@ -360,6 +408,9 @@ const axisLabels = computed(() => {
  * leitura.
  * ------------------------------------------------------------------ */
 const yScale = ref<YScale>({ max: DEFAULT_CEILING });
+const axisMaximum = computed(() =>
+  props.rawMaximum === undefined ? yScale.value.max : props.rawMaximum + 10,
+);
 /** Pico que sustenta o teto atual, com o instante em que ocorreu. */
 const peakAnchor = ref<PeakAnchor | null>(null);
 
@@ -368,7 +419,7 @@ const updateYScale = () => {
     { scale: yScale.value, anchor: peakAnchor.value },
     values.value,
     times.value,
-    windowStartMs.value
+    windowStartMs.value,
   );
   yScale.value = next.scale;
   peakAnchor.value = next.anchor;
@@ -392,16 +443,26 @@ const appendPoint = (power: number, time: Date) => {
 };
 
 watch(() => props.history, replaceHistory, { immediate: true });
-watch(() => props.multiDay, () => replaceHistory(props.history));
+watch(
+  () => props.multiDay,
+  () => replaceHistory(props.history),
+);
 // Trocar de período move o início da janela: o pico pode ter saído dele.
-watch(() => props.periodStart, () => updateYScale());
+watch(
+  () => props.periodStart,
+  () => updateYScale(),
+);
 
 let lastTimestamp = props.timestamp;
-watch(() => props.timestamp, (timestamp) => {
-  if (props.appendLive === false || !timestamp || timestamp === lastTimestamp) return;
-  lastTimestamp = timestamp;
-  appendPoint(props.currentPower, new Date());
-});
+watch(
+  () => props.timestamp,
+  (timestamp) => {
+    if (props.appendLive === false || !timestamp || timestamp === lastTimestamp)
+      return;
+    lastTimestamp = timestamp;
+    appendPoint(props.currentPower, new Date());
+  },
+);
 
 const chartOptions = computed(() => ({
   responsive: true,
@@ -424,7 +485,11 @@ const chartOptions = computed(() => ({
       titleColor: rgba(theme.value.tick, 1),
       titleFont: { size: 11, weight: 500 },
       bodyColor: rgba(theme.value.foreground, 1),
-      bodyFont: { size: 17, weight: 700, family: getComputedStyle(document.body).fontFamily },
+      bodyFont: {
+        size: 17,
+        weight: 700,
+        family: getComputedStyle(document.body).fontFamily,
+      },
       footerColor: rgba(theme.value.average, 1),
       footerFont: { size: 11, weight: 400 },
       borderColor: rgba(theme.value.grid, 1),
@@ -452,9 +517,9 @@ const chartOptions = computed(() => ({
           const diff = power - average;
           const sinal = diff >= 0 ? '+' : '−';
           return `Média ${average.toFixed(1)} W • ${sinal}${Math.abs(diff).toFixed(1)} W`;
-        }
-      }
-    }
+        },
+      },
+    },
   },
   scales: {
     x: {
@@ -475,9 +540,10 @@ const chartOptions = computed(() => ({
       // uniforme, os rótulos saíam todos colados no fim. Substituímos a lista
       // inteira por posições que sabemos bem distribuídas no eixo.
       afterBuildTicks: (axis: { ticks: Array<{ value: number }> }) => {
-        axis.ticks = axisTickCandidates(timeline.value, props.multiDay ? 7 : 8).map(
-          (value) => ({ value })
-        );
+        axis.ticks = axisTickCandidates(
+          timeline.value,
+          props.multiDay ? 7 : 8,
+        ).map((value) => ({ value }));
       },
       ticks: {
         color: rgba(theme.value.tick, 1),
@@ -490,18 +556,18 @@ const chartOptions = computed(() => ({
         callback: (value: number | string) => {
           const position = axisTickCandidates(
             timeline.value,
-            props.multiDay ? 7 : 8
+            props.multiDay ? 7 : 8,
           ).indexOf(Number(value));
           return position >= 0 ? axisLabels.value[position] : '';
-        }
-      }
+        },
+      },
     },
     y: {
       beginAtZero: true,
-      max: yScale.value.max,
+      max: axisMaximum.value,
       border: { display: false },
       grid: { color: rgba(theme.value.grid, 0.6), drawTicks: false },
-    // Sem stepSize fixo: o Chart.js escolhe degraus "bonitos" (2/5/10/20/25…)
+      // Sem stepSize fixo: o Chart.js escolhe degraus "bonitos" (2/5/10/20/25…)
       // dentro de [0, teto], preservando a folga exata de HEADROOM_W.
       ticks: {
         color: rgba(theme.value.tick, 1),
@@ -514,12 +580,13 @@ const chartOptions = computed(() => ({
         // omitido. O "0 W" e os degraus intermediários seguem normais.
         callback: (value: number | string) => {
           const numeric = Number(value);
-          if (Math.abs(numeric - yScale.value.max) < 1e-6 && numeric !== 0) return '';
+          if (Math.abs(numeric - axisMaximum.value) < 1e-6 && numeric !== 0)
+            return '';
           return `${value} W`;
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 }));
 </script>
 
@@ -546,20 +613,29 @@ const chartOptions = computed(() => ({
         <span><i class="dot-power" /> Potência</span>
         <span><i class="dot-average" /> Média</span>
         <span class="legend-badge">Linha + média</span>
-        <span class="legend-badge is-scale" title="Teto do eixo Y: pico + 10 W, mantido até o pico sair da janela">
-          Escala 0–{{ yScale.max.toFixed(0) }} W
+        <span
+          class="legend-badge is-scale"
+          title="Teto do eixo Y: pico + 10 W, mantido até o pico sair da janela"
+        >
+          Escala 0–{{ axisMaximum.toFixed(0) }} W
         </span>
       </div>
     </header>
 
     <div class="chart-stats">
-      <div><span>Média</span><strong>{{ mean.toFixed(1) }} W</strong></div>
-      <div><span>Máxima</span><strong>{{ maximum.toFixed(1) }} W</strong></div>
+      <div>
+        <span>Média</span><strong>{{ mean.toFixed(1) }} W</strong>
+      </div>
+      <div>
+        <span>Máxima</span><strong>{{ maximum.toFixed(1) }} W</strong>
+      </div>
     </div>
 
     <div class="chart-canvas">
       <Line :data="chartData" :options="chartOptions" />
-      <p v-if="values.length === 0" class="empty-chart">Aguardando telemetria do ESP32…</p>
+      <p v-if="values.length === 0" class="empty-chart">
+        Aguardando telemetria do ESP32…
+      </p>
     </div>
 
     <footer class="chart-footer">
@@ -604,7 +680,11 @@ const chartOptions = computed(() => ({
   font-weight: 700;
   letter-spacing: -0.02em;
 }
-.chart-header p { margin: 0.25rem 0 0; color: var(--muted-foreground); font-size: 0.75rem; }
+.chart-header p {
+  margin: 0.25rem 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
 .coverage-note {
   display: inline-flex;
   align-items: center;
@@ -617,7 +697,9 @@ const chartOptions = computed(() => ({
   cursor: help;
   border-bottom: 1px dotted color-mix(in srgb, var(--offline) 55%, transparent);
 }
-.coverage-note svg { flex: 0 0 auto; }
+.coverage-note svg {
+  flex: 0 0 auto;
+}
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
@@ -631,10 +713,25 @@ const chartOptions = computed(() => ({
      e desalinha do título. */
   margin-bottom: -0.2rem;
 }
-.chart-legend > span { display: inline-flex; align-items: center; gap: 0.4rem; }
-.chart-legend i { display: block; }
-.dot-power { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: var(--chart-1); }
-.dot-average { width: 1rem; height: 1px; border-top: 1px dashed var(--online); }
+.chart-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chart-legend i {
+  display: block;
+}
+.dot-power {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--chart-1);
+}
+.dot-average {
+  width: 1rem;
+  height: 1px;
+  border-top: 1px dashed var(--online);
+}
 .legend-badge {
   border: 1px solid var(--border);
   border-radius: 0.35rem;
@@ -676,7 +773,9 @@ const chartOptions = computed(() => ({
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.chart-footer .tabular { font-variant-numeric: tabular-nums; }
+.chart-footer .tabular {
+  font-variant-numeric: tabular-nums;
+}
 .chart-stats {
   display: grid;
   /* Dois campos apenas (média e máxima). A grade acompanha a quantidade real
@@ -685,8 +784,13 @@ const chartOptions = computed(() => ({
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--background) 40%, transparent);
 }
-.chart-stats div { padding: 0.7rem 1rem; border-right: 1px solid var(--border); }
-.chart-stats div:last-child { border-right: 0; }
+.chart-stats div {
+  padding: 0.7rem 1rem;
+  border-right: 1px solid var(--border);
+}
+.chart-stats div:last-child {
+  border-right: 0;
+}
 .chart-stats span {
   display: block;
   color: var(--muted-foreground);
@@ -710,8 +814,15 @@ const chartOptions = computed(() => ({
   padding: 1.5rem 1rem 1.5rem;
   cursor: crosshair;
 }
-.chart-canvas canvas { display: block; }
-@media (min-width: 1024px) { .chart-canvas { height: 384px; padding: 1.5rem 1.5rem 1.75rem; } }
+.chart-canvas canvas {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .chart-canvas {
+    height: 384px;
+    padding: 1.5rem 1.5rem 1.75rem;
+  }
+}
 .empty-chart {
   position: absolute;
   inset: 45% 0 auto;
@@ -721,8 +832,14 @@ const chartOptions = computed(() => ({
   pointer-events: none;
 }
 @media (max-width: 700px) {
-  .chart-stats div { padding: 0.6rem 0.75rem; }
-  .chart-header { padding: 0.9rem 1rem; }
-  .chart-footer { padding: 0.65rem 1rem; }
+  .chart-stats div {
+    padding: 0.6rem 0.75rem;
+  }
+  .chart-header {
+    padding: 0.9rem 1rem;
+  }
+  .chart-footer {
+    padding: 0.65rem 1rem;
+  }
 }
 </style>
