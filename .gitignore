@@ -2,9 +2,9 @@
 .pio/
 
 # VS Code - arquivos gerados localmente
-.vscode/.browse.c_cpp.db*
-.vscode/ipch/
-.vscode/c_cpp_properties.json
+**/.vscode/.browse.c_cpp.db*
+**/.vscode/ipch/
+**/.vscode/c_cpp_properties.json
 
 # Python
 __pycache__/
@@ -51,4 +51,4 @@ build/
 # Local IDE state
 .idea/
 *.code-workspace
-.vscode/settings.json
+**/.vscode/settings.json
