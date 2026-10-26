@@ -15,13 +15,10 @@ scheduler = AsyncIOScheduler(timezone=app_timezone)
 
 
 async def check_auto_turn_off() -> None:
-    """Desliga devices no horário local configurado, com precisão de 30 s.
+    """Request OFF while due and still observed ON; never invent a relay state.
 
-    O comando é idempotente por natureza: o ESP32 também se desliga sozinho no
-    horário (main.cpp) e publica `state`, de modo que as duas rotas convergem.
-    Aqui o objetivo é garantir o desligamento mesmo se a configuração do
-    dispositivo tiver divergido do NVS, e marcar `is_on = False` para não
-    repetir o comando a cada 30 s.
+    A broker PUBACK is not an actuator acknowledgement. Retry every 30 seconds
+    in the due minute until telemetry/state confirms OFF.
     """
     now_str = datetime.now(app_timezone).strftime("%H:%M")
     db = SessionLocal()
@@ -42,9 +39,8 @@ async def check_auto_turn_off() -> None:
                 now_str,
                 device_id,
             )
-            mqtt_manager.publish_command(device_id, {"action": "OFF"})
-            # Escrita pelo gerenciador para manter banco e cache coerentes.
-            mqtt_manager.set_device_is_on(device_id, False)
+            if not mqtt_manager.publish_command(device_id, {"action": "OFF"}):
+                logger.warning("OFF pending for %s: broker unavailable", device_id)
 
         db.commit()
     except Exception:

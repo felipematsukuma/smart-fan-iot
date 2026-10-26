@@ -83,7 +83,7 @@ def test_payload_sem_device_id_usa_o_do_topico():
     """Device vem do tópico quando o payload não traz; tolerante de propósito
     para firmware enxuto."""
     mqtt_manager.on_message(
-        None, None, mqtt_message(TOPICO_TELEMETRIA, {"is_on": True, "power_w": 10})
+        None, None, mqtt_message(TOPICO_TELEMETRIA, {k: v for k, v in telemetry_payload().items() if k != "device_id"})
     )
     assert len(FakeWriteApi.written) == 1
 
@@ -273,3 +273,18 @@ def test_falha_de_conexao_marca_desconectado(manager):
     manager._connected = True
     manager.on_connect(manager.client, None, None, 5)
     assert manager.is_connected is False
+
+
+@pytest.mark.parametrize("override", [
+    {"is_on": "false"}, {"power_w": -1}, {"power_w": float("nan")},
+    {"current_a": -1}, {"timestamp": -1}, {"shutdown_time": "ab:cd"},
+])
+def test_invalid_telemetry_never_reaches_influx(override):
+    mqtt_manager.on_message(None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(**override)))
+    assert FakeWriteApi.written == []
+
+
+def test_invalid_state_does_not_change_observed_relay():
+    DB_ROWS.append(FakeDeviceRow(is_on=False))
+    mqtt_manager.on_message(None, None, mqtt_message(TOPICO_STATE, {"is_on": "false"}))
+    assert DB_ROWS[0].is_on is False

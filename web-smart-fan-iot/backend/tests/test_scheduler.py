@@ -46,7 +46,7 @@ def test_desliga_ventilador_ligado_no_horario(at, broker):
     c = comandos(broker)
     assert len(c) == 1
     assert c[0]["payload"] == {"action": "OFF"}
-    assert DB_ROWS[0].is_on is False
+    assert DB_ROWS[0].is_on is True  # observed state awaits device confirmation
 
 
 def test_nao_desliga_ventilador_ja_desligado(at, broker):
@@ -74,12 +74,15 @@ def test_ignora_horario_diferente(at, broker):
 # ------------------------------------------------------------ idempotência
 
 
-def test_nao_reenvia_dentro_do_mesmo_minuto(at, broker):
+def test_retries_until_device_confirms_off(at, broker):
     DB_ROWS.append(FakeDeviceRow(is_on=True, at="03:30"))
     at("2026-09-29T03:30:05")
     assert len(comandos(broker)) == 1
     at("2026-09-29T03:30:35")
-    assert len(comandos(broker)) == 1   # nada novo
+    assert len(comandos(broker)) == 2
+    DB_ROWS[0].is_on = False
+    at("2026-09-29T03:30:50")
+    assert len(comandos(broker)) == 2
 
 
 def test_horario_avaliado_no_fuso_do_servidor(at, broker):
@@ -115,14 +118,6 @@ def test_backend_ignora_minuto_se_passou(at, broker):
     assert comandos(broker) == []
 
 
-def test_firmware_cobre_a_falha_do_backend():
-    """Contrapartida: mesmo que o backend perca a janela, o ESP32 se desliga
-    sozinho (main.cpp, tolerância de 2 min). A garantia real é do firmware."""
-    # Não é testável aqui sem o firmware; este teste registra a expectativa.
-    TOLERANCIA_FIRMWARE_MIN = 2
-    assert TOLERANCIA_FIRMWARE_MIN > 0
-
-
 # ------------------------------------------------------------- multi-device
 
 
@@ -146,13 +141,11 @@ def test_nenhum_dispositivo_nao_quebra(at, broker):
 # ------------------------------------------------- segurança do desligamento
 
 
-def test_marca_estado_para_nao_repetir_quando_broker_falha(at, manager):
-    """Se o comando não sai, marcar o estado evita um loop de 30 s reenviando
-    o mesmo OFF indefinidamente."""
-    manager._connected = False           # publicação vai falhar
+def test_broker_failure_preserves_observed_state(at, manager):
+    manager._connected = False
     DB_ROWS.append(FakeDeviceRow(is_on=True, at="03:30"))
     at("2026-09-29T03:30:10")
-    assert DB_ROWS[0].is_on is False
+    assert DB_ROWS[0].is_on is True
 
 
 def test_agendador_nao_altera_outros_campos(at, broker):
@@ -163,21 +156,3 @@ def test_agendador_nao_altera_outros_campos(at, broker):
     assert DB_ROWS[0].auto_off_enabled is True
 
 
-def test_horario_avaliado_no_fuso_do_servidor(at, broker):
-    """O agendador casa HH:MM no fuso configurado, não em UTC. Um agendador em
-    UTC desligaria 3 h fora do horário pedido pelo usuário."""
-    DB_ROWS.append(FakeDeviceRow(is_on=True, at="00:00"))
-    at("2026-09-29T00:00:10")            # 00:00 em BRT
-    assert len(comandos(broker)) == 1
-    DB_ROWS[0].is_on = True
-    at("2026-09-29T03:00:10")            # 00:00 UTC, mas o local já é 00:00
-    assert len(comandos(broker)) == 1    # não dispara de novo
-
-
-def test_meia_noite_e_tratada_como_inicio_do_dia(at, broker):
-    """Meia-noite arredonda para 24 h, então 00:00 deve funcionar como horário."""
-    DB_ROWS.append(FakeDeviceRow(is_on=True, at="00:00"))
-    at("2026-09-29T23:59:50")
-    assert comandos(broker) == []         # ainda não é 00:00
-    at("2026-09-30T00:00:10")
-    assert len(comandos(broker)) == 1

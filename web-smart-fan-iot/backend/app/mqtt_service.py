@@ -10,6 +10,7 @@ from influxdb_client import Point
 from app.config import settings
 from app.database import SessionLocal, write_api
 from app.models import Device
+from app.schemas import DeviceState, TelemetryPayload
 
 logger = logging.getLogger("MQTT_SERVICE")
 
@@ -56,18 +57,24 @@ class MQTTManager:
 
     def on_message(self, client, userdata, msg) -> None:
         try:
+            if len(msg.payload) > 2048:
+                raise ValueError("payload MQTT exceeds 2048 bytes")
             payload = json.loads(msg.payload.decode("utf-8"))
             if not isinstance(payload, dict):
                 raise ValueError("payload MQTT deve ser um objeto JSON")
 
             topic_parts = msg.topic.split("/")
-            topic_device_id = topic_parts[1] if len(topic_parts) >= 3 else None
+            topic_device_id = topic_parts[1] if len(topic_parts) == 3 and topic_parts[0] == "devices" else None
             payload_device_id = payload.get("device_id")
 
             if not topic_device_id or (
                 payload_device_id and payload_device_id != topic_device_id
             ):
                 raise ValueError(f"device_id incoerente no tópico {msg.topic}")
+
+            payload["device_id"] = topic_device_id
+            schema = TelemetryPayload if topic_parts[-1] == "telemetry" else DeviceState
+            payload = schema.model_validate(payload).model_dump(exclude_none=True)
 
             if msg.topic.endswith("/telemetry"):
                 self._handle_telemetry(topic_device_id, payload)
@@ -153,13 +160,14 @@ class MQTTManager:
 
             if "is_on" in payload:
                 device.is_on = bool(payload["is_on"])
-                self._last_is_on[device_id] = device.is_on
             if "auto_mode" in payload:
                 device.auto_off_enabled = bool(payload["auto_mode"])
             if "shutdown_time" in payload:
                 device.auto_off_time = str(payload["shutdown_time"])
 
             db.commit()
+            if "is_on" in payload:
+                self._last_is_on[device_id] = payload["is_on"]
         except Exception:
             db.rollback()
             raise

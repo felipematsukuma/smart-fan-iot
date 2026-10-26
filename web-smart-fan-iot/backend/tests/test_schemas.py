@@ -34,13 +34,8 @@ def test_comando_exige_acao():
         DeviceCommand()
 
 
-@pytest.mark.parametrize("velocidade", [1, 2, 3])
-def test_comando_aceita_velocidades_validas(velocidade):
-    assert DeviceCommand(action="ON", speed=velocidade).speed == velocidade
-
-
-@pytest.mark.parametrize("velocidade", [0, 4, -1])
-def test_comando_rejeita_velocidade_fora_do_intervalo(velocidade):
+@pytest.mark.parametrize("velocidade", [0, 1, 2, 3, 4])
+def test_comando_rejeita_velocidade_nao_implementada(velocidade):
     with pytest.raises(ValidationError):
         DeviceCommand(action="ON", speed=velocidade)
 
