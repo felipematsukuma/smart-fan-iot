@@ -190,6 +190,15 @@ void handleIncomingCommand(const String& message) {
     Serial.println("Invalid boolean command field");
     return;
   }
+  if (doc.containsKey("shutdown_time")) {
+    int validated_hour = 0;
+    int validated_minute = 0;
+    if (!doc["shutdown_time"].is<const char*>() ||
+        !parseShutdownTime(doc["shutdown_time"].as<String>(), validated_hour, validated_minute)) {
+      Serial.println("Invalid shutdown_time; command rejected");
+      return;
+    }
+  }
   if (doc.containsKey("action")) {
     const String action = doc["action"].as<String>();
     if (action == "ON") {
@@ -341,6 +350,7 @@ void sendTelemetry() {
   doc["total_energy_wh"] = round(total_energy_wh * 1000.0f) / 1000.0f;
   doc["fan_on_time_ms"] = getCurrentFanOnTimeMs();
   doc["timestamp"] = now;
+  if (clock_ready) doc["device_epoch_s"] = static_cast<double>(time(nullptr));
 
   char buffer[MAX_PAYLOAD_SIZE];
   serializeJson(doc, buffer);

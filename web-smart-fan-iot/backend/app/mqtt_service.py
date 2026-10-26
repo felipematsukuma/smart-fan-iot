@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import paho.mqtt.client as mqtt
@@ -64,12 +65,12 @@ class MQTTManager:
                 raise ValueError("payload MQTT deve ser um objeto JSON")
 
             topic_parts = msg.topic.split("/")
-            topic_device_id = topic_parts[1] if len(topic_parts) == 3 and topic_parts[0] == "devices" else None
+            topic_device_id = (
+                topic_parts[1] if len(topic_parts) == 3 and topic_parts[0] == "devices" else None
+            )
             payload_device_id = payload.get("device_id")
 
-            if not topic_device_id or (
-                payload_device_id and payload_device_id != topic_device_id
-            ):
+            if not topic_device_id or (payload_device_id and payload_device_id != topic_device_id):
                 raise ValueError(f"device_id incoerente no tópico {msg.topic}")
 
             payload["device_id"] = topic_device_id
@@ -97,12 +98,16 @@ class MQTTManager:
 
         point = (
             Point("electrical_measurement")
+            .time(datetime.now(timezone.utc))
             .tag("device_id", device_id)
             .field("is_on", int(is_on))
             .field("current_a", current_a)
             .field("power_w", power_w)
             .field("voltage_rms", voltage_rms)
         )
+
+        if "device_epoch_s" in payload:
+            point.field("device_epoch_s", payload["device_epoch_s"])
 
         persisted = True
         try:

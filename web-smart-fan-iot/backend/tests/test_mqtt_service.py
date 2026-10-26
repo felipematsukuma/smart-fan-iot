@@ -3,11 +3,12 @@
 O `MQTTManager` é o REAL; só o Postgres (`app.database`) e o transporte paho
 são substituídos. Assim o caminho de código exercitado é o de produção.
 """
+
 import pytest
+from conftest import mqtt_message, telemetry_payload
 
 from app.database import DB_ROWS, FakeDeviceRow, FakeWriteApi
 from app.mqtt_service import mqtt_manager
-from conftest import mqtt_message, telemetry_payload
 
 TOPICO_TELEMETRIA = "devices/esp32_fan_01/telemetry"
 TOPICO_STATE = "devices/esp32_fan_01/state"
@@ -28,7 +29,7 @@ def parse_line_protocol(point):
             k, _, v = t.partition("=")
             tags[k] = v
     fields = {}
-    for f in rest.split(","):
+    for f in rest.split(" ", 1)[0].split(","):
         if "=" not in f:
             continue
         k, _, v = f.partition("=")
@@ -55,7 +56,8 @@ def test_nao_grava_quando_device_id_divergente_do_topico():
     a telemetria no dispositivo errado corromperia o histórico. O serviço
     registra o erro e segue — o invariante é que NADA é gravado."""
     mqtt_manager.on_message(
-        None, None,
+        None,
+        None,
         mqtt_message("devices/outro_device/telemetry", telemetry_payload()),
     )
     assert FakeWriteApi.written == []
@@ -83,7 +85,11 @@ def test_payload_sem_device_id_usa_o_do_topico():
     """Device vem do tópico quando o payload não traz; tolerante de propósito
     para firmware enxuto."""
     mqtt_manager.on_message(
-        None, None, mqtt_message(TOPICO_TELEMETRIA, {k: v for k, v in telemetry_payload().items() if k != "device_id"})
+        None,
+        None,
+        mqtt_message(
+            TOPICO_TELEMETRIA, {k: v for k, v in telemetry_payload().items() if k != "device_id"}
+        ),
     )
     assert len(FakeWriteApi.written) == 1
 
@@ -107,13 +113,14 @@ def test_telemetria_de_device_desconhecido_ainda_grava():
     """O histórico não depende do Postgres: um device novo já aparece no
     gráfico antes de existir na tabela de configuração."""
     mqtt_manager.on_message(
-        None, None,
+        None,
+        None,
         mqtt_message("devices/novo/telemetry", telemetry_payload(device_id="novo")),
     )
     assert len(FakeWriteApi.written) == 1
 
 
-def test_falha_no_influxdb_nao_impede_o_websocket():
+def test_falha_no_influxdb_nao_impede_o_websocket(monkeypatch):
     """Regra do serviço: a visualização em tempo real não pode depender do
     InfluxDB estar disponível. A falha fica registrada, o WS continua."""
     original = FakeWriteApi.write
@@ -123,7 +130,7 @@ def test_falha_no_influxdb_nao_impede_o_websocket():
 
     FakeWriteApi.write = staticmethod(boom)
     try:
-        mqtt_manager._broadcast = lambda *a, **k: None
+        monkeypatch.setattr(mqtt_manager, "_broadcast", lambda *a, **k: None)
         mqtt_manager.on_message(None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload()))
     finally:
         FakeWriteApi.write = staticmethod(original)
@@ -135,7 +142,9 @@ def test_falha_no_influxdb_nao_impede_o_websocket():
 def test_is_on_sincroniza_na_mudanca():
     DB_ROWS.append(FakeDeviceRow(is_on=False))
     mqtt_manager._last_is_on.clear()
-    mqtt_manager.on_message(None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=True)))
+    mqtt_manager.on_message(
+        None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=True))
+    )
     assert DB_ROWS[0].is_on is True
 
 
@@ -143,7 +152,9 @@ def test_is_on_nao_altera_quando_nada_muda():
     DB_ROWS.append(FakeDeviceRow(is_on=True))
     mqtt_manager._last_is_on.clear()
     for _ in range(20):
-        mqtt_manager.on_message(None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=True)))
+        mqtt_manager.on_message(
+            None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=True))
+        )
     assert DB_ROWS[0].is_on is True
 
 
@@ -152,7 +163,8 @@ def test_is_on_corrige_valor_obsoleto():
     DB_ROWS.append(FakeDeviceRow(is_on=True))
     mqtt_manager._last_is_on.clear()
     mqtt_manager.on_message(
-        None, None,
+        None,
+        None,
         mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=False, power_w=0.0, current_a=0.0)),
     )
     assert DB_ROWS[0].is_on is False
@@ -166,6 +178,7 @@ def test_onda_de_telemetria_gera_uma_unica_escrita(monkeypatch):
     não em `app.database` — o serviço guardou a referência na importação.
     """
     import app.mqtt_service as svc
+
     DB_ROWS.append(FakeDeviceRow(is_on=True))
     mqtt_manager._last_is_on.clear()
 
@@ -180,7 +193,8 @@ def test_onda_de_telemetria_gera_uma_unica_escrita(monkeypatch):
     monkeypatch.setattr(svc, "SessionLocal", contando)
     for _ in range(30):
         mqtt_manager.on_message(
-            None, None,
+            None,
+            None,
             mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=False, power_w=0.0)),
         )
     assert len(escritas) == 1
@@ -191,7 +205,8 @@ def test_state_publicado_também_sincroniza_e_atualiza_cache():
     DB_ROWS.append(FakeDeviceRow(is_on=True))
     mqtt_manager._last_is_on.clear()
     mqtt_manager.on_message(
-        None, None,
+        None,
+        None,
         mqtt_message(TOPICO_STATE, {"device_id": "esp32_fan_01", "is_on": False}),
     )
     assert DB_ROWS[0].is_on is False
@@ -203,7 +218,8 @@ def test_state_publicado_também_sincroniza_e_atualiza_cache():
 
 def test_rele_aberto_exige_potencia_zero():
     mqtt_manager.on_message(
-        None, None,
+        None,
+        None,
         mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=False, power_w=0.0, current_a=0.0)),
     )
     assert field(FakeWriteApi.written[0], "power_w") == 0.0
@@ -222,7 +238,9 @@ def test_potencia_bate_com_tensao_corrente_e_fator_de_potencia():
 
 def test_is_on_e_gravado_como_inteiro():
     """O InfluxDB não tem boolean; gravar 0/1 mantém a consulta filtrável."""
-    mqtt_manager.on_message(None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=True)))
+    mqtt_manager.on_message(
+        None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(is_on=True))
+    )
     v = field(FakeWriteApi.written[0], "is_on")
     assert v == 1 and isinstance(v, int)
 
@@ -248,7 +266,9 @@ def test_comando_nao_e_retido(broker):
 
 def test_configuracao_e_retida(broker):
     """A configuração PRECISA ser retida: o ESP32 a recebe ao reconectar."""
-    mqtt_manager.publish_configuration("esp32_fan_01", {"auto_mode": True, "shutdown_time": "03:30"})
+    mqtt_manager.publish_configuration(
+        "esp32_fan_01", {"auto_mode": True, "shutdown_time": "03:30"}
+    )
     p = broker.published[0]
     assert p["topic"] == "devices/esp32_fan_01/config/set"
     assert p["retain"] is True
@@ -275,12 +295,21 @@ def test_falha_de_conexao_marca_desconectado(manager):
     assert manager.is_connected is False
 
 
-@pytest.mark.parametrize("override", [
-    {"is_on": "false"}, {"power_w": -1}, {"power_w": float("nan")},
-    {"current_a": -1}, {"timestamp": -1}, {"shutdown_time": "ab:cd"},
-])
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"is_on": "false"},
+        {"power_w": -1},
+        {"power_w": float("nan")},
+        {"current_a": -1},
+        {"timestamp": -1},
+        {"shutdown_time": "ab:cd"},
+    ],
+)
 def test_invalid_telemetry_never_reaches_influx(override):
-    mqtt_manager.on_message(None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(**override)))
+    mqtt_manager.on_message(
+        None, None, mqtt_message(TOPICO_TELEMETRIA, telemetry_payload(**override))
+    )
     assert FakeWriteApi.written == []
 
 
