@@ -15,7 +15,14 @@ scheduler = AsyncIOScheduler(timezone=app_timezone)
 
 
 async def check_auto_turn_off() -> None:
-    """Desliga devices no horário local configurado, com precisão de 30 s."""
+    """Desliga devices no horário local configurado, com precisão de 30 s.
+
+    O comando é idempotente por natureza: o ESP32 também se desliga sozinho no
+    horário (main.cpp) e publica `state`, de modo que as duas rotas convergem.
+    Aqui o objetivo é garantir o desligamento mesmo se a configuração do
+    dispositivo tiver divergido do NVS, e marcar `is_on = False` para não
+    repetir o comando a cada 30 s.
+    """
     now_str = datetime.now(app_timezone).strftime("%H:%M")
     db = SessionLocal()
     try:
@@ -25,14 +32,20 @@ async def check_auto_turn_off() -> None:
             Device.is_on.is_(True),
         ).all()
 
-        for device in devices:
+        # `is_on` reflete a telemetria atual (ver mqtt_service._sync_is_on),
+        # então o comando só sai quando o ventilador está realmente ligado.
+        to_turn_off = [device.device_id for device in devices]
+
+        for device_id in to_turn_off:
             logger.info(
                 "Horário atingido (%s)! Enviando OFF para %s",
                 now_str,
-                device.device_id,
+                device_id,
             )
-            if mqtt_manager.publish_command(device.device_id, {"action": "OFF"}):
-                device.is_on = False
+            mqtt_manager.publish_command(device_id, {"action": "OFF"})
+            # Escrita pelo gerenciador para manter banco e cache coerentes.
+            mqtt_manager.set_device_is_on(device_id, False)
+
         db.commit()
     except Exception:
         db.rollback()

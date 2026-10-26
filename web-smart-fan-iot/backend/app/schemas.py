@@ -27,6 +27,22 @@ class ScheduleUpdate(BaseModel):
         return value
 
 
+class AutoShutdownUpdate(BaseModel):
+    auto_off_time: str
+    auto_off_enabled: bool
+
+    @field_validator("auto_off_time")
+    @classmethod
+    def validate_auto_off_time(cls, value: str) -> str:
+        if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value):
+            raise ValueError("auto_off_time deve estar no formato HH:MM")
+        return value
+
+
+class TariffUpdate(BaseModel):
+    kwh_rate: float = Field(default=0.85, ge=0)
+
+
 class TelemetryPayload(BaseModel):
     device_id: str
     is_on: bool

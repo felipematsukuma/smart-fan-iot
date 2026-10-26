@@ -31,6 +31,14 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        # O driver é explicitado de propósito. Sem o sufixo, o SQLAlchemy 2.1
+        # passou a assumir `psycopg` (v3) em `postgresql://`, enquanto o projeto
+        # instala `psycopg2-binary` — o build quebrava com
+        # "ModuleNotFoundError: No module named 'psycopg'". Fixar o driver aqui
+        # deixa a URL correta em qualquer versão do SQLAlchemy.
+        return (
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
 
 settings = Settings()

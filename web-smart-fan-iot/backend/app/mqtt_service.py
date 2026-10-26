@@ -25,6 +25,9 @@ class MQTTManager:
         self.loop: asyncio.AbstractEventLoop | None = None
         self._connected = False
         self._started = False
+        # Último `is_on` conhecido por dispositivo, para não gravar no Postgres
+        # a cada mensagem de telemetria (que chega várias vezes por segundo).
+        self._last_is_on: dict[str, bool] = {}
 
     @property
     def is_connected(self) -> bool:
@@ -106,6 +109,39 @@ class MQTTManager:
             logger.exception("Falha ao gravar telemetria de %s no InfluxDB", device_id)
 
         self._broadcast(payload, event="telemetry")
+        # O estado real do relé chega em toda telemetria. Sincronizar aqui evita
+        # que o Postgres conserve um `is_on` obsoleto: o agendador de desligamento
+        # automático decide com base nesse campo, e um valor velho pode desligar
+        # (ou deixar ligado) um ventilador que não está no estado registrado.
+        self._sync_is_on(device_id, is_on)
+
+    def _sync_is_on(self, device_id: str, is_on: bool) -> None:
+        """Persiste `is_on` apenas quando o valor realmente muda."""
+        cached = self._last_is_on.get(device_id)
+        if cached is not None and cached == is_on:
+            return
+        self.set_device_is_on(device_id, is_on)
+
+    def set_device_is_on(self, device_id: str, is_on: bool) -> None:
+        """Única porta de escrita de `is_on`.
+
+        Atualiza o banco e o cache local juntos. Passar por aqui é obrigatório:
+        se um escritor gravasse só o banco, o cache ficaria divergente e a
+        sincronização por telemetria passaria a ignorar o valor novo — voltando
+        a persistir um estado obsoleto, que é a origem do desligamento incoerente.
+        """
+        db = SessionLocal()
+        try:
+            device = db.query(Device).filter(Device.device_id == device_id).first()
+            if device is not None and device.is_on != is_on:
+                device.is_on = is_on
+                db.commit()
+            self._last_is_on[device_id] = is_on
+        except Exception:
+            db.rollback()
+            logger.exception("Falha ao sincronizar is_on de %s", device_id)
+        finally:
+            db.close()
 
     def _sync_device(self, device_id: str, payload: dict[str, Any]) -> None:
         db = SessionLocal()
@@ -117,6 +153,7 @@ class MQTTManager:
 
             if "is_on" in payload:
                 device.is_on = bool(payload["is_on"])
+                self._last_is_on[device_id] = device.is_on
             if "auto_mode" in payload:
                 device.auto_off_enabled = bool(payload["auto_mode"])
             if "shutdown_time" in payload:
