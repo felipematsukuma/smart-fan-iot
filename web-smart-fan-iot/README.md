@@ -1,526 +1,125 @@
-# Smart Fan IoT — Dashboard, API e dados
+# Aplicação web — Smart Fan IoT
 
-Stack web para monitorar e controlar um ventilador ESP32 simulado pelo Wokwi.
-
-A aplicação integra:
-
-- **FastAPI** para API REST e WebSocket;
-- **Mosquitto** para comunicação MQTT;
-- **PostgreSQL** para configuração e último estado confirmado;
-- **InfluxDB** para a série histórica de medições;
-- **Vue 3 + Vite** para o dashboard;
-- **Docker Compose** para todos os serviços.
-
-## Arquitetura
-
-```text
-Wokwi/ESP32
-    │  telemetria e estado (MQTT QoS 1)
-    ▼
-Mosquitto :1883 ──► FastAPI ──► InfluxDB (medições)
-    ▲                  │
-    │ comandos          └────────► WebSocket ──► Vue 3
-    └────────────── FastAPI/REST ◄──────────────────┘
-```
-
-## Funcionalidades
-
-- comando de liga e desliga;
-- confirmação de estado pelo ESP32;
-- agendamento de desligamento automático;
-- telemetria de tensão, corrente e potência;
-- gráfico em tempo real e histórico;
-- seleção de período de análise por data/hora;
-- consumo em kWh calculado por integração da potência;
-- custo estimado calculado a partir da tarifa informada;
-- persistência de configuração no PostgreSQL;
-- histórico de medições no InfluxDB.
-
-## Pré-requisitos
-
-- Docker Desktop;
-- Docker Compose v2;
-- firmware Wokwi compilado conforme [`../esp32-simulador/README.md`](../esp32-simulador/README.md);
-- navegador para abrir o dashboard.
-
-Para desenvolvimento local fora do Docker, são usados Python 3.11+ e Node.js 20+.
+Veja a [visão geral e o roadmap](../README.md). A stack é Vue 3 + TS + Vite + Chart.js, FastAPI/Python, Mosquitto e InfluxDB. PostgreSQL armazena configuração e o último estado observado do relé.
 
 ## Inicialização
 
-### 1. Configurar variáveis
-
-Os valores padrão já funcionam para desenvolvimento. Para personalizá-los:
+Com Docker Desktop ativo, neste diretório:
 
 ```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\web-smart-fan-iot
+# Somente na primeira configuração; não sobrescreva um ambiente existente.
 Copy-Item .env.example .env
-```
-
-Não versionar o arquivo `.env`. O arquivo `.env.example` pode ser versionado.
-
-### 2. Subir a stack
-
-```powershell
+# Edite o arquivo local e substitua os placeholders antes de subir.
 docker compose up -d --build
 docker compose ps
 ```
 
-Serviços disponíveis:
+O [.env.example](./.env.example) lista as variáveis principais. Senhas/token não têm defaults utilizáveis no código. Na primeira inicialização Influx, `INFLUXDB_TOKEN` também inicializa o administrador se `INFLUXDB_ADMIN_TOKEN` estiver ausente. Depois, separe um token administrativo de um token de aplicação com apenas read/write no bucket. Um volume já inicializado não muda de senha/token quando você edita variáveis de setup: use a API/CLI do serviço para rotacionar.
 
-| Serviço | URL/porta | Função |
-|---|---|---|
-| Frontend | http://localhost:5173 | dashboard Vue |
-| API | http://localhost:8000 | FastAPI |
-| Swagger | http://localhost:8000/docs | documentação interativa |
-| Health | http://localhost:8000/health | saúde da API e MQTT |
-| InfluxDB | http://localhost:8086 | medições históricas |
-| Mosquitto | `localhost:1883` | broker MQTT |
-| PostgreSQL | `localhost:5432` | configuração e estado |
+| Serviço | Endereço local |
+|---|---|
+| Dashboard | http://localhost:5173 |
+| API / OpenAPI | http://localhost:8000/docs |
+| Health | http://localhost:8000/health |
+| InfluxDB | http://localhost:8086 |
+| MQTT | localhost:1883 |
+| PostgreSQL | localhost:5432 |
 
-O health check esperado é:
+As portas do Compose são publicadas em `127.0.0.1`. Influx/PostgreSQL têm healthchecks e o backend espera readiness, com tentativas limitadas de inicialização. O broker persiste mensagens retidas no volume. Reiniciar não exige apagar volumes: use `docker compose stop` e `docker compose up -d`.
 
-```json
-{
-  "status": "ok",
-  "mqtt_connected": true
-}
-```
+Compile e inicie o [Wokwi](../esp32-simulador/README.md), mantendo a aba ativa e em primeiro plano durante testes. `host.wokwi.internal` é o host usado pelo firmware; `localhost` dentro do ESP32 não é o broker do computador.
 
-### 3. Iniciar o firmware
+## Configuração
 
-Abra a pasta `esp32-simulador` no VS Code, compile com `pio run` e execute **Wokwi: Start Simulator**.
+[Settings](./backend/app/config.py) lê variáveis de processo e o ambiente local ancorado neste diretório. Fora do Docker, sobrescreva `POSTGRES_HOST=127.0.0.1`, `INFLUXDB_URL=http://127.0.0.1:8086` e `MQTT_BROKER=127.0.0.1`. Defaults de host são nomes dos serviços Docker.
 
-> A aba **Wokwi Simulator** precisa permanecer visível durante os testes. Se ela for ocultada, a extensão pausa a simulação e o ESP32 deixa de enviar telemetria. Abra o dashboard em um navegador externo com `Start-Process http://localhost:5173`.
+`CORS_ORIGINS` é uma lista JSON de origens permitidas; a origem WS também é verificada. `INFLUXDB_TIMEOUT_MS` limita transporte, com retry limitado. Uma fronteira de I/O também limita a espera por consultas a 3 s e escritas a 2 s, inclusive quando DNS não respeita o timeout do socket; workers ocupados não geram uma fila crescente. Não é fila durável. O evento live indica `persisted: false` quando a escrita não é confirmada dentro do prazo; ela ainda pode terminar depois. A UI distingue essa incerteza de uma gravação confirmada.
 
-## API principal
-
-### Obter dispositivo
-
-```http
-GET /api/device/esp32_fan_01
-```
-
-### Enviar comando
-
-```http
-POST /api/device/esp32_fan_01/command
-Content-Type: application/json
-
-{"action":"ON"}
-```
-
-Respostas aceitas:
-
-```json
-{"action":"ON"}
-{"action":"OFF"}
-```
-
-A API publica o comando no MQTT e retorna `published`. A confirmação do estado deve ser observada no WebSocket, no tópico `state` e no dashboard.
-
-### Atualizar agendamento e tarifa
-
-```http
-PUT /api/device/esp32_fan_01/schedule
-Content-Type: application/json
-
-{
-  "auto_off_time": "03:00",
-  "auto_off_enabled": true,
-  "kwh_rate": 0.85
-}
-```
-
-A configuração é publicada no tópico retido `config/set` e sincronizada com o PostgreSQL.
-
-### WebSocket
-
-```text
-ws://localhost:8000/ws
-```
-
-O backend transmite eventos de:
-
-- `telemetry`;
-- `state`;
-- `config`.
-
-O frontend considera o ESP32 online quando o WebSocket está conectado **e** houve mensagem
-nos últimos **90 s**. A regra está em `frontend/src/lib/freshness.ts`, coberta por testes.
-
-Os 90 s vêm da cadência real medida: dentro de sessões ativas os intervalos são
-mediana 3,9 s · p95 5,4 s · p99 31,2 s · **máximo 68,4 s**. Com 10 s o painel marcava
-offline em 18 lacunas (412 s acumulados, 12 delas com o ventilador **ligado**) e desabilitava
-o botão de comando.
-
-O WebSocket em si não decide nada: se a aba Wokwi for ocultada, a simulação pausa, nenhum
-ponto novo chega e o status passa a offline por falta de dados — que é o comportamento
-correto.
-
-## Consumo e custo energético
-
-O dashboard permite informar:
-
-- **Início** do período;
-- **Fim** do período;
-- **Tarifa em R$/kWh**.
-
-Também existe o modo automático **Últimas 8h**, que é atualizado periodicamente.
-
-### Cálculo do consumo
-
-A API integra a potência instantânea dos pontos do InfluxDB usando integração trapezoidal:
-
-```text
-energia_intervalo =
-  ((potência_anterior + potência_atual) / 2) × tempo
-```
-
-A regra está isolada em [`backend/app/energy.py`](backend/app/energy.py) e coberta por testes
-unitários, de modo que o cálculo exercitado nos testes é exatamente o de produção.
-
-#### Tolerância de lacuna
-
-Intervalos **superiores a 80 s** entre amostras são considerados sem cobertura do
-dispositivo e ficam **fora** da conta.
-
-Os 80 s não são arbitrários — são o ponto médio da faixa em que a telemetria permite decidir:
-
-| Medição em produção | Valor | Significado |
-|---|---:|---|
-| maior pausa do dispositivo ligado | 68,4 s | energia **comprovadamente** consumida |
-| menor trecho de estado desconhecido | 91,1 s | não sabemos se consumiu |
-
-Acima de 91 s integrar exigiria **inventar** consumo. Numa conta de energia é preferível
-subestimar — o usuário não perde dinheiro — a fabricar um número sem aviso.
-
-Com a tolerância anterior de 10 s, uma janela de 8 h perdia **12,4%** do consumo: 11 lacunas,
-10 delas com o ventilador ligado.
-
-#### Granularidade do histórico
-
-`history` é reamostrado para no máximo **240 pontos**, com orçamento gasto por **atividade**,
-não por índice. Isso serve apenas para **visualização**: a energia é sempre calculada sobre a
-série completa, nunca sobre o subconjunto reamostrado.
-
-O teto de 240 não é arbitrário. O gráfico precisa de 2 pontos por trecho de atividade — um
-ponto só não desenha linha nenhuma. Medindo a janela de 7 dias deste projeto:
-
-| Medição | Valor |
-|---|---:|
-| trechos desligados (0 W nas duas pontas) | 35 |
-| trechos com consumo | 58 |
-| **total de trechos** | **93** |
-| custo mínimo para cobrir todos (93 × 2) | **186 pontos** |
-
-Com o teto anterior de 120 era fisicamente impossível cobrir tudo. O resultado eram 48
-aglomerados com **mediana de 1 ponto**, que renderizavam como uma parede de espinhos verticais
-de 1 px — o gráfico parecia vazio. Hoje a janela de 7 dias entrega 175 pontos com consumo e
-168 pares de pontos consecutivos conectados.
-
-As regras da amostragem, em ordem de prioridade:
-
-1. **Nenhum trecho some.** Cada trecho recebe no mínimo 2 pontos — as duas bordas, que são as
-   transições de estado.
-2. **A sobra do orçamento vai para quem consome**, na proporção do número de amostras. Um
-   trecho desligado nunca ganha ponto extra: o gráfico o comprime.
-3. Se o mínimo não couber, sobrevivem as maiores regiões.
-
-Como o subconjunto exibido muda a cada consulta, o gráfico ancora o pico do eixo Y pelo
-**instante** em que ocorreu, e só recalcula o teto quando esse pico sai da janela de verdade.
-
-A resposta de métricas inclui:
-
-- `period_start` e `period_end`;
-- `duration_hours`;
-- `energy_wh`;
-- `estimated_kwh`;
-- `avg_power_w`;
-- `history_count`;
-- `history`.
-
-Exemplos:
-
-```text
-GET /api/device/esp32_fan_01/metrics?range_hours=8
-```
-
-```text
-GET /api/device/esp32_fan_01/metrics?start=2026-09-27T18:00:00Z&end=2026-09-27T22:00:00Z
-```
-
-O custo é calculado no frontend:
-
-```text
-custo = estimated_kwh × kwh_rate
-```
-
-Valores pequenos são exibidos com mais casas decimais para que uma simulação de poucos minutos continue visível.
-
-## Leitura do gráfico
-
-O gráfico de potência é **contínuo**, como o do InfluxDB: uma linha só, ligando os pontos, e
-sem marcadores. Onde o ventilador esteve desligado, a linha desce a 0 W e volta.
-
-A diferença em relação a um gráfico em tempo real é o **eixo X**, que não é mais tempo real.
-
-### Eixo comprimido
-
-Trechos em que nada foi medido — ventilador desligado ou ESP32 sem reportar — são comprimidos
-para uma largura fixa, e a largura restante vai para os trechos que realmente tiveram medição.
-Sem isso, a janela de 7 dias seria 1,4% de atividade espalhada num gráfico quase vazio: o
-usuário não conseguiria ler nada.
-
-Os rótulos do eixo mostram sempre o **instante real**, reconvertido a partir da posição
-comprimida. E a nota de cobertura continua informando a verdade sobre a janela, porque a
-compressão é visual, não contábil.
-
-### Por que 0 W nas duas pontas significa "desligado"
-
-Um vão com 0 W medido **antes e depois** é classificado como desligamento, e não como falta de
-sinal. O ventilador estava desligado nos dois extremos, e nada no sistema consegue ligá-lo
-sozinho: ele só reage a comando MQTT, e um comando durante a pausa nem chega a ser processado.
-
-O teste de 0 W vem **antes** do teste de lacuna por um motivo concreto: invertendo a ordem, o
-vão viraria "sem sinal" e a fusão de trechos vizinhos já teria engolido o desligamento. Nos
-dados reais deste projeto isso importava — cada desligamento tem só 2 amostras, separadas por
-minutos, e o gráfico nunca diria "desligado".
-
-### Cadência fraca não vira ausência
-
-Um vão só é tratado como interrupção se passar do maior valor entre 90 s e **três vezes a
-cadência mediana da própria série**. Numa série em que o ESP32 reporta a cada 4 s, um vão de
-4 min é uma interrupção evidente. Numa série de baixa resolução, com amostra a cada 4 min, um
-vão de 4 min é a cadência normal — tratá-lo como interrupção encheria o gráfico de ruído.
-
-### O preço da compressão
-
-Uma linha contínua **através** de um trecho comprimido é uma **interpolação**, não uma
-medição: 8 px na tela podem representar 3 h. A compressão é visível de três formas que não
-brigam com a linha contínua — a nota de cobertura, o cartão **Desligado** com a duração real
-acumulada, e os rótulos de tempo real no eixo.
+`VITE_API_URL`, `VITE_WS_URL` e `VITE_DEVICE_ID` configuram o frontend. O seletor usa `?device=ID`, recriando a sessão para o dispositivo escolhido. REST tem timeout; respostas antigas não sobrescrevem a seleção mais recente de período. Loading, vazio, erro e dados antigos são estados distintos.
 
 ## Contrato MQTT
 
-| Tópico | Direção | Retido | Payload |
-|---|---|---:|---|
-| `devices/{id}/command` | backend → ESP32 | não | `{"action":"ON"}` ou `{"action":"OFF"}` |
-| `devices/{id}/config/set` | backend → ESP32 | sim | `{"auto_mode":true,"shutdown_time":"03:00"}` |
-| `devices/{id}/telemetry` | ESP32 → backend | não | medições a cada 2 s |
-| `devices/{id}/state` | ESP32 → backend | sim | estado confirmado |
-| `devices/{id}/config` | ESP32 → backend | sim | configuração confirmada |
+Prefixo: `devices/{device_id}`. Payload JSON de até 2048 bytes no backend; identidade deve corresponder ao tópico. Tipos, números finitos/não negativos e horários são validados antes de persistir/transmitir. A UI também valida WS em runtime.
 
-O tópico de comando de configuração (`config/set`) é separado do tópico de estado (`config`). Isso impede que o ESP32 assine e processe a própria publicação retida.
+| Sufixo | Origem | Dados | Entrega |
+|---|---|---|---|
+| `/telemetry` | ESP32 | Identidade, booleanos, V, A, W, uptime em ms; configuração/contadores opcionais | QoS 0, sem retain |
+| `/state` | ESP32 | Identidade, `is_on`, configuração/contadores | QoS 0, retained |
+| `/config` | ESP32 | Identidade, `auto_mode`, `shutdown_time` | QoS 0, retained |
+| `/command` | Backend | `action: ON` ou `action: OFF` | QoS 1, sem retain; ESP32 assina QoS 1 |
+| `/config/set` | Backend | `auto_mode` boolean, `shutdown_time` HH:MM | QoS 1, retained; ESP32 assina QoS 1 |
 
-## Testes
+Exemplo ilustrativo:
 
-O projeto tem duas suítes. Ambas rodam sem depender da pilha no ar: as fronteiras de I/O
-(Postgres, InfluxDB, MQTT) são substituídas e a lógica exercitada é a de produção.
+```json
+{"device_id":"esp32_fan_01","is_on":true,"voltage_rms":127,"current_a":0.4,"power_w":45.72,"timestamp":20000,"device_epoch_s":1793025900,"auto_mode":true,"shutdown_time":"03:00","total_energy_wh":0.1,"fan_on_time_ms":10000}
+```
 
-### Backend (pytest) — 134 testes
+`timestamp` é uptime, não epoch. `device_epoch_s` é opcional, somente com NTP sincronizado. O ponto Influx usa tempo UTC de recepção capturado antes de escrever, preservado nos retries. Measurement `electrical_measurement`, tag `device_id`, fields `is_on` inteiro, `voltage_rms`, `current_a`, `power_w` e, quando disponível, `device_epoch_s`. Energia acumulada do firmware não é a fonte do total histórico.
+
+O subscriber aceita novos IDs para telemetria; comandos/configuração exigem cadastro. Não há ACK de aplicação correlacionado por ID de comando. ACK MQTT indica publicação; estado observado muda só por mensagens do dispositivo. O scheduler repete OFF a cada 30 s no minuto devido enquanto observa ON, sem marcar OFF quando o broker falha.
+
+## API REST e WebSocket
+
+Contratos em http://localhost:8000/docs e nos [schemas](./backend/app/schemas.py).
+
+| Método | Rota | Entrada/resultado |
+|---|---|---|
+| GET | `/health` | Processo e conexão MQTT; não é auditoria completa dos bancos |
+| GET | `/api/devices` | Lista de dispositivos |
+| POST | `/api/devices` | `device_id`, `name`; 201, 409 para duplicado |
+| GET | `/api/device/{id}` | Configuração e estado observado; 404 se ausente |
+| POST | `/api/device/{id}/command` | Apenas `action: ON/OFF`; `speed` removido porque o relé não controla velocidade |
+| PUT | `/api/device/{id}/schedule` | Hora, habilitação e tarifa, para compatibilidade |
+| PUT | `/api/device/{id}/auto-shutdown` | Hora HH:MM e `auto_off_enabled` boolean |
+| PUT | `/api/device/{id}/tariff` | `kwh_rate` finito e não negativo |
+| GET | `/api/device/{id}/metrics` | `range_hours` 1..168 ou `start`/`end` juntos; `max_points` 2..1000, default 240 |
+| WS | `/ws` | Eventos telemetry/state/config; presença exige telemetria recente, não apenas estado retido |
+
+Metrics retorna período, duração, `history_count` bruto, histórico reduzido, `avg_power_w`, `max_power_w`, `energy_wh`, `estimated_kwh`, `coverage`, `covered_seconds` e `segments` active/off/no-data com limites reais. Pydantic valida a resposta. Janela inválida: 422; leitura acima de 400 mil amostras: 413; falha de consulta: 503. Não há agregação arbitrária: a redução serve à exibição, não à contabilidade.
+
+## Energia e gráfico
+
+Simulação: `P[W] = V[V] × I[A] × FP`. O backend integra trapézios: `Wh = Σ((P1+P2)/2 × Δt_s/3600)`, só para intervalos de até 80 s. `kWh = Wh/1000`. Bordas sem amostras não são extrapoladas. A média é aritmética das leituras, não ponderada no tempo.
+
+Cobertura, continuidade e máximo são calculados sobre dados brutos antes do downsample. O gráfico usa esses metadados e interrompe a linha nas lacunas reais. O eixo comprime intervalos desligados e sem dados; rótulos/tooltips mantêm tempos reais. O gráfico consulta a API a cada 5 s; indicadores instantâneos usam WS. Contagem bruta não é quantidade de pontos desenhados.
+
+Custo na UI: `kWh × tarifa atual`. Projeção mensal: `custo × 720h / duração da janela`. Com cobertura incompleta, a UI avisa que podem estar subestimados. Não é faturamento: falta tarifa histórica, sensor calibrado e política de cobertura mínima.
+
+## Desenvolvimento e qualidade
+
+No [backend/](./backend/):
 
 ```powershell
-docker exec iot_backend sh -c 'cd /app && PYTHONPATH=/app python -m pytest tests -q'
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+.venv/Scripts/python.exe -m pytest -q
+.venv/Scripts/python.exe -m ruff check app tests
+.venv/Scripts/python.exe -m ruff format --check app tests
+.venv/Scripts/python.exe -m mypy app
+.venv/Scripts/python.exe -m pip_audit
 ```
 
-| Arquivo | Cobre |
-|---|---|
-| `backend/tests/test_energy.py` | integração trapezoidal, tolerância de lacuna, downsample |
-| `backend/tests/test_schemas.py` | validação de hora, tarifa negativa, normalização de comando |
-| `backend/tests/test_mqtt_service.py` | coerência tópico/payload, gravação no InfluxDB, sincronização do relé |
-| `backend/tests/test_scheduler.py` | desligamento automático: só desliga quem está ligado, é idempotente |
-| `backend/tests/test_api.py` | rotas, limites de período, 404 vs 422, independências de configuração |
+O [lock Python](./backend/requirements.lock) fixa o grafo testado em Linux/Python 3.11; uvloop é excluído no Windows por marcador. As dependências diretas usam essas constraints. Atualizações exigem regenerar constraints e repetir os testes. [pyproject.toml](./backend/pyproject.toml) configura pytest, Ruff e mypy com plugin Pydantic.
 
-### Frontend (vitest) — 66 testes, 100% de cobertura das regras
+No [frontend/](./frontend/), com Node 24:
 
 ```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\web-smart-fan-iot\frontend
-npm run test
-npm run test:coverage
+npm ci
+npm run lint
+npm run format:check
+npm run typecheck
+npm test
+npm run build
+npm audit
 ```
 
-| Arquivo | Cobre |
-|---|---|
-| `frontend/src/lib/chartRules.test.ts` | teto do eixo Y, histerese, quebras de série, cobertura, estatísticas |
-| `frontend/src/lib/format.test.ts` | precisão de kWh e moeda, projeção mensal, intervalo entre amostras |
-| `frontend/src/lib/freshness.test.ts` | regra de online contra a cadência real medida, rótulo de período |
+Docker usa `npm ci`. Os contextos excluem dependências locais, ambientes virtuais e arquivos de ambiente. Os testes cobrem domínio, validação e fronteiras com fakes; não substituem Wokwi. Não há promessa de 100% de cobertura.
 
-A configuração do vitest fica em `vitest.config.ts`, separada de `vite.config.ts`, porque o
-vitest traz a própria cópia do Vite e misturar os dois quebra a tipagem.
+## Segurança e operação
 
-### Propriedades de integridade garantidas por teste
+As credenciais anteriormente versionadas foram rotacionadas no ambiente local da revisão. O token antigo está inativo. O histórico Git foi preservado; não reutilize valores encontrados nele. O administrador novo fica apenas no ambiente local e não é passado ao backend.
 
-- a energia integrada **nunca** é maior do que a integração sem limite de lacuna;
-- o teto do eixo Y **nunca** corta o pico;
-- o `is_on` do Postgres reflete o relé real (também validado ao vivo, com comando ON/OFF);
-- horário inválido, tarifa negativa e `device_id` malformado são recusados;
-- desligamento automático **nunca** desliga um ventilador já desligado.
+Mosquitto é anônimo no dev isolado. Antes de exposição remota: autenticação REST/WS, autorização por dispositivo, usuário/senha MQTT, ACL, TLS, gestão de segredos e configuração de produção. CORS não substitui autenticação. Execute apenas um worker enquanto MQTT/scheduler estiverem integrados ao processo.
 
-## Desenvolvimento frontend
-
-O container do frontend executa o Vite em modo de desenvolvimento. Para validar o build local:
-
-```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\web-smart-fan-iot\frontend
-npm install
-npm run build      # vue-tsc + vite
-npm run test       # vitest
-```
-
-Para subir somente o frontend após alterações:
-
-```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\web-smart-fan-iot
-docker compose up -d --build frontend
-```
-
-## Desenvolvimento backend
-
-Validação local:
-
-```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\web-smart-fan-iot\backend
-python -m compileall -q app
-```
-
-> O driver do Postgres é fixado explicitamente na URL (`postgresql+psycopg2://`) e o
-> SQLAlchemy é pinado em `2.0.x`. Sem isso o build quebra em versões novas, que assumem
-> `psycopg` (v3) por padrão em `postgresql://`.
-
-O container monta `./backend` em `/app` e usa Uvicorn com reload durante o desenvolvimento.
-
-Para consultar os logs:
-
-```powershell
-docker compose logs -f backend mosquitto influxdb
-```
-
-## Publicação manual de telemetria
-
-Use apenas para diagnóstico. Este comando não representa o comportamento normal do firmware:
-
-```powershell
-docker exec iot_mosquitto mosquitto_pub -h localhost `
-  -t devices/esp32_fan_01/telemetry -q 1 `
-  -m '{"device_id":"esp32_fan_01","is_on":true,"voltage_rms":127,"current_a":0.42,"power_w":48,"timestamp":1}'
-```
-
-Resposta esperada:
-
-- o dashboard mostra `ESP32/Wokwi online`;
-- o ponto aparece no gráfico;
-- `metrics` retorna `history_count >= 1`;
-- a consulta ao InfluxDB mostra a measurement `electrical_measurement`.
-
-## Consultar o InfluxDB
-
-```powershell
-$query = @'
-from(bucket: "telemetry")
-  |> range(start: -1h)
-  |> filter(fn: (r) => r["_measurement"] == "electrical_measurement")
-'@
-$headers = @{ Authorization = "Token REPLACE_WITH_LOCAL_INFLUXDB_TOKEN" }
-Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8086/api/v2/query?org=iot_org" `
-  -Headers $headers `
-  -ContentType "application/vnd.flux" `
-  -Body $query
-```
-
-## Persistência
-
-Os volumes abaixo preservam os dados entre reinicializações:
-
-- `postgres_data`;
-- `influxdb_data`;
-- `mosquitto_data`;
-- `mosquitto_log`.
-
-Para apagar todos os dados e recomeçar:
-
-```powershell
-docker compose down -v
-docker compose up -d --build
-```
-
-> Atenção: `down -v` apaga o PostgreSQL, o InfluxDB e as mensagens retidas do Mosquitto.
-
-## Solução de problemas
-
-### Consumo menor do que o esperado
-
-Isso **pode estar certo**. A integração só avança em trechos onde o dispositivo reportou com
-gaps de até 80 s; acima disso o estado do ventilador é desconhecido e o consumo não é
-inventado. O gráfico mostra a **cobertura** da janela para deixar isso explícito: se aparecer
-`cobertura 11%`, apenas 11% do período teve telemetria.
-
-Lembrando que o eixo do gráfico é **comprimido**: os trechos sem medição são estreitados para
-que a leitura caiba. A proporção real está na nota de cobertura e nos rótulos de tempo.
-
-Para conferir a regra de forma independente, compare com um cálculo próprio em
-`app.energy.integrate_energy` — a função é a mesma que a API usa.
-
-### O gráfico parece não mostrar nada
-
-Sintoma: a janela tem pouco dado e o gráfico sai quase vazio, ou com espinhos verticais de
-1 px.
-
-Duas causas possíveis:
-
-1. **Teto de pontos insuficiente.** O gráfico precisa de 2 pontos por trecho de atividade. Se
-   `MAX_HISTORY_POINTS` ficar abaixo de 2 × (número de trechos), alguns trechos somem. Confira
-   o rodapé: se `amostras` for bem menor que `history_count` e houver buracos, é isso.
-2. **Wokwi estrangulado.** Sem a aba visível, a simulação pausa e a telemetria fica esparsa.
-   Com a cadência assim, o gráfico fica com aparência de "quase nada aconteceu" — e isso
-   reflete a realidade da medição, não um defeito do painel.
-
-### WebSocket reconecta
-
-Verifique:
-
-```powershell
-docker compose ps
-Invoke-RestMethod http://localhost:8000/health
-```
-
-### WebSocket online, mas ESP32 offline
-
-1. mantenha a aba **Wokwi Simulator** visível;
-2. confirme que a simulação está em execução;
-3. confirme que `pio run` foi executado após alterar o firmware;
-4. confira se `host.wokwi.internal:1883` está acessível pelo gateway Wokwi;
-5. consulte `docker compose logs --tail=100 mosquitto`.
-
-### Consumo não altera
-
-- verifique se o período selecionado contém amostras;
-- confirme que a telemetria está chegando ao InfluxDB;
-- use **Aplicar período** após alterar início/fim;
-- observe que intervalos sem telemetria não geram energia;
-- considere que a base pode conter pontos sintéticos de validações anteriores.
-
-### ESP32 não conecta após alteração de rede
-
-O firmware usa `host.wokwi.internal`, portanto não deve ser alterado para o IP do computador. Se a conexão falhar, valide a porta 1883 e o Private IoT Gateway.
-
-## Git
-
-O repositório usa `main` como versão estável. Novas regras de negócio, redesign visual, modo dia/noite e melhorias de responsividade devem ser feitas em branches de feature:
-
-```powershell
-git switch -c feature/dashboard-energy-v2
-git push -u origin feature/dashboard-energy-v2
-```
-
-Fluxo recomendado:
-
-```text
-main estável
-    ↓
-feature/dashboard-energy-v2
-    ↓
-validação e revisão
-    ↓
-merge para main
-```
+A retenção do bucket existente é sem expiração; o Compose não a altera automaticamente. Defina retenção antes de ampliar volume e faça backup. Inicialização de tabelas não substitui migrações de schema futuras.

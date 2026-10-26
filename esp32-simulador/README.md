@@ -1,240 +1,35 @@
-# ESP32/Wokwi — Firmware do ventilador
+# ESP32 / Wokwi
 
-Firmware PlatformIO para um ESP32 simulado pela extensão **Wokwi Simulator for VS Code**.
+Firmware Arduino do ESP32 simulado. Consulte a [visão geral](../README.md) e os [contratos MQTT/REST](../web-smart-fan-iot/README.md).
 
-O firmware conecta o ESP32 ao Mosquitto local, publica telemetria e estado, recebe comandos de liga/desliga e aplica o agendamento de desligamento configurado pelo dashboard.
+## Executar
 
-## Visão geral
+1. Suba a stack com `docker compose up -d --build` em [web-smart-fan-iot/](../web-smart-fan-iot/).
+2. Neste diretório, execute `pio run`.
+3. Abra [main.cpp](./src/main.cpp) no VS Code e execute **Wokwi: Start Simulator**.
+4. **Mantenha a aba do Wokwi ativa e em primeiro plano durante os testes.** Simulação pausada deixa de produzir leituras, mesmo com backend/WebSocket conectados.
+5. Abra http://localhost:5173, aguarde presença e teste ON/OFF. O LED representa a carga comutada pelo relé.
 
-```text
-Dashboard/REST
-      │  comando ON/OFF e agendamento
-      ▼
-FastAPI ──► Mosquitto ──► ESP32/Wokwi
-                  ▲              │
-                  └──────────────┘
-                 telemetria/estado
-```
+[platformio.ini](./platformio.ini) fixa espressif32 6.12.0, framework Arduino e bibliotecas ArduinoJson/PubSubClient. [wokwi.toml](./wokwi.toml) aponta para artefatos esp32dev; RFC2217 na porta 4000 permite observar serial.
 
-- Controlador: `esp32dev`
-- Placa simulada: `board-esp32-devkit-c-v4`
-- Relé: GPIO23
-- Sensor/potenciômetro: GPIO34
-- Broker: `host.wokwi.internal:1883`
-- Tópicos: `devices/esp32_fan_01/...`
+## Circuito e hipóteses
 
-## Pré-requisitos
+[diagram.json](./diagram.json): GPIO23 controla o relé e GPIO34 lê o potenciômetro. Corrente simulada de 0 a 0,8 A, tensão assumida 127 V e fator de potência 0,90. No máximo, a potência esperada é aproximadamente 91,44 W. Zero permanece zero, sem corrente fictícia. Não é sensor calibrado nem circuito para rede elétrica real.
 
-- Docker Desktop em execução;
-- PlatformIO CLI ou PlatformIO IDE;
-- extensão `wokwi.wokwi-vscode` instalada;
-- licença Wokwi ativada;
-- Private IoT Gateway disponível na extensão do VS Code;
-- stack `web-smart-fan-iot` em execução;
-- internet disponível para a extensão Wokwi e para o NTP.
+Clique no potenciômetro e use Left/Right, Page Up/Page Down ou Home/End, conforme a [documentação Wokwi](https://docs.wokwi.com/parts/wokwi-potentiometer).
 
-A plataforma do firmware é fixada em `espressif32@6.12.0` no `platformio.ini`.
+## Rede e controle
 
-## Execução
+Wi-Fi `Wokwi-GUEST`, senha vazia; broker `host.wokwi.internal:1883`. O [guia Wokwi para VS Code](https://docs.wokwi.com/vscode/project-config) descreve o gateway. `localhost` no ESP32 não é a máquina hospedeira.
 
-### 1. Subir a stack web
+O loop verifica desligamento local antes das tentativas de rede. Não há laços com delay esperando Wi-Fi/MQTT/NTP; tentativas são temporizadas, com timeout MQTT limitado. NTP sincroniza em segundo plano. Sem relógio sincronizado, horário automático não é garantido. Telemetria continua calculada localmente sem broker, mas não há fila durável para replay.
 
-Abra um PowerShell na raiz do repositório:
+Comando/configuração são assinados em QoS 1; telemetria é QoS 0, estado/configuração retained. Há verificação de publish e buffer MQTT de 768 bytes. Horário exige dígitos e HH:MM válido; booleanos devem ser JSON boolean. Energia local usa potência anterior e tempo decorrido, inclusive nas transições; o histórico Python é a fonte do painel.
 
-```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\web-smart-fan-iot
-docker compose up -d --build
-docker compose ps
-```
+`timestamp` é uptime em ms. `device_epoch_s` é opcional, dependente de NTP. Contadores reiniciam no boot e uptime sofre rollover. Configuração usa Preferences/NVS e pode ser reaplicada pelo tópico retido.
 
-### 2. Compilar o firmware
+Para outro ESP32, defina `FAN_DEVICE_ID` por build flag como string C++, cadastre o ID na API e selecione-o no painel. Os cinco tópicos usam o mesmo macro; use IDs distintos por dispositivo.
 
-```powershell
-cd C:\Users\matsuguma\Projects\smart-fan-iot\esp32-simulador
-pio run
-```
+## Verificação
 
-O firmware gera:
-
-```text
-.pio/build/esp32dev/firmware.elf
-.pio/build/esp32dev/firmware.bin
-```
-
-### 3. Iniciar o Wokwi
-
-No VS Code:
-
-1. abra a pasta `esp32-simulador`;
-2. pressione `F1`;
-3. execute **Wokwi: Start Simulator**;
-4. aguarde a conexão do ESP32 com o broker.
-
-Se `diagram.json` foi alterado, feche a aba do simulador e execute o comando novamente para recarregar o diagrama.
-
-### 4. Abrir o dashboard
-
-A aba **Wokwi Simulator** precisa permanecer visível durante o teste. Para evitar que a simulação seja pausada, abra o frontend em um navegador externo:
-
-```powershell
-Start-Process http://localhost:5173
-```
-
-> A extensão Wokwi pausa a simulação quando a aba do simulador fica oculta. Nesse caso, o WebSocket do FastAPI pode continuar conectado, mas o ESP32 para de enviar telemetria e o dashboard exibe `ESP32 aguardando Wokwi visível`.
-
-## Rede e gateway Wokwi
-
-O firmware não utiliza mais um IP fixo do computador. A configuração é:
-
-```cpp
-const char* mqtt_server = "host.wokwi.internal";
-```
-
-Esse hostname é resolvido pelo Private IoT Gateway do Wokwi e aponta para o computador atual, independentemente do endereço DHCP.
-
-Para validar a porta do broker no computador:
-
-```powershell
-Get-NetIPAddress -AddressFamily IPv4
-Test-NetConnection <IP_ATUAL> -Port 1883
-```
-
-O resultado esperado é:
-
-```text
-TcpTestSucceeded : True
-```
-
-Se a porta estiver fechada, verifique:
-
-```powershell
-docker compose ps
-docker compose logs --tail=100 mosquitto
-```
-
-O hostname `host.wokwi.internal` é indicado para o gateway privado do Wokwi no VS Code. Ele não deve ser usado como substituta de `localhost` em um ESP32 físico.
-
-## Pinagem e diagrama
-
-No `board-esp32-devkit-c-v4`, use os terminais corretos do `diagram.json`:
-
-| Função | GPIO | Terminal no diagrama |
-|---|---:|---|
-| Relé | 23 | `esp1:23` |
-| Sensor/potenciômetro | 34 | `esp1:34` |
-
-Atenção:
-
-- não use `esp1:D23` ou `esp1:D34`;
-- nesse board, `D2` representa GPIO9, não GPIO2;
-- o relé usa `transistor: "npn"`, ativo por HIGH;
-- `digitalWrite(PIN_RELAY, HIGH)` deve acender o LED verde do diagrama.
-
-## Tópicos MQTT
-
-| Tópico | Direção | Retido | Finalidade |
-|---|---|---:|---|
-| `devices/esp32_fan_01/command` | backend → ESP32 | não | `ON`, `OFF`, `AUTO` e `MANUAL` |
-| `devices/esp32_fan_01/config/set` | backend → ESP32 | sim | horário e modo automático |
-| `devices/esp32_fan_01/telemetry` | ESP32 → backend | não | telemetria a cada 2 s |
-| `devices/esp32_fan_01/state` | ESP32 → backend | sim | estado confirmado do relé |
-| `devices/esp32_fan_01/config` | ESP32 → backend | sim | configuração confirmada |
-
-`config/set` e `config` são tópicos diferentes de propósito. Publicar e assinar o mesmo tópico de configuração faz o ESP32 receber a própria mensagem e entrar em loop.
-
-## Telemetria e estado
-
-A telemetria é publicada a cada 2 segundos, mesmo com o ventilador desligado. Exemplo:
-
-```json
-{
-  "device_id": "esp32_fan_01",
-  "is_on": true,
-  "auto_mode": true,
-  "shutdown_time": "03:00",
-  "voltage_rms": 127,
-  "current_a": 0.28,
-  "power_w": 32.0,
-  "total_energy_wh": 1.25,
-  "fan_on_time_ms": 12000
-}
-```
-
-O estado é publicado após uma mudança de comando ou configuração:
-
-```json
-{
-  "device_id": "esp32_fan_01",
-  "is_on": true,
-  "auto_mode": true,
-  "shutdown_time": "03:00",
-  "fan_on_time_ms": 12000,
-  "total_energy_wh": 1.25
-}
-```
-
-## Validação
-
-O monitor serial esperado mostra:
-
-```text
-WiFi Conectado!
-Relógio sincronizado.
-Conectando ao Broker MQTT... Conectado!
-Estado publicado: ...
-Telemetria enviada: ...
-```
-
-Para acessar a serial:
-
-```text
-rfc2217://localhost:4000
-```
-
-Baud rate: `115200`.
-
-Uma execução é considerada válida quando:
-
-- o broker mostra o cliente `esp32_fan_01` conectado;
-- a telemetria aparece no InfluxDB;
-- o estado no PostgreSQL é atualizado;
-- o dashboard mostra `ESP32/Wokwi online`;
-- `ON` e `OFF` são confirmados pelo estado do ESP32.
-
-## Diagnóstico
-
-### O dashboard mostra WebSocket online, mas ESP32 offline
-
-1. confirme se a aba **Wokwi Simulator** está visível;
-2. confirme se a simulação está executando;
-3. confira se o firmware foi recompilado com `pio run`;
-4. confira se o broker está acessível em `host.wokwi.internal:1883`;
-5. verifique se o container do Mosquitto está `Up`.
-
-### O ESP32 não conecta
-
-```powershell
-docker compose logs --tail=100 mosquitto
-Test-NetConnection <IP_ATUAL> -Port 1883
-```
-
-Verifique também se a extensão está usando o Private IoT Gateway. O hostname `host.wokwi.internal` é específico desse ambiente.
-
-### O relé não acende
-
-- confirme `PIN_RELAY = 23`;
-- use `esp1:23` no diagrama;
-- mantenha `transistor: "npn"`;
-- confira se o comando foi confirmado pelo tópico `state`;
-- reinicie o Wokwi após alterar `diagram.json`.
-
-## Git
-
-O repositório usa `main` como versão estável. Alterações de interface e novas regras de negócio devem ser feitas em uma branch separada:
-
-```powershell
-git switch -c feature/dashboard-energy-v2
-git push -u origin feature/dashboard-energy-v2
-```
-
-Não versionar `.pio/`, `.env`, `node_modules/`, `__pycache__/`, `wokwi.vcd` ou arquivos locais gerados por ferramentas.
+O [registro da implementação](../docs/implementacao-2026-10-26.md) contém compilação, comandos reais pelo dashboard, leitura analógica e desligamento local com broker parado. O agendamento original foi restaurado após o teste. Simulação não fornece garantia de segurança para hardware real.
