@@ -639,7 +639,8 @@ onUnmounted(() => {
         </section>
 
         <p v-if="telemetry.persisted === false" role="alert">
-          A última leitura chegou, mas a gravação no histórico não foi confirmada.
+          A última leitura chegou, mas a gravação no histórico não foi
+          confirmada.
         </p>
         <p v-if="metricsLoading" role="status">Atualizando histórico…</p>
         <p v-if="metricsStale" role="alert">
