@@ -14,14 +14,17 @@ const char* password = "";
 // independentemente do endereço IP atribuído pelo DHCP.
 const char* mqtt_server = "host.wokwi.internal";
 const int mqtt_port = 1883;
-const char* device_id = "esp32_fan_01";
+#ifndef FAN_DEVICE_ID
+#define FAN_DEVICE_ID "esp32_fan_01"
+#endif
+const char* device_id = FAN_DEVICE_ID;
 
 // Tópicos MQTT
-const char* topic_telemetry = "devices/esp32_fan_01/telemetry";
-const char* topic_command = "devices/esp32_fan_01/command";
-const char* topic_config_command = "devices/esp32_fan_01/config/set";
-const char* topic_state = "devices/esp32_fan_01/state";
-const char* topic_config_state = "devices/esp32_fan_01/config";
+const char* topic_telemetry = "devices/" FAN_DEVICE_ID "/telemetry";
+const char* topic_command = "devices/" FAN_DEVICE_ID "/command";
+const char* topic_config_command = "devices/" FAN_DEVICE_ID "/config/set";
+const char* topic_state = "devices/" FAN_DEVICE_ID "/state";
+const char* topic_config_state = "devices/" FAN_DEVICE_ID "/config";
 
 // Pinos
 const int PIN_RELAY = 23;
@@ -35,6 +38,14 @@ unsigned long fan_on_start_millis = 0;
 unsigned long total_fan_on_millis = 0;
 float total_energy_wh = 0.0f;
 float last_power_w = 0.0f;
+unsigned long last_energy_time = 0;
+unsigned long last_wifi_attempt = 0;
+unsigned long last_mqtt_attempt = 0;
+const unsigned long WIFI_RETRY_MS = 10000;
+const unsigned long MQTT_RETRY_MS = 3000;
+const float VOLTAGE_RMS = 127.0f;
+const float CURRENT_SCALE_A = 0.8f;
+const float POWER_FACTOR = 0.90f;
 const long telemetry_interval = 2000;
 const int AUTO_SHUTDOWN_TOLERANCE_MINUTES = 2;
 const int MINUTES_PER_DAY = 24 * 60;
@@ -58,7 +69,9 @@ String formatShutdownTime() {
 }
 
 bool parseShutdownTime(const String& value, int& hour, int& minute) {
-  if (value.length() != 5 || value.indexOf(':') != 2) {
+  if (value.length() != 5 || value.indexOf(':') != 2 ||
+      !isDigit(value[0]) || !isDigit(value[1]) ||
+      !isDigit(value[3]) || !isDigit(value[4])) {
     return false;
   }
 
@@ -94,20 +107,15 @@ void initClock() {
   setenv("TZ", "BRT3", 1);
   tzset();
 
-  Serial.println("Sincronizando relógio local...");
-  struct tm timeinfo;
-  for (int i = 0; i < 30; i++) {
-    if (getLocalTime(&timeinfo)) {
-      clock_ready = true;
-      Serial.println("Relógio sincronizado.");
-      return;
-    }
-    delay(1000);
-    Serial.print(".");
-  }
-
-  Serial.println("\nFalha ao sincronizar o relógio NTP.");
+  // NTP synchronization continues asynchronously; never hold the control loop.
   clock_ready = false;
+}
+
+void integrateLocalEnergy() {
+  const unsigned long now = millis();
+  const unsigned long elapsed = now - last_energy_time;
+  total_energy_wh += last_power_w * elapsed / 3600000.0f;
+  last_energy_time = now;
 }
 
 unsigned long getCurrentFanOnTimeMs() {
@@ -123,6 +131,8 @@ void setFanState(bool next_state) {
     return;
   }
 
+  integrateLocalEnergy();
+  if (!next_state) last_power_w = 0.0f;
   if (next_state) {
     fan_on_start_millis = millis();
   } else {
@@ -147,7 +157,7 @@ void publishState() {
 
   char buffer[MAX_PAYLOAD_SIZE];
   serializeJson(doc, buffer);
-  client.publish(topic_state, buffer, true);
+  if (!client.publish(topic_state, buffer, true)) Serial.println("State publish failed");
   Serial.print("Estado publicado: ");
   Serial.println(buffer);
 }
@@ -160,7 +170,7 @@ void publishConfigState() {
 
   char buffer[MAX_PAYLOAD_SIZE];
   serializeJson(doc, buffer);
-  client.publish(topic_config_state, buffer, true);
+  if (!client.publish(topic_config_state, buffer, true)) Serial.println("Config publish failed");
   Serial.print("Configuração publicada: ");
   Serial.println(buffer);
 }
@@ -175,6 +185,11 @@ void handleIncomingCommand(const String& message) {
     return;
   }
 
+  if ((doc.containsKey("is_on") && !doc["is_on"].is<bool>()) ||
+      (doc.containsKey("auto_mode") && !doc["auto_mode"].is<bool>())) {
+    Serial.println("Invalid boolean command field");
+    return;
+  }
   if (doc.containsKey("action")) {
     const String action = doc["action"].as<String>();
     if (action == "ON") {
@@ -187,6 +202,9 @@ void handleIncomingCommand(const String& message) {
     } else if (action == "MANUAL") {
       settings.auto_mode = false;
       saveSettings();
+    } else {
+      Serial.println("Unknown action");
+      return;
     }
   }
 
@@ -232,22 +250,27 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Conectando ao Broker MQTT...");
+void maintainConnectivity() {
+  const unsigned long now = millis();
+  if (WiFi.status() != WL_CONNECTED) {
+    if (now - last_wifi_attempt >= WIFI_RETRY_MS) {
+      last_wifi_attempt = now;
+      WiFi.reconnect();
+    }
+    return;
+  }
+  if (!client.connected() && now - last_mqtt_attempt >= MQTT_RETRY_MS) {
+    last_mqtt_attempt = now;
     if (client.connect(device_id)) {
-      Serial.println(" Conectado!");
-      client.subscribe(topic_command);
-      client.subscribe(topic_config_command);
+      client.subscribe(topic_command, 1);
+      client.subscribe(topic_config_command, 1);
       publishState();
       publishConfigState();
     } else {
-      Serial.print("Falhou, rc=");
-      Serial.print(client.state());
-      Serial.println(" Tentando novamente em 3 segundos...");
-      delay(3000);
+      Serial.printf("MQTT unavailable, rc=%d; local protection stays active\n", client.state());
     }
   }
+  if (client.connected()) client.loop();
 }
 
 void setup() {
@@ -258,15 +281,13 @@ void setup() {
 
   loadSettings();
 
+  WiFi.setAutoReconnect(true);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nWiFi Conectado!");
-
+  last_energy_time = millis();
   initClock();
-
+  client.setBufferSize(768);
+  client.setSocketTimeout(1);
+  client.setKeepAlive(30);
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 }
@@ -292,22 +313,21 @@ bool shouldAutoShutdown() {
 void sendTelemetry() {
   float current_a = 0.0f;
   float power_w = 0.0f;
-  const float voltage_rms = 127.0f;
+  const float voltage_rms = VOLTAGE_RMS;
 
   if (is_fan_on) {
     int raw_analog = analogRead(PIN_SENSOR);
-    current_a = (raw_analog / 4095.0f) * 0.8f;
-    if (current_a < 0.05f) {
-      current_a = 0.28f;
+    if (raw_analog < 0 || raw_analog > 4095) {
+      Serial.println("Invalid ADC reading; skipping telemetry");
+      last_telemetry_time = millis();
+      return;
     }
-    power_w = current_a * voltage_rms * 0.90f;
+    current_a = (raw_analog / 4095.0f) * CURRENT_SCALE_A;
+    power_w = current_a * voltage_rms * POWER_FACTOR;
   }
 
   unsigned long now = millis();
-  if (is_fan_on && now > last_telemetry_time) {
-    total_energy_wh += (power_w * (now - last_telemetry_time)) / 3600000.0f;
-  }
-
+  integrateLocalEnergy();
   last_power_w = power_w;
 
   StaticJsonDocument<MAX_PAYLOAD_SIZE> doc;
@@ -324,7 +344,9 @@ void sendTelemetry() {
 
   char buffer[MAX_PAYLOAD_SIZE];
   serializeJson(doc, buffer);
-  client.publish(topic_telemetry, buffer);
+  if (client.connected() && !client.publish(topic_telemetry, buffer)) {
+    Serial.println("Telemetry publish failed");
+  }
 
   Serial.print("Telemetria enviada: ");
   Serial.println(buffer);
@@ -332,10 +354,7 @@ void sendTelemetry() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+  clock_ready = time(nullptr) > 1700000000;
 
   if (is_fan_on && shouldAutoShutdown()) {
     Serial.println("Horário de desligamento atingido. Desligando ventilador.");
@@ -343,6 +362,7 @@ void loop() {
     publishState();
   }
 
+  maintainConnectivity();
   unsigned long now = millis();
   if (now - last_telemetry_time > telemetry_interval) {
     sendTelemetry();
