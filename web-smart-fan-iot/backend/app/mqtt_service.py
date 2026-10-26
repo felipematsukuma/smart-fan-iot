@@ -104,6 +104,7 @@ class MQTTManager:
             .field("voltage_rms", voltage_rms)
         )
 
+        persisted = True
         try:
             write_api.write(
                 bucket=settings.INFLUXDB_BUCKET,
@@ -113,9 +114,10 @@ class MQTTManager:
         except Exception:
             # A visualização em tempo real não deve depender da disponibilidade
             # do InfluxDB. A falha fica registrada e a telemetria segue via WS.
+            persisted = False
             logger.exception("Falha ao gravar telemetria de %s no InfluxDB", device_id)
 
-        self._broadcast(payload, event="telemetry")
+        self._broadcast({**payload, "persisted": persisted}, event="telemetry")
         # O estado real do relé chega em toda telemetria. Sincronizar aqui evita
         # que o Postgres conserve um `is_on` obsoleto: o agendador de desligamento
         # automático decide com base nesse campo, e um valor velho pode desligar

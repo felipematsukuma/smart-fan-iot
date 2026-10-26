@@ -1,10 +1,10 @@
-﻿services:
+services:
   mosquitto:
     image: eclipse-mosquitto:2.0
     container_name: iot_mosquitto
     restart: unless-stopped
     ports:
-      - "1883:1883"
+      - "127.0.0.1:1883:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mosquitto_data:/mosquitto/data
@@ -13,6 +13,11 @@
       - iot_network
 
   postgres:
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     image: postgres:15-alpine
     container_name: iot_postgres
     restart: unless-stopped
@@ -21,13 +26,18 @@
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-smart_fan_db}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - iot_network
 
   influxdb:
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     image: influxdb:2.7-alpine
     container_name: iot_influxdb
     restart: unless-stopped
@@ -39,7 +49,7 @@
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-telemetry}
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:?Set INFLUXDB_TOKEN in .env}
     ports:
-      - "8086:8086"
+      - "127.0.0.1:8086:8086"
     volumes:
       - influxdb_data:/var/lib/influxdb2
     networks:
@@ -52,11 +62,14 @@
     container_name: iot_backend
     restart: unless-stopped
     depends_on:
-      - postgres
-      - influxdb
-      - mosquitto
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -84,10 +97,11 @@
     depends_on:
       - backend
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     environment:
-      VITE_API_URL: http://localhost:8000/api
-      VITE_WS_URL: ws://localhost:8000/ws
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8000/ws}
+      VITE_DEVICE_ID: ${VITE_DEVICE_ID:-esp32_fan_01}
     networks:
       - iot_network
 

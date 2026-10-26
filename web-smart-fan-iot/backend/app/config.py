@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     MQTT_PORT: int = 1883
 
     # Aplicação
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "http://localhost:5174", "http://127.0.0.1:5174",
+    ]
+    INFLUXDB_TIMEOUT_MS: int = 2000
+
     APP_TIMEZONE: str = "America/Sao_Paulo"
 
     @property

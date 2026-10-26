@@ -28,7 +28,20 @@ MAX_ANALYSIS_HOURS = 168
 # Display budget; never used for integration or coverage.
 MAX_HISTORY_POINTS = 240
 
-Base.metadata.create_all(bind=engine)
+def initialize_storage() -> None:
+    """Create the small development schema once services are ready."""
+    import time
+    from sqlalchemy.exc import OperationalError
+
+    for attempt in range(10):
+        try:
+            Base.metadata.create_all(bind=engine)
+            return
+        except OperationalError:
+            if attempt == 9:
+                raise
+            time.sleep(1)
+
 
 
 def validate_device_id(device_id: str) -> str:
@@ -68,6 +81,7 @@ def ensure_default_device() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await asyncio.to_thread(initialize_storage)
     ensure_default_device()
     mqtt_manager.set_event_loop(asyncio.get_running_loop())
     mqtt_manager.start()
@@ -83,9 +97,9 @@ app = FastAPI(title="Smart Fan IoT API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
 
@@ -270,10 +284,15 @@ def get_metrics(
       |> filter(fn: (r) => r["_field"] == "power_w")
     '''
 
-    samples = sorted(_iter_power_samples(query_api.query(
-        org=settings.INFLUXDB_ORG,
-        query=query,
-    )))
+    try:
+        samples = sorted(_iter_power_samples(query_api.query(
+            org=settings.INFLUXDB_ORG,
+            query=query,
+        )))
+    except Exception as error:
+        import logging
+        logging.getLogger(__name__).exception("History query unavailable")
+        raise HTTPException(status_code=503, detail="Hist?rico temporariamente indispon?vel") from error
 
     # Integração e downsample vivem em app.energy, onde são cobertos por testes.
     result = integrate_energy(samples, MAX_ENERGY_SAMPLE_GAP_SECONDS)
@@ -304,6 +323,10 @@ def get_metrics(
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    origin = websocket.headers.get("origin")
+    if origin and origin not in settings.CORS_ORIGINS:
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     mqtt_manager.active_websockets.add(websocket)
     try:

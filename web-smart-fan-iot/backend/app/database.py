@@ -20,9 +20,11 @@ def get_db():
 influx_client = InfluxDBClient(
     url=settings.INFLUXDB_URL,
     token=settings.INFLUXDB_TOKEN,
-    org=settings.INFLUXDB_ORG
+    org=settings.INFLUXDB_ORG,
+    timeout=settings.INFLUXDB_TIMEOUT_MS,
+    retries=2,
 )
-# Telemetria é enviada a 0,5 Hz. O modo síncrono garante que o ponto foi
-# persistido antes de o backend confirmar o recebimento via WebSocket.
+# Synchronous write with bounded transport timeout/retry. Live events explicitly
+# report persistence failure; delivery over WS is not proof of storage.
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 query_api = influx_client.query_api()
