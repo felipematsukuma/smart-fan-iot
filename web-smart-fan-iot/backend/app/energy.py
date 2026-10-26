@@ -247,3 +247,44 @@ def downsample_samples(
     for (_, region), quota in zip(regions, quotas):
         selected.extend(_pick_evenly(region, quota))
     return sorted(selected, key=lambda item: item[0])
+
+
+def series_metadata(samples, period_start, period_end, max_gap_seconds):
+    """Compute coverage and continuity BEFORE display downsampling.
+
+    Times are server receipt times. Missing edges and gaps are unknown, even
+    when both surrounding readings are zero. Coverage never extrapolates.
+    """
+    segments = []
+    covered_seconds = 0.0
+
+    def append(kind, start, end):
+        if end <= start:
+            return
+        if segments and segments[-1]["kind"] == kind and segments[-1]["to"] == start.isoformat():
+            segments[-1]["to"] = end.isoformat()
+        else:
+            segments.append({"kind": kind, "from": start.isoformat(), "to": end.isoformat()})
+
+    if not samples:
+        append("no-data", period_start, period_end)
+    else:
+        append("no-data", period_start, samples[0][0])
+        for (start, previous), (end, current) in zip(samples, samples[1:]):
+            gap = (end - start).total_seconds()
+            if gap <= 0:
+                continue
+            if gap > max_gap_seconds:
+                append("no-data", start, end)
+            else:
+                covered_seconds += gap
+                append("off" if previous == 0 and current == 0 else "active", start, end)
+        append("no-data", samples[-1][0], period_end)
+    duration = (period_end - period_start).total_seconds()
+    powers = [p for _, p in samples]
+    return {
+        "coverage": min(1.0, covered_seconds / duration) if duration > 0 else 0.0,
+        "covered_seconds": round(covered_seconds, 3),
+        "max_power_w": max(powers, default=0.0),
+        "segments": segments,
+    }

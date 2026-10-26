@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import Base, engine, get_db, query_api
-from app.energy import downsample_samples, integrate_energy
+from app.energy import downsample_samples, integrate_energy, series_metadata
 from app.models import Device
 from app.mqtt_service import mqtt_manager
 from app.scheduler import scheduler, start_scheduler
@@ -20,52 +20,12 @@ from app.schemas import DeviceCommand, ScheduleUpdate, AutoShutdownUpdate, Tarif
 
 DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
-# Tolerância de lacuna para integrar energia (trapezoidal).
-#
-# A integração só avança entre amostras consecutivas quando o intervalo é
-# menor que este valor; acima disso o trecho é considerado sem cobertura do
-# dispositivo e fica de fora da conta.
-#
-# Medindo os intervalos reais entre amostras DENTRO de sessões ativas
-# (ESP32 ligado, sem pausas longas do Wokwi):
-#     mediana 3,9 s · p90 4,9 s · p95 5,4 s · p99 31,2 s · máximo 68,4 s
-#
-# Com 10 s (valor anterior) 11 lacunas eram descartadas numa janela de 8 h,
-# 10 delas com o ventilador LIGIDO, e o consumo subia 12,4% — quase um
-# minuto de funcionamento simplesmente não contava.
-#
-# 80 s é o ponto médio da faixa em que a telemetria permite decidir. Medindo:
-#     maior pausa do dispositivo ligado : 68,4 s  (energia já consumida)
-#     menor trecho de estado desconhecido: 91,1 s  (não sabemos se consumiu)
-#
-# Abaixo de 80 s o aparelho atravessou a pausa e seguiu reportando, então a
-# energia foi consumida e deve entrar na conta. Acima disso o estado do
-# ventilador é desconhecido e integrar exigiria INVENTAR consumo — o que numa
-# conta de energia é pior do que subestimar, porque o erro é silencioso.
-#
-# A folga de "offline" do frontend é 90 s, ligeiramente maior que esta, e a
-# assimetria é intencional: errar ao bloquear um comando incomoda o usuário,
-# que pode repetir; errar ao fabricated consumo corrompe um número sem aviso.
+# Integrate only intervals covered by sufficiently frequent raw telemetry.
 MAX_ENERGY_SAMPLE_GAP_SECONDS = 80
 
 MAX_ANALYSIS_HOURS = 168
 
-# Pontos enviados ao frontend.
-#
-# Este valor NÃO é arbitrário. O gráfico precisa de 2 pontos por trecho de
-# atividade — um ponto só não desenha linha, e o trecho some da tela. Medindo
-# a janela de 7 dias deste projeto:
-#
-#     trechos desligados : 35      trechos com consumo : 58      TOTAL 93
-#     custo mínimo       : 93 × 2  = 186 pontos
-#
-# Com o teto anterior de 120 era fisicamente impossível cobrir tudo: 48
-# aglomerados ficavam com mediana de 1 ponto, o que produzia uma parede de
-# espinhos verticais de 1 px em vez de um gráfico. Com 240 sobram ~54 pontos
-# para dar resolução ao trecho mais longo.
-#
-# O custo de payload é pequeno: ~240 × 60 B ≈ 14 kB, e o gráfico é
-# reamostrado no cliente para o que couber na largura disponível.
+# Display budget; never used for integration or coverage.
 MAX_HISTORY_POINTS = 240
 
 Base.metadata.create_all(bind=engine)
@@ -338,6 +298,7 @@ def get_metrics(
         "estimated_kwh": round(result.energy_wh / 1000, 6),
         "history_count": result.total_samples,
         "history": history,
+        **series_metadata(samples, period_start, period_end, MAX_ENERGY_SAMPLE_GAP_SECONDS),
     }
 
 

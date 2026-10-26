@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import type { MetricPoint } from '../../types';
+import type { MetricPoint, SeriesSegment } from '../../types';
 import {
   buildTimeline,
   computeCoverage,
@@ -30,6 +30,11 @@ import { formatCoverage } from '../../lib/format';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 const props = defineProps<{
+  coverage?: number;
+  sourceSegments?: SeriesSegment[];
+  rawMean?: number;
+  rawMaximum?: number;
+  rawCount?: number;
   currentPower: number;
   timestamp: number;
   history: MetricPoint[];
@@ -203,12 +208,13 @@ const timeline = computed(() =>
   buildTimeline(times.value, values.value, {
     windowStartMs: windowStartMs.value,
     windowEndMs: windowEndMs.value,
+    sourceSegments: props.sourceSegments,
   })
 );
 
   /** Cobertura medida em TEMPO REAL — a compressão é visual, não contábil. */
 const coverage = computed(() =>
-  computeCoverage(times.value, windowStartMs.value, windowEndMs.value)
+  props.coverage ?? computeCoverage(times.value, windowStartMs.value, windowEndMs.value)
 );
 const hasCoverageGap = computed(() => coverage.value < 0.98);
 
@@ -242,14 +248,14 @@ const coverageDetail = computed(() => {
 });
 
 const stats = computed(() => computeStats(values.value));
-const mean = computed(() => stats.value.mean);
+const mean = computed(() => props.rawMean ?? stats.value.mean);
 const deviation = computed(() => stats.value.deviation);
-const maximum = computed(() => stats.value.max);
+const maximum = computed(() => props.rawMaximum ?? stats.value.max);
 
 /** No período personalizado o rótulo fixo não serve, então o intervalo real
  *  é exibido no rodapé. */
 const isCustomPeriod = computed(() => props.periodLabel === 'Período personalizado');
-const samplesCount = computed(() => props.history.length);
+const samplesCount = computed(() => props.rawCount ?? props.history.length);
 
 const range = computed(() => {
   const s = new Date(windowStartMs.value).toLocaleString('pt-BR', {
@@ -280,7 +286,7 @@ const buildDatasets = () => {
       // `connectGaps` liga a linha através dos trechos comprimidos (leitura do
       // InfluxDB, e o que foi pedido). Não há `null` na série, então a opção é
     // irrelevante aqui — mas fica explícita caso a série volte a ter quebras.
-      spanGaps: true,
+      spanGaps: false,
       tension: 0.35,
       // Sem marcadores de amostra: os trechos desligados não entram como 0 W,
       // e as rajadas viram linha, não pontos soltos.
@@ -298,7 +304,7 @@ const buildDatasets = () => {
       backgroundColor: 'transparent',
       borderDash: [6, 6],
       fill: false,
-      spanGaps: true,
+      spanGaps: false,
       tension: 0.35,
       pointRadius: 0,
       pointHoverRadius: 0,
@@ -310,7 +316,7 @@ const buildDatasets = () => {
       borderColor: 'rgba(0, 0, 0, 0)',
       backgroundColor: bandGradient as never,
       fill: '+1',
-      spanGaps: true,
+      spanGaps: false,
       tension: 0.35,
       pointRadius: 0,
       pointHoverRadius: 0,
@@ -322,7 +328,7 @@ const buildDatasets = () => {
       borderColor: 'rgba(0, 0, 0, 0)',
       backgroundColor: 'rgba(0, 0, 0, 0)',
       fill: false,
-      spanGaps: true,
+      spanGaps: false,
       tension: 0.35,
       pointRadius: 0,
       pointHoverRadius: 0,

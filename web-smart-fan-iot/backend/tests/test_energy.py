@@ -316,3 +316,24 @@ def test_tolerancia_cobre_a_pausa_real_do_dispositivo():
     # ...e o trecho desconhecido não é.
     r = integrate_energy(series([(0, 30), (MENOR_DESCONHECIDO, 30)]), TOLERANCIA)
     assert r.energy_wh == 0.0 and r.discarded_intervals == 1
+
+
+def test_dense_eight_hours_keeps_full_coverage_after_downsampling():
+    from app.energy import series_metadata
+    start = datetime(2026, 10, 26, tzinfo=timezone.utc)
+    samples = [(start + timedelta(seconds=2 * i), 30.0) for i in range(14401)]
+    end = start + timedelta(hours=8)
+    metadata = series_metadata(samples, start, end, 80)
+    assert len(downsample_samples(samples, 240)) == 240
+    assert metadata["coverage"] == 1.0
+    assert integrate_energy(samples, 80).energy_wh == 240.0
+    assert len(metadata["segments"]) == 1
+
+
+def test_zero_endpoints_do_not_cover_a_missing_hour():
+    from app.energy import series_metadata
+    start = datetime(2026, 10, 26, tzinfo=timezone.utc)
+    end = start + timedelta(hours=1)
+    metadata = series_metadata([(start, 0), (end, 0)], start, end, 80)
+    assert metadata["coverage"] == 0
+    assert metadata["segments"][0]["kind"] == "no-data"

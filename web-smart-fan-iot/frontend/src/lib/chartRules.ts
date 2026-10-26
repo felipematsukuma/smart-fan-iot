@@ -161,6 +161,7 @@ export function nextScaleState(
 }
 
 export interface TimelineOptions {
+  sourceSegments?: Array<{ kind: 'active' | GapReason; from: string; to: string }>;
   gapLimitMs?: number;
   offPowerW?: number;
   minOffDurationMs?: number;
@@ -301,7 +302,7 @@ export function buildTimeline(
   // Cada intervalo entre amostras consecutivas, com os índices das amostras
   // que ele liga.
   type Raw = { kind: 'active' | GapReason; from: number; to: number };
-  const raw: Raw[] = [];
+  let raw: Raw[] = [];
   // O que existe antes da primeira e depois da última amostra também é ausência
   // de medição. Passa pelo mesmo limiar das demais: numa série de cadência
   // fraca, 4 min de borda é a cadência normal, não uma interrupção.
@@ -345,6 +346,15 @@ export function buildTimeline(
       from: last,
       to: windowEnd,
     });
+  }
+
+  // The API knows raw continuity; sampling cadence must never redefine it.
+  if (options.sourceSegments) {
+    raw = options.sourceSegments.map(segment => ({
+      kind: segment.kind,
+      from: Date.parse(segment.from),
+      to: Date.parse(segment.to),
+    }));
   }
 
   // --- 2. Agrupa trechos interrompidos ------------------------------------
@@ -446,25 +456,15 @@ export function buildTimeline(
     return windowStart + Math.max(0, x);
   };
 
-  // --- 5. Série ----------------------------------------------------------
-  //
-  // NENHUMA amostra a 0 W entra no gráfico. O pedido é linha contínua ligando
-  // os pontos, sem vales em zero: um desligamento de 3 h viraria um vale
-  // Deep que não existe, porque a largura de 8 px na tela representa 3 h.
-  //
-  // O desligamento não desaparece: vira um marcador âmbar, e o tooltip diz
-  // "Desligado por 3 h 12 min" com os dois instantes reais. A informação
-  // continua lá — só não vira um traço falso.
-  //
-  // Descartar por VALOR (e não por trecho) importa: a amostra a 0 W que marca
-  // o instante do desligamento é a primeira do trecho ativo seguinte, e
-  // entraria como um ponto isolado em zero.
-  const emitted: Array<{ x: number; y: number | null }> = [];
-  for (let i = 0; i < times.length; i++) {
-    // Todas as amostras entram, inclusive as de 0 W: é delas que vem o vale
-    // que o gráfico faz ao desligar, exatamente como no InfluxDB. O que NÃO
-    // entra é nada — a linha é contínua e sem marcadores.
-    emitted.push({ x: xOf(times[i]), y: values[i] });
+  // Preserve samples, with explicit breaks across unknown raw intervals.
+  const emitted: Point[] = times.map((time, i) => ({ x: xOf(time), y: values[i] }));
+  if (options.sourceSegments) {
+    for (const segment of segments) {
+      if (segment.kind === 'no-data') {
+        emitted.push({ x: (segment.xFrom + segment.xTo) / 2, y: null });
+      }
+    }
+    emitted.sort((a, b) => a.x - b.x);
   }
 
   const gaps: Gap[] = segments

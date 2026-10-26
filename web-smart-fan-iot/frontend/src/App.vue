@@ -1,6 +1,7 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
+import { api, DEVICE_ID, getDevice, getMetrics } from './lib/api';
 import {
   Activity,
   Gauge,
@@ -42,8 +43,6 @@ import {
   sampleIntervalMinutes,
 } from './lib/format';
 
-const DEVICE_ID = 'esp32_fan_01';
-const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:8000/api';
 const WS_URL = (import.meta.env.VITE_WS_URL as string) || 'ws://localhost:8000/ws';
 
 /**
@@ -69,7 +68,10 @@ let metricsTimer: ReturnType<typeof setInterval> | null = null;
 let commandTimeout: ReturnType<typeof setTimeout> | null = null;
 let scheduleSavedTimer: ReturnType<typeof setTimeout> | null = null;
 let tariffSavedTimer: ReturnType<typeof setTimeout> | null = null;
-let isCommandPending = false;
+const isCommandPending = ref(false);
+const metricsLoading = ref(false);
+const metricsStale = ref(false);
+let metricsRequest = 0;
 let pendingCommand: { action: 'ON' | 'OFF'; expectedState: boolean } | null = null;
 const feedback = ref<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
@@ -121,7 +123,7 @@ const clearCommandConfirmation = () => {
     clearTimeout(commandTimeout);
     commandTimeout = null;
   }
-  isCommandPending = false;
+  isCommandPending.value = false;
 };
 
 const setSavedFlag = (type: 'schedule' | 'tariff') => {
@@ -146,8 +148,8 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
 const loadDeviceData = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/device/${DEVICE_ID}`);
-    if (response.data?.device_id === DEVICE_ID) device.value = response.data;
+    const data = await getDevice();
+    if (data.device_id === DEVICE_ID) device.value = data;
   } catch (error) {
     feedback.value = { type: 'error', text: getErrorMessage(error, 'Não foi possível carregar o dispositivo.') };
   }
@@ -179,11 +181,13 @@ const loadMetrics = async () => {
     ? custom.start
     : new Date(end.getTime() - (selectedHours.value ?? 8) * 60 * 60 * 1000);
 
+  const request = ++metricsRequest;
+  metricsLoading.value = true;
   try {
-    const response = await axios.get(`${API_BASE}/device/${DEVICE_ID}/metrics`, {
-      params: { start: start.toISOString(), end: end.toISOString() }
-    });
-    metrics.value = { ...metrics.value, ...response.data, history: response.data.history ?? [] };
+    const data = await getMetrics(start, end);
+    if (request !== metricsRequest) return false;
+    metrics.value = data;
+    metricsStale.value = false;
     return true;
   } catch (error) {
     feedback.value = { type: 'error', text: getErrorMessage(error, 'Não foi possível carregar o consumo do InfluxDB.') };
@@ -217,14 +221,14 @@ const applyCustomPeriod = async () => {
 };
 
 const togglePower = async () => {
-  if (isCommandPending) return;
+  if (isCommandPending.value) return;
   if (!deviceOnline.value) {
     feedback.value = { type: 'error', text: 'ESP32 sem telemetria recente. Abra a aba Wokwi e deixe-a visível.' };
     return;
   }
 
   const action = telemetry.value.is_on ? 'OFF' : 'ON';
-  isCommandPending = true;
+  isCommandPending.value = true;
   pendingCommand = { action, expectedState: action === 'ON' };
   feedback.value = { type: 'info', text: `Comando ${action} enviado. Aguardando confirmação do ESP32...` };
   commandTimeout = setTimeout(() => {
@@ -234,7 +238,7 @@ const togglePower = async () => {
   }, COMMAND_TIMEOUT_MS);
 
   try {
-    await axios.post(`${API_BASE}/device/${DEVICE_ID}/command`, { action });
+    await api.post(`/device/${DEVICE_ID}/command`, { action });
   } catch (error) {
     clearCommandConfirmation();
     feedback.value = { type: 'error', text: getErrorMessage(error, 'Falha ao enviar o comando.') };
@@ -244,7 +248,7 @@ const togglePower = async () => {
 const saveAutoShutdown = async () => {
   isScheduleSaving.value = true;
   try {
-    await axios.put(`${API_BASE}/device/${DEVICE_ID}/auto-shutdown`, {
+    await api.put(`/device/${DEVICE_ID}/auto-shutdown`, {
       auto_off_time: device.value.auto_off_time,
       auto_off_enabled: device.value.auto_off_enabled
     });
@@ -260,7 +264,7 @@ const saveAutoShutdown = async () => {
 const saveTariff = async () => {
   isTariffSaving.value = true;
   try {
-    await axios.put(`${API_BASE}/device/${DEVICE_ID}/tariff`, { kwh_rate: Number(device.value.kwh_rate) });
+    await api.put(`/device/${DEVICE_ID}/tariff`, { kwh_rate: Number(device.value.kwh_rate) });
     setSavedFlag('tariff');
     feedback.value = { type: 'success', text: 'Tarifa atualizada. O custo estimado foi recalculado.' };
   } catch (error) {
@@ -289,6 +293,7 @@ onUnmounted(() => {
   if (metricsTimer) clearInterval(metricsTimer);
   if (scheduleSavedTimer) clearTimeout(scheduleSavedTimer);
   if (tariffSavedTimer) clearTimeout(tariffSavedTimer);
+  metricsRequest++;
   clearCommandConfirmation();
 });
 </script>
@@ -434,7 +439,15 @@ onUnmounted(() => {
           </MetricCard>
         </section>
 
+        <p v-if="metricsLoading" role="status">Atualizando hist?rico?</p>
+        <p v-if="metricsStale" role="alert">Hist?rico desatualizado: falha na ?ltima consulta.</p>
+        <p v-if="(metrics.coverage ?? 0) < 0.98" role="status">Consumo parcial: h? per?odos sem coleta. A previs?o mensal pode subestimar o consumo.</p>
         <PowerChart
+          :coverage="metrics.coverage"
+          :source-segments="metrics.segments"
+          :raw-mean="metrics.avg_power_w"
+          :raw-maximum="metrics.max_power_w"
+          :raw-count="metrics.history_count"
           :current-power="telemetry.power_w"
           :timestamp="telemetry.timestamp"
           :history="metrics.history"

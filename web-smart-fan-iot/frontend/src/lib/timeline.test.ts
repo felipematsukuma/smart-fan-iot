@@ -440,3 +440,23 @@ describe('formatDuration', () => {
     expect(formatDuration(-5)).toBe('0 min');
   });
 });
+
+
+it('respects raw continuity after display downsampling', () => {
+  const t = Date.parse('2026-10-26T00:00:00Z');
+  const times = Array.from({ length: 240 }, (_, i) => t + i * 28800000 / 239);
+  const timeline = buildTimeline(times, times.map(() => 30), {
+    sourceSegments: [{kind: 'active', from: new Date(t).toISOString(), to: new Date(t + 28800000).toISOString()}],
+  });
+  expect(timeline.noDataMs).toBe(0);
+});
+
+it('breaks the trace across a raw gap even with zero endpoints', () => {
+  const t = Date.parse('2026-10-26T00:00:00Z');
+  const timeline = buildTimeline([t, t + 3600000], [0, 0], {
+    sourceSegments: [{kind: 'no-data', from: new Date(t).toISOString(), to: new Date(t + 3600000).toISOString()}],
+  });
+  expect(timeline.offMs).toBe(0);
+  expect(timeline.noDataMs).toBe(3600000);
+  expect(timeline.points.some(point => point.y === null)).toBe(true);
+});
