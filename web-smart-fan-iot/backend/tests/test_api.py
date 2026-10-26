@@ -3,7 +3,6 @@
 Roda contra a aplicação FastAPI real com o banco substituído, então as
 validações exercitadas são as de produção.
 """
-import types
 
 import pytest
 from fastapi.testclient import TestClient
@@ -26,9 +25,10 @@ def client(manager):
     `get_db` é resolvido na importação do módulo, então a troca precisa ser
     feita por `dependency_overrides` — monkeypatch na função não surtiria efeito.
     """
+    from conftest import FakePahoClient
+
     from app.database import get_db
     from app.mqtt_service import mqtt_manager
-    from conftest import FakePahoClient
 
     DB_ROWS.append(FakeDeviceRow(device_id=DEVICE, is_on=True, at="03:30", rate=0.85))
 
@@ -83,9 +83,15 @@ def test_get_device_inexistente(client):
     assert client.get("/api/device/nao_existe").status_code == 404
 
 
-@pytest.mark.parametrize("device_id", [
-    "device com espaco", "device/../etc", "a" * 65, "device@host",
-])
+@pytest.mark.parametrize(
+    "device_id",
+    [
+        "device com espaco",
+        "device/../etc",
+        "a" * 65,
+        "device@host",
+    ],
+)
 def test_device_id_invalido(client, device_id):
     assert client.get(f"/api/device/{device_id}").status_code in (404, 422)
 
@@ -149,8 +155,10 @@ def test_auto_shutdown_hora_invalida_recusada(client):
 def test_tarifa_e_agendamento_sao_independentes(client):
     """Salvar a tarifa não pode mexer no horário, e vice-versa: são configurações
     distintas com endpoints distintos."""
-    client.put(f"/api/device/{DEVICE}/auto-shutdown",
-               json={"auto_off_time": "05:45", "auto_off_enabled": False})
+    client.put(
+        f"/api/device/{DEVICE}/auto-shutdown",
+        json={"auto_off_time": "05:45", "auto_off_enabled": False},
+    )
     client.put(f"/api/device/{DEVICE}/tariff", json={"kwh_rate": 2.5})
     assert DB_ROWS[0].auto_off_time == "05:45"
     assert DB_ROWS[0].auto_off_enabled is False
@@ -165,24 +173,35 @@ def test_metricas_sem_parametros(client, monkeypatch):
     r = client.get(f"/api/device/{DEVICE}/metrics")
     assert r.status_code == 200
     corpo = r.json()
-    for chave in ("device_id", "period_start", "period_end", "duration_hours",
-                  "avg_power_w", "energy_wh", "estimated_kwh",
-                  "history_count", "history"):
+    for chave in (
+        "device_id",
+        "period_start",
+        "period_end",
+        "duration_hours",
+        "avg_power_w",
+        "energy_wh",
+        "estimated_kwh",
+        "history_count",
+        "history",
+    ):
         assert chave in corpo, f"faltou {chave}"
     assert corpo["energy_wh"] == 0.0
     assert corpo["history"] == []
 
 
-@pytest.mark.parametrize("q,esperado", [
-    ("range_hours=0", 422),
-    ("range_hours=169", 422),
-    ("range_hours=168", 200),
-    ("start=2026-09-28T10:00:00Z", 422),   # só start
-    ("end=2026-09-28T10:00:00Z", 422),     # só end
-    ("start=2026-09-28T10:00:00Z&end=2026-09-28T09:00:00Z", 422),  # invertido
-    ("start=2026-09-28T10:00:00Z&end=2026-09-28T10:00:00Z", 422),  # vazio
-    ("start=2026-09-01T00:00:00Z&end=2026-09-28T00:00:00Z", 422),  # > 168h
-])
+@pytest.mark.parametrize(
+    "q,esperado",
+    [
+        ("range_hours=0", 422),
+        ("range_hours=169", 422),
+        ("range_hours=168", 200),
+        ("start=2026-09-28T10:00:00Z", 422),  # só start
+        ("end=2026-09-28T10:00:00Z", 422),  # só end
+        ("start=2026-09-28T10:00:00Z&end=2026-09-28T09:00:00Z", 422),  # invertido
+        ("start=2026-09-28T10:00:00Z&end=2026-09-28T10:00:00Z", 422),  # vazio
+        ("start=2026-09-01T00:00:00Z&end=2026-09-28T00:00:00Z", 422),  # > 168h
+    ],
+)
 def test_metricas_validacao_de_periodo(client, monkeypatch, q, esperado):
     _sem_influx(monkeypatch)
     assert client.get(f"/api/device/{DEVICE}/metrics?{q}").status_code == esperado
@@ -190,7 +209,9 @@ def test_metricas_validacao_de_periodo(client, monkeypatch, q, esperado):
 
 def test_metricas_aceita_janela_valida(client, monkeypatch):
     _sem_influx(monkeypatch)
-    r = client.get(f"/api/device/{DEVICE}/metrics?start=2026-09-28T00:00:00Z&end=2026-09-28T12:00:00Z")
+    r = client.get(
+        f"/api/device/{DEVICE}/metrics?start=2026-09-28T00:00:00Z&end=2026-09-28T12:00:00Z"
+    )
     assert r.status_code == 200
     assert r.json()["duration_hours"] == 12.0
 
@@ -198,7 +219,9 @@ def test_metricas_aceita_janela_valida(client, monkeypatch):
 def test_metricas_aceita_start_sem_fuso(client, monkeypatch):
     """Sem fuso, o start é interpretado no fuso da aplicação."""
     _sem_influx(monkeypatch)
-    r = client.get(f"/api/device/{DEVICE}/metrics?start=2026-09-28T00:00:00&end=2026-09-28T12:00:00")
+    r = client.get(
+        f"/api/device/{DEVICE}/metrics?start=2026-09-28T00:00:00&end=2026-09-28T12:00:00"
+    )
     assert r.status_code == 200
 
 
@@ -215,10 +238,41 @@ def test_metricas_de_device_inexistente_nao_quebra(client, monkeypatch):
 
 
 def test_limites_de_negocio():
-    assert MAX_ANALYSIS_HOURS == 168          # 7 dias
+    assert MAX_ANALYSIS_HOURS == 168  # 7 dias
     # O teto precisa cobrir 2 pontos por trecho de atividade. Medindo a janela
     # de 7 dias deste projeto: 35 trechos desligados + 58 com consumo = 93, e
     # 93 x 2 = 186. Com 120 era impossível cobrir tudo, e o gráfico virava uma
     # parede de espinhos de 1 px.
     assert MAX_HISTORY_POINTS >= 186
     assert 68.4 < MAX_ENERGY_SAMPLE_GAP_SECONDS < 91.1
+
+
+def test_lists_registered_devices(client):
+    response = client.get("/api/devices")
+    assert response.status_code == 200
+    assert response.json()[0]["device_id"] == DEVICE
+
+
+def test_registration_rejects_duplicate_and_invalid_identity(client):
+    assert client.post("/api/devices", json={"device_id": DEVICE, "name": "Fan"}).status_code == 409
+    assert (
+        client.post("/api/devices", json={"device_id": "bad/id", "name": "Fan"}).status_code == 422
+    )
+    assert (
+        client.post("/api/devices", json={"device_id": "second", "name": "Fan"}).status_code == 201
+    )
+
+
+def test_history_failure_is_explicit(client, monkeypatch):
+    from app import main
+
+    def unavailable(**kwargs):
+        raise OSError("influx unavailable")
+
+    monkeypatch.setattr(main.query_api, "query", unavailable)
+    assert client.get(f"/api/device/{DEVICE}/metrics").status_code == 503
+
+
+def test_untrusted_web_origin_cannot_read_api(client):
+    response = client.get("/health", headers={"Origin": "https://untrusted.example"})
+    assert "access-control-allow-origin" not in response.headers

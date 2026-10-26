@@ -1,13 +1,17 @@
-from sqlalchemy import Boolean, Column, Float, Integer, String
+"""Persistent per-device configuration and last observed relay state."""
+
+from sqlalchemy import Boolean, Float, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.database import Base
+
 
 class Device(Base):
     __tablename__ = "devices"
-
-    id = Column(Integer, primary_key=True, index=True)
-    device_id = Column(String(64), unique=True, index=True, nullable=False)
-    name = Column(String(100), default="Ventilador do Quarto")
-    is_on = Column(Boolean, default=False)
-    kwh_rate = Column(Float, default=0.85)  # Custo da tarifa (ex: R$ 0,85 / kWh)
-    auto_off_time = Column(String(5), nullable=True)  # Formato "HH:MM", ex: "03:30"
-    auto_off_enabled = Column(Boolean, default=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    device_id: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), default="Ventilador do Quarto")
+    is_on: Mapped[bool] = mapped_column(Boolean, default=False)
+    kwh_rate: Mapped[float] = mapped_column(Float, default=0.85)
+    auto_off_time: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    auto_off_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

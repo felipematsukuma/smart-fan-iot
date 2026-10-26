@@ -9,6 +9,7 @@ export interface Device {
 }
 
 export interface TelemetryData {
+  persisted?: boolean;
   device_id: string;
   is_on: boolean;
   voltage_rms: number;

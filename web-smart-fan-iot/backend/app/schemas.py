@@ -1,11 +1,13 @@
 """Validated REST and MQTT contracts; telemetry timestamps are device uptime in ms."""
+
 import re
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 DeviceId = Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")]
-NonNegative = Annotated[float, Field(ge=0, allow_inf_nan=False)]
+NonNegative = Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
 
 
 class DeviceCommand(BaseModel):
@@ -44,6 +46,7 @@ class DeviceState(BaseModel):
     is_on: StrictBool | None = None
     auto_mode: StrictBool | None = None
     shutdown_time: str | None = None
+    device_epoch_s: NonNegative | None = None
     total_energy_wh: NonNegative | None = None
     fan_on_time_ms: NonNegative | None = None
 
@@ -57,7 +60,51 @@ class DeviceState(BaseModel):
 
 class TelemetryPayload(DeviceState):
     is_on: StrictBool
-    voltage_rms: Annotated[float, Field(ge=0, le=1000, allow_inf_nan=False)]
-    current_a: Annotated[float, Field(ge=0, le=1000, allow_inf_nan=False)]
-    power_w: Annotated[float, Field(ge=0, le=1000000, allow_inf_nan=False)]
+    voltage_rms: Annotated[float, Field(ge=0, le=1000, allow_inf_nan=False, strict=True)]
+    current_a: Annotated[float, Field(ge=0, le=1000, allow_inf_nan=False, strict=True)]
+    power_w: Annotated[float, Field(ge=0, le=1000000, allow_inf_nan=False, strict=True)]
     timestamp: NonNegative
+
+
+class DeviceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    device_id: DeviceId
+    name: Annotated[str, Field(min_length=1, max_length=100)]
+
+
+class DeviceView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    device_id: DeviceId
+    name: str
+    is_on: bool
+    kwh_rate: NonNegative
+    auto_off_time: str | None
+    auto_off_enabled: bool
+
+
+class MetricPoint(BaseModel):
+    time: datetime
+    power_w: NonNegative
+
+
+class SeriesSegment(BaseModel):
+    kind: Literal["active", "off", "no-data"]
+    from_: datetime = Field(alias="from")
+    to: datetime
+
+
+class MetricsView(BaseModel):
+    device_id: DeviceId
+    period_start: datetime
+    period_end: datetime
+    duration_hours: NonNegative
+    avg_power_w: NonNegative
+    energy_wh: NonNegative
+    estimated_kwh: NonNegative
+    history_count: int
+    history: list[MetricPoint]
+    coverage: Annotated[float, Field(ge=0, le=1)]
+    covered_seconds: NonNegative
+    max_power_w: NonNegative
+    segments: list[SeriesSegment]

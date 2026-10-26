@@ -1,10 +1,11 @@
 import asyncio
+import json
 import math
 import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from typing import Iterator
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +17,15 @@ from app.energy import downsample_samples, integrate_energy, series_metadata
 from app.models import Device
 from app.mqtt_service import mqtt_manager
 from app.scheduler import scheduler, start_scheduler
-from app.schemas import DeviceCommand, ScheduleUpdate, AutoShutdownUpdate, TariffUpdate
+from app.schemas import (
+    AutoShutdownUpdate,
+    DeviceCommand,
+    DeviceCreate,
+    DeviceView,
+    MetricsView,
+    ScheduleUpdate,
+    TariffUpdate,
+)
 
 DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
@@ -28,9 +37,11 @@ MAX_ANALYSIS_HOURS = 168
 # Display budget; never used for integration or coverage.
 MAX_HISTORY_POINTS = 240
 
+
 def initialize_storage() -> None:
     """Create the small development schema once services are ready."""
     import time
+
     from sqlalchemy.exc import OperationalError
 
     for attempt in range(10):
@@ -41,7 +52,6 @@ def initialize_storage() -> None:
             if attempt == 9:
                 raise
             time.sleep(1)
-
 
 
 def validate_device_id(device_id: str) -> str:
@@ -112,7 +122,22 @@ def health() -> dict:
     }
 
 
-@app.get("/api/device/{device_id}")
+@app.get("/api/devices", response_model=list[DeviceView])
+def list_devices(db: Session = Depends(get_db)):
+    return sorted(db.query(Device).all(), key=lambda device: device.device_id)
+
+
+@app.post("/api/devices", status_code=201)
+def create_device(body: DeviceCreate, db: Session = Depends(get_db)) -> dict:
+    if db.query(Device).filter(Device.device_id == body.device_id).first():
+        raise HTTPException(status_code=409, detail="Dispositivo já cadastrado")
+    device = Device(**body.model_dump())
+    db.add(device)
+    db.commit()
+    return {"device_id": body.device_id, "name": body.name}
+
+
+@app.get("/api/device/{device_id}", response_model=DeviceView)
 def get_device(device_id: str, db: Session = Depends(get_db)):
     validate_device_id(device_id)
     device = db.query(Device).filter(Device.device_id == device_id).first()
@@ -231,15 +256,18 @@ def _iter_power_samples(result) -> Iterator[tuple[datetime, float]]:
             value = record.get_value()
             if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
                 continue
+            if float(value) < 0:
+                continue
             timestamp = record.get_time()
             if timestamp is not None:
                 yield timestamp, float(value)
 
 
-@app.get("/api/device/{device_id}/metrics")
+@app.get("/api/device/{device_id}/metrics", response_model=MetricsView)
 def get_metrics(
     device_id: str,
     range_hours: int = Query(default=8, ge=1, le=MAX_ANALYSIS_HOURS),
+    max_points: int = Query(default=MAX_HISTORY_POINTS, ge=2, le=1000),
     start: datetime | None = Query(default=None),
     end: datetime | None = Query(default=None),
 ) -> dict:
@@ -277,22 +305,33 @@ def get_metrics(
         )
 
     query = f'''
-    from(bucket: "{settings.INFLUXDB_BUCKET}")
+    from(bucket: {json.dumps(settings.INFLUXDB_BUCKET)})
       |> {range_clause}
       |> filter(fn: (r) => r["_measurement"] == "electrical_measurement")
       |> filter(fn: (r) => r["device_id"] == "{device_id}")
       |> filter(fn: (r) => r["_field"] == "power_w")
+      |> limit(n: 400001)
     '''
 
     try:
-        samples = sorted(_iter_power_samples(query_api.query(
-            org=settings.INFLUXDB_ORG,
-            query=query,
-        )))
+        samples = sorted(
+            _iter_power_samples(
+                query_api.query(
+                    org=settings.INFLUXDB_ORG,
+                    query=query,
+                )
+            )
+        )
     except Exception as error:
         import logging
+
         logging.getLogger(__name__).exception("History query unavailable")
-        raise HTTPException(status_code=503, detail="Hist?rico temporariamente indispon?vel") from error
+        raise HTTPException(
+            status_code=503, detail="Histórico temporariamente indisponível"
+        ) from error
+
+    if len(samples) > 400000:
+        raise HTTPException(status_code=413, detail="Muitas amostras; reduza o intervalo")
 
     # Integração e downsample vivem em app.energy, onde são cobertos por testes.
     result = integrate_energy(samples, MAX_ENERGY_SAMPLE_GAP_SECONDS)
@@ -301,7 +340,7 @@ def get_metrics(
         {"time": timestamp.isoformat(), "power_w": round(power, 2)}
         for timestamp, power in downsample_samples(
             samples,
-            MAX_HISTORY_POINTS,
+            max_points,
             gap_limit_seconds=MAX_ENERGY_SAMPLE_GAP_SECONDS,
         )
     ]
