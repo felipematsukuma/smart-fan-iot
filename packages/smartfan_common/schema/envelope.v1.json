@@ -1,0 +1,2019 @@
+{
+  "$defs": {
+    "AckData": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "status": {
+          "const": "applied",
+          "title": "Status",
+          "type": "string"
+        },
+        "observed": {
+          "$ref": "#/$defs/Actuators"
+        },
+        "reason": {
+          "const": "ok",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "revision",
+        "status",
+        "observed",
+        "reason"
+      ],
+      "title": "AckData",
+      "type": "object"
+    },
+    "AckEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "command.applied",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/AckData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "AckEvent",
+      "type": "object"
+    },
+    "Actuators": {
+      "additionalProperties": false,
+      "properties": {
+        "compressor_on": {
+          "title": "Compressor On",
+          "type": "boolean"
+        },
+        "condenser_fan_on": {
+          "title": "Condenser Fan On",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "compressor_on",
+        "condenser_fan_on"
+      ],
+      "title": "Actuators",
+      "type": "object"
+    },
+    "AlertData": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Alert Id",
+          "type": "string"
+        },
+        "rule_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "reason_code": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Reason Code",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alert_id",
+        "rule_id",
+        "severity",
+        "reason_code"
+      ],
+      "title": "AlertData",
+      "type": "object"
+    },
+    "AlertEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "alert.raised",
+            "alert.cleared",
+            "alert.acknowledged"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/AlertData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "AlertEvent",
+      "type": "object"
+    },
+    "AvailabilityData": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "online",
+            "offline"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "AvailabilityData",
+      "type": "object"
+    },
+    "AvailabilityEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "device.availability",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/DeviceMetadata"
+        },
+        "data": {
+          "$ref": "#/$defs/AvailabilityData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "AvailabilityEvent",
+      "type": "object"
+    },
+    "CommandData": {
+      "additionalProperties": false,
+      "properties": {
+        "target_boot_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Target Boot Id",
+          "type": "string"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "desired": {
+          "$ref": "#/$defs/Actuators"
+        },
+        "mode": {
+          "enum": [
+            "manual",
+            "auto"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Expires At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_boot_id",
+        "revision",
+        "desired",
+        "mode",
+        "expires_at"
+      ],
+      "title": "CommandData",
+      "type": "object"
+    },
+    "CommandEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "command.requested",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/CommandData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "CommandEvent",
+      "type": "object"
+    },
+    "DeviceMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "producer": {
+          "enum": [
+            "simulator",
+            "gateway",
+            "writer",
+            "api",
+            "control",
+            "inference",
+            "jobs-worker"
+          ],
+          "title": "Producer",
+          "type": "string"
+        },
+        "correlation_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correlation Id"
+        },
+        "causation_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Causation Id"
+        },
+        "boot_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Boot Id",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Sequence",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "producer",
+        "boot_id",
+        "sequence"
+      ],
+      "title": "DeviceMetadata",
+      "type": "object"
+    },
+    "ExpiredAckData": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "status": {
+          "const": "expired",
+          "title": "Status",
+          "type": "string"
+        },
+        "observed": {
+          "$ref": "#/$defs/Actuators"
+        },
+        "reason": {
+          "const": "expired",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "revision",
+        "status",
+        "observed",
+        "reason"
+      ],
+      "title": "ExpiredAckData",
+      "type": "object"
+    },
+    "ExpiredAckEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "command.expired",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/ExpiredAckData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "ExpiredAckEvent",
+      "type": "object"
+    },
+    "GenerateData": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "dataset_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "records": {
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Records",
+          "type": "integer"
+        },
+        "equipment_count": {
+          "maximum": 1000,
+          "minimum": 3,
+          "title": "Equipment Count",
+          "type": "integer"
+        },
+        "chunk_size": {
+          "maximum": 100000,
+          "minimum": 128,
+          "title": "Chunk Size",
+          "type": "integer"
+        },
+        "scenarios": {
+          "items": {
+            "enum": [
+              "healthy",
+              "mechanical_wear",
+              "heat_transfer_loss"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Scenarios",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "noise_std": {
+          "minimum": 0,
+          "title": "Noise Std",
+          "type": "number"
+        },
+        "missing_fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Missing Fraction",
+          "type": "number"
+        },
+        "outlier_fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Outlier Fraction",
+          "type": "number"
+        }
+      },
+      "required": [
+        "job_id",
+        "dataset_id",
+        "seed",
+        "records",
+        "equipment_count",
+        "chunk_size",
+        "scenarios",
+        "noise_std",
+        "missing_fraction",
+        "outlier_fraction"
+      ],
+      "title": "GenerateData",
+      "type": "object"
+    },
+    "GenerateEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "dataset.generate.requested",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "system",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "title": "Device Id",
+          "type": "null"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "null"
+        },
+        "equipment_type": {
+          "title": "Equipment Type",
+          "type": "null"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/GenerateData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "GenerateEvent",
+      "type": "object"
+    },
+    "InsightData": {
+      "additionalProperties": false,
+      "properties": {
+        "source_event_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Source Event Id",
+          "type": "string"
+        },
+        "model_version": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Model Version",
+          "type": "string"
+        },
+        "feature_version": {
+          "const": "hvac-window-v1",
+          "title": "Feature Version",
+          "type": "string"
+        },
+        "status": {
+          "const": "valid",
+          "title": "Status",
+          "type": "string"
+        },
+        "rul_operating_hours": {
+          "minimum": 0,
+          "title": "Rul Operating Hours",
+          "type": "number"
+        },
+        "health_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Health Score"
+        }
+      },
+      "required": [
+        "source_event_id",
+        "model_version",
+        "feature_version",
+        "status",
+        "rul_operating_hours",
+        "health_score"
+      ],
+      "title": "InsightData",
+      "type": "object"
+    },
+    "InsightEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "insight.predicted",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/InsightData"
+            },
+            {
+              "$ref": "#/$defs/UnavailableInsightData"
+            }
+          ],
+          "title": "Data"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "InsightEvent",
+      "type": "object"
+    },
+    "Metadata": {
+      "additionalProperties": false,
+      "properties": {
+        "producer": {
+          "enum": [
+            "simulator",
+            "gateway",
+            "writer",
+            "api",
+            "control",
+            "inference",
+            "jobs-worker"
+          ],
+          "title": "Producer",
+          "type": "string"
+        },
+        "correlation_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correlation Id"
+        },
+        "causation_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Causation Id"
+        }
+      },
+      "required": [
+        "producer"
+      ],
+      "title": "Metadata",
+      "type": "object"
+    },
+    "ModelData": {
+      "additionalProperties": false,
+      "properties": {
+        "model_version": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Model Version",
+          "type": "string"
+        },
+        "feature_version": {
+          "const": "hvac-window-v1",
+          "title": "Feature Version",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_version",
+        "feature_version",
+        "sha256"
+      ],
+      "title": "ModelData",
+      "type": "object"
+    },
+    "ModelEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "model.activation.requested",
+            "model.activated"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "system",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "title": "Device Id",
+          "type": "null"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "null"
+        },
+        "equipment_type": {
+          "title": "Equipment Type",
+          "type": "null"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/ModelData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "ModelEvent",
+      "type": "object"
+    },
+    "ProgressData": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "dataset.generate",
+            "model.train"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "processed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Processed",
+          "type": "integer"
+        },
+        "total": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "job_id",
+        "kind",
+        "status",
+        "processed",
+        "total"
+      ],
+      "title": "ProgressData",
+      "type": "object"
+    },
+    "ProgressEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "job.progress",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "system",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "title": "Device Id",
+          "type": "null"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "null"
+        },
+        "equipment_type": {
+          "title": "Equipment Type",
+          "type": "null"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/ProgressData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "ProgressEvent",
+      "type": "object"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "properties": {
+        "missing_fields": {
+          "items": {
+            "enum": [
+              "current_a",
+              "compressor_case_temp_c",
+              "vibration_rms_mm_s",
+              "indoor_temp_c",
+              "outdoor_temp_c"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Missing Fields",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "missing_fields"
+      ],
+      "title": "Quality",
+      "type": "object"
+    },
+    "Readings": {
+      "additionalProperties": false,
+      "properties": {
+        "current_a": {
+          "anyOf": [
+            {
+              "maximum": 200,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Current A"
+        },
+        "compressor_case_temp_c": {
+          "anyOf": [
+            {
+              "maximum": 200,
+              "minimum": -50,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Compressor Case Temp C"
+        },
+        "vibration_rms_mm_s": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Vibration Rms Mm S"
+        },
+        "indoor_temp_c": {
+          "anyOf": [
+            {
+              "maximum": 80,
+              "minimum": -50,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Indoor Temp C"
+        },
+        "outdoor_temp_c": {
+          "anyOf": [
+            {
+              "maximum": 80,
+              "minimum": -50,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Outdoor Temp C"
+        },
+        "power_w": {
+          "anyOf": [
+            {
+              "maximum": 100000,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Power W"
+        }
+      },
+      "required": [
+        "current_a",
+        "compressor_case_temp_c",
+        "vibration_rms_mm_s",
+        "indoor_temp_c",
+        "outdoor_temp_c",
+        "power_w"
+      ],
+      "title": "Readings",
+      "type": "object"
+    },
+    "RejectedAckData": {
+      "additionalProperties": false,
+      "properties": {
+        "command_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Command Id",
+          "type": "string"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "status": {
+          "const": "rejected",
+          "title": "Status",
+          "type": "string"
+        },
+        "observed": {
+          "$ref": "#/$defs/Actuators"
+        },
+        "reason": {
+          "enum": [
+            "interlock",
+            "short_cycle",
+            "obsolete_revision",
+            "wrong_boot"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "revision",
+        "status",
+        "observed",
+        "reason"
+      ],
+      "title": "RejectedAckData",
+      "type": "object"
+    },
+    "RejectedAckEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "command.rejected",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/RejectedAckData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "RejectedAckEvent",
+      "type": "object"
+    },
+    "StateData": {
+      "additionalProperties": false,
+      "properties": {
+        "actuators": {
+          "$ref": "#/$defs/Actuators"
+        },
+        "mode": {
+          "enum": [
+            "manual",
+            "auto"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actuators",
+        "mode"
+      ],
+      "title": "StateData",
+      "type": "object"
+    },
+    "StateEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "device.state",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/DeviceMetadata"
+        },
+        "data": {
+          "$ref": "#/$defs/StateData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "StateEvent",
+      "type": "object"
+    },
+    "TelemetryData": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "not": {
+                      "contains": {
+                        "const": "current_a"
+                      }
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "if": {
+            "properties": {
+              "readings": {
+                "properties": {
+                  "current_a": {
+                    "type": "null"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "contains": {
+                      "const": "current_a"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "not": {
+                      "contains": {
+                        "const": "compressor_case_temp_c"
+                      }
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "if": {
+            "properties": {
+              "readings": {
+                "properties": {
+                  "compressor_case_temp_c": {
+                    "type": "null"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "contains": {
+                      "const": "compressor_case_temp_c"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "not": {
+                      "contains": {
+                        "const": "vibration_rms_mm_s"
+                      }
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "if": {
+            "properties": {
+              "readings": {
+                "properties": {
+                  "vibration_rms_mm_s": {
+                    "type": "null"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "contains": {
+                      "const": "vibration_rms_mm_s"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "not": {
+                      "contains": {
+                        "const": "indoor_temp_c"
+                      }
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "if": {
+            "properties": {
+              "readings": {
+                "properties": {
+                  "indoor_temp_c": {
+                    "type": "null"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "contains": {
+                      "const": "indoor_temp_c"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "else": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "not": {
+                      "contains": {
+                        "const": "outdoor_temp_c"
+                      }
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "if": {
+            "properties": {
+              "readings": {
+                "properties": {
+                  "outdoor_temp_c": {
+                    "type": "null"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "quality": {
+                "properties": {
+                  "missing_fields": {
+                    "contains": {
+                      "const": "outdoor_temp_c"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ],
+      "properties": {
+        "readings": {
+          "$ref": "#/$defs/Readings"
+        },
+        "actuators": {
+          "$ref": "#/$defs/Actuators"
+        },
+        "quality": {
+          "$ref": "#/$defs/Quality"
+        }
+      },
+      "required": [
+        "readings",
+        "actuators",
+        "quality"
+      ],
+      "title": "TelemetryData",
+      "type": "object"
+    },
+    "TelemetryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "telemetry.sampled",
+            "telemetry.persisted"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "live",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Device Id",
+          "type": "string"
+        },
+        "zone": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Zone",
+          "type": "string"
+        },
+        "equipment_type": {
+          "const": "ac_split_onoff",
+          "title": "Equipment Type",
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/DeviceMetadata"
+        },
+        "data": {
+          "$ref": "#/$defs/TelemetryData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "TelemetryEvent",
+      "type": "object"
+    },
+    "TrainData": {
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Job Id",
+          "type": "string"
+        },
+        "dataset_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "seed": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "feature_version": {
+          "const": "hvac-window-v1",
+          "title": "Feature Version",
+          "type": "string"
+        },
+        "algorithms": {
+          "items": {
+            "enum": [
+              "ridge",
+              "hist_gradient_boosting"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Algorithms",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "job_id",
+        "dataset_id",
+        "seed",
+        "feature_version",
+        "algorithms"
+      ],
+      "title": "TrainData",
+      "type": "object"
+    },
+    "TrainEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^[1-9]\\d{3}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{1,6})?Z$",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "type": {
+          "const": "model.train.requested",
+          "title": "Type",
+          "type": "string"
+        },
+        "stream": {
+          "const": "system",
+          "title": "Stream",
+          "type": "string"
+        },
+        "device_id": {
+          "title": "Device Id",
+          "type": "null"
+        },
+        "zone": {
+          "title": "Zone",
+          "type": "null"
+        },
+        "equipment_type": {
+          "title": "Equipment Type",
+          "type": "null"
+        },
+        "metadata": {
+          "$ref": "#/$defs/Metadata"
+        },
+        "data": {
+          "$ref": "#/$defs/TrainData"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "timestamp",
+        "type",
+        "stream",
+        "device_id",
+        "zone",
+        "equipment_type",
+        "metadata",
+        "data"
+      ],
+      "title": "TrainEvent",
+      "type": "object"
+    },
+    "UnavailableInsightData": {
+      "additionalProperties": false,
+      "properties": {
+        "source_event_id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Source Event Id",
+          "type": "string"
+        },
+        "model_version": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Model Version",
+          "type": "string"
+        },
+        "feature_version": {
+          "const": "hvac-window-v1",
+          "title": "Feature Version",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "warming_up",
+            "insufficient_data",
+            "out_of_domain",
+            "inactive"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "rul_operating_hours": {
+          "title": "Rul Operating Hours",
+          "type": "null"
+        },
+        "health_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Health Score"
+        }
+      },
+      "required": [
+        "source_event_id",
+        "model_version",
+        "feature_version",
+        "status",
+        "rul_operating_hours",
+        "health_score"
+      ],
+      "title": "UnavailableInsightData",
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/TelemetryEvent"
+    },
+    {
+      "$ref": "#/$defs/StateEvent"
+    },
+    {
+      "$ref": "#/$defs/AvailabilityEvent"
+    },
+    {
+      "$ref": "#/$defs/CommandEvent"
+    },
+    {
+      "$ref": "#/$defs/AckEvent"
+    },
+    {
+      "$ref": "#/$defs/RejectedAckEvent"
+    },
+    {
+      "$ref": "#/$defs/ExpiredAckEvent"
+    },
+    {
+      "$ref": "#/$defs/InsightEvent"
+    },
+    {
+      "$ref": "#/$defs/AlertEvent"
+    },
+    {
+      "$ref": "#/$defs/GenerateEvent"
+    },
+    {
+      "$ref": "#/$defs/TrainEvent"
+    },
+    {
+      "$ref": "#/$defs/ProgressEvent"
+    },
+    {
+      "$ref": "#/$defs/ModelEvent"
+    }
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:smartfan:envelope:v1",
+  "title": "EventV1"
+}

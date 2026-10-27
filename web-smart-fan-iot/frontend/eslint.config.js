@@ -7,6 +7,7 @@ import prettier from 'eslint-config-prettier';
 export default tseslint.config(
   { ignores: ['dist/**', 'coverage/**', 'node_modules/**'] },
   js.configs.recommended,
+  { files: ['scripts/**/*.mjs'], languageOptions: { globals: globals.node } },
   ...tseslint.configs.recommended,
   ...vue.configs['flat/essential'],
   {

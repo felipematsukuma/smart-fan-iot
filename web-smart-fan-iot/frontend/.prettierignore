@@ -2,3 +2,5 @@ node_modules
 dist
 coverage
 package-lock.json
+src/lib/contracts-v1.schema.json
+src/lib/contracts-v1.fixtures.json
