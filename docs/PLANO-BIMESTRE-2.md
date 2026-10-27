@@ -2,9 +2,11 @@
 
 Data: 26/10/2026. Referência do repositório: branch `feature/dashboard-energy-v2`, commit `adb9815`.
 
-**Status:** conteúdo aprovado no chat e gravação deste documento autorizada. Esta aprovação **não autoriza implementar os módulos**. Não há cronograma, divisão de integrantes ou backlog de issues neste plano.
+**Status:** plano aprovado e implementação posteriormente autorizada no chat. O M00 foi implementado como núcleo compartilhado; os módulos seguintes continuam pendentes. Não há cronograma, divisão de integrantes ou backlog de issues neste plano.
 
-**Forma de trabalho:** primeiro planejar; executar mudanças somente quando autorizadas. Até segunda ordem, cada bloco de operação tem limite de 15 minutos, ao fim do qual o agente deve parar e pedir autorização para continuar. Os ADRs permanecem incorporados a este documento.
+**Forma de trabalho:** seguir o plano aprovado, validar mudanças sempre que possível e manter commits separados. O limite de blocos de 15 minutos foi retirado explicitamente pelo usuário. Os ADRs permanecem incorporados a este documento.
+
+**Entrega M00:** [núcleo compartilhado](../packages/smartfan_common/README.md) com contratos Pydantic, JSON Schema, tipos/validação TypeScript, fixtures comuns, topologia declarativa e extração causal de 18 features. Validação: 65 testes do pacote Python, 154 testes frontend, Ruff, mypy, ESLint, Prettier, geração sem divergências, compilação Vue/TypeScript e build Vite aprovados; `npm audit` sem vulnerabilidades reportadas. Os 153 testes do backend existente também passaram. Esta entrega não migra o fluxo operacional nem sobe RabbitMQ ou os serviços dos módulos seguintes.
 
 **Decisões confirmadas pelo usuário:** ar-condicionado split convencional liga/desliga como referência; mesma máquina para execução/apresentação; avaliação técnica da unidade de RUL; ADRs no próprio plano.
 

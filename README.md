@@ -18,6 +18,8 @@ flowchart LR
 
 Node 24 serve apenas às ferramentas e ao servidor de desenvolvimento do frontend. O backend é Python 3.11. PostgreSQL guarda configuração; as leituras históricas ficam no InfluxDB.
 
+O planejamento aprovado para o segundo bimestre está em [PLANO-BIMESTRE-2.md](./docs/PLANO-BIMESTRE-2.md). O [núcleo compartilhado M00](./packages/smartfan_common/README.md) já disponibiliza contratos e features para essa evolução; o fluxo operacional descrito abaixo permanece o do primeiro bimestre.
+
 ## Executar
 
 Pré-requisitos: Docker Desktop iniciado, VS Code com PlatformIO e Wokwi. Node 24 e Python são necessários apenas para desenvolvimento fora dos containers.
