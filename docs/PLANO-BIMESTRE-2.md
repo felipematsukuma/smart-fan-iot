@@ -4,6 +4,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 **Estado:** conteúdo das cinco etapas e oito ADRs consolidado documentalmente; revisão final do usuário pendente. A implementação AIoT, os ensaios e o aceite operacional não foram realizados por esta consolidação. O próximo trabalho depende de pedido explícito de módulo; push/PR continuam não autorizados.
 
+**Revisão técnica final:** os três refinamentos aprovados foram incorporados: ativação apenas de modelo aprovado e selecionado no registro; lease renovável com fencing e recuperação segura; UTC real no live, acelerando apenas a degradação do cenário. Especificações em [arquitetura](./plano/03-arquitetura.md), critérios em [módulos](./plano/04-modulos.md) e [aceite](./plano/05-riscos-aceite.md). Nenhum desses controles foi implementado por esta revisão documental.
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.
