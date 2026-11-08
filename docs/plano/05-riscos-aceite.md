@@ -153,10 +153,10 @@ Comandos dependentes da stack futura são ações planejadas. Executar em projet
 | F07 | Perder ACK de comando/repetir intenção/reiniciar simulador | Uma aplicação; ACK idempotente; boot/revisão/expiry impedem replay antigo; estado real retorna nas leituras |
 | F08 | Publicar inválido dentro do tamanho permitido e falha permanente | Original preservado com hash/motivo e DLQ; inspeção não drena fila; replay é auditado e valida de novo |
 | F09 | Esgotar quota de spool/fila/outbox em teste controlado | Alerta em 70/90%, pausa/rejeição de novos aceitos, sem drop-head nem apagar única cópia pendente |
-| F10 | Reiniciar inferência ou ativar modelo com hash/schema errado | Modelo antigo permanece; warmup/abstenção explícitos; janela recuperada apenas do passado; versão active não confunde desired |
+| F10 | Reiniciar inferência; enviar modelo com hash/schema errado, sem aprovação ou com revisão de ativação antiga | Versão não aprovada/obsoleta nunca ativa; carregar só a seleção desired aprovada e revalidada sob bloqueio; warmup/abstenção explícitos; active reflete o processo real e é reconciliado após crash |
 | F11 | Desligar simulador, manter WS e injetar backlog antigo | Cumprir B02; replay não anima nem limpa alerta; retained state não renova presença |
-| F12 | Encerrar job entre blocos e repetir mensagem de job | Parcial não vira dataset/modelo válido; lease expira/retoma com estado; completed só após manifesto/hash; sem promoção duplicada |
-| F13 | Pedir chat enquanto job pesado usa lease | Resposta de indisponibilidade/queue conforme política, sem carregar modelo em paralelo; cancelamento libera recurso |
+| F12 | Encerrar job entre blocos, repetir mensagem e tentar concluir/liberar com fencing token antigo | Parcial não vira dataset/modelo válido; geração antiga não conclui/promove/libera recurso novo; completed só após manifesto/hash e lease vigente; sem promoção duplicada |
+| F13 | Pedir chat durante job; interromper renovação PG e congelar supervisor antigo | Sem sobreposição pesada; TTL 30 s/renovação 5 s e parada após 20 s sem renovar são ensaiados; recurso recovering não ganha novo dono sem prova de parada/liberação de memória; incerteza exige recuperação explícita |
 | F14 | Restaurar conjunto PG/Influx/artefatos em volumes isolados | Cumprir NF11; schema compatível, hashes e contagens reconciliados; pendências retomadas sem replay inseguro de comandos |
 
 Cada registro de teste deve explicitar o ponto de corte. Restart aleatório sem prova de atingir a janela crítica não comprova recuperação daquela janela. Convergência de contagens sozinha não prova identidade: comparar IDs/hashes e efeitos por comando.
@@ -263,7 +263,9 @@ Esta seção fixa a leitura conjunta sem reescrever documentos históricos. Refi
 | Permissão do journal | M02/M04/M05 devem prover view/grant mínimo de leitura do carimbo por event_id ao writer, sem abrir acesso geral a payloads/segredos de outro serviço |
 | AMQP | Bindings-alvo da etapa 3 prevalecem sobre topologia declarativa M00 v1. M00/M01 precisam testar que cada evento tem consumidor/rota prevista antes de ativar produtor |
 | Fluxo de IA | Persisted alimenta inferência; frame com telemetria e previsão/status alimenta UI. Sem modelo, não inventar RUL; não contornar inferência com ligação direta ao 3D |
-| Tempo/frescor | Relógio sintético de laboratório fica em artefato; clock live acelerado é explícito e observado no gateway. Replay/seq antiga não vira dado atual por novo horário de recebimento |
+| Tempo/frescor | Relógio sintético fica só nos artefatos lab. Live exige UTC real e clock_scale=1; acelerar apenas progressão de degradação, nunca timestamps/janelas/expiry. Replay/seq antiga não vira dado atual por novo horário de recebimento |
+| Ativação de modelo | Evento model.available só provoca consulta; versão precisa estar aprovada e corresponder a desired_version/activation_revision vigentes. Revalidar sob bloqueio antes da troca; active reflete processo real |
+| Lease de recurso | TTL/renovação e fencing impedem efeitos de dono antigo; expiração entra em recovering. Não iniciar novo trabalho até comprovar parada anterior; token sozinho não libera CPU/RAM |
 | Limites de jobs | Configuração-alvo permite até 5 M vetores inicialmente; M00 v1 tem limite diferente, portanto UI/backend v2 precisam concordar. Milhão é vetor equipamento/instante, não field |
 | Sensores adicionais | Perfil mínimo seleciona cinco canais primários; sensores extras do lab não mudam dimensão do vetor live/modelo por acidente |
 | Censura e targets | Health de verdade no lab não é previsão; RUL desconhecida não recebe falha fictícia. Modelos atuais apenas de classificação não satisfariam dois regressores |
@@ -290,6 +292,8 @@ Esta seção fixa a leitura conjunta sem reescrever documentos históricos. Refi
 ### 9.2 Verificações documentais desta etapa
 
 [V] Foram conferidos os cinco capítulos, índice e oito ADRs: destinos e âncoras dos links locais, referências de linha dentro dos arquivos, fences Markdown balanceados e leitura dos blocos JSON. [V] Os oito ADRs têm até 20 linhas; o catálogo contém M00–M18, com grafo de dependências sem ciclo na verificação da etapa 4. [V] Este documento contém T01–T20, NF01–NF15, F01–F14, S01–S11 e 13 passos de demonstração cuja soma de budgets é 600 s. [V] O diff da consolidação contra o código-base foi limitado à documentação; a implementação não foi alterada. [N] Mermaid não foi renderizado graficamente nesta revisão e os testes operacionais planejados não foram executados. Verificação de padrões de segredos nos novos documentos não equivale a auditoria dedicada completa.
+
+Revisão final autorizada nesta sessão: aprovação/seleção vigente antes de ativar modelo; renovação/perda de lease com fencing e recuperação sem sobreposição; relógio live em tempo real com aceleração apenas da degradação. Os três refinamentos foram incorporados às especificações e aos testes planejados; sua implementação e validação operacional permanecem [N].
 
 ## 10. Fechamento documental e próximos pedidos
 
