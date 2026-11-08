@@ -16,12 +16,12 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 | Etapa | Documento | Branch | Estado |
 |---|---|---|---|
 | 1 — Inventário | [01-inventario.md](./plano/01-inventario.md) | `docs/plano-etapa-1-inventario` | Integrado à main local em `8b00596`; aceite operacional pendente |
-| 2 — Lacunas | [02-lacunas.md](./plano/02-lacunas.md) | `docs/plano-etapa-2-lacunas` | Redigido conforme índice aprovado; merge local ao concluir |
-| 3 — Arquitetura e ADRs | `docs/plano/03-arquitetura.md` e `docs/adr/NNN-*.md` (a criar) | `docs/plano-etapa-3-arquitetura` | Pendente de aprovação |
+| 2 — Lacunas | [02-lacunas.md](./plano/02-lacunas.md) | `docs/plano-etapa-2-lacunas` | Integrado à main local em `d3d9230`; aceite operacional pendente |
+| 3 — Arquitetura e ADRs | [03-arquitetura.md](./plano/03-arquitetura.md) e [oito ADRs](./plano/03-arquitetura.md#14-adrs-pendências-e-limite-desta-entrega) | `docs/plano-etapa-3-arquitetura` | Redigido conforme índice aprovado; merge local ao concluir |
 | 4 — Catálogo de módulos | `docs/plano/04-modulos.md` (a criar) | `docs/plano-etapa-4-modulos` | Pendente de aprovação |
 | 5 — Riscos e aceite | `docs/plano/05-riscos-aceite.md` (a criar) | `docs/plano-etapa-5-riscos-aceite` | Pendente de aprovação |
 
-Os documentos ainda inexistentes são indicados sem links para evitar referências quebradas. Conforme atualização do usuário nesta sessão, cada alteração relevante terá branch própria, commits separados e merge local na main ao concluir. Push e PR continuam sujeitos a autorização explícita. A etapa 2 parte da main local que contém a etapa 1; origin/main ainda não recebeu esses commits, pois não houve push autorizado. Se o remoto divergir, será necessário resolver a base sem reescrever histórico. Não haverá empilhamento silencioso.
+Os documentos ainda inexistentes são indicados sem links para evitar referências quebradas. Conforme atualização do usuário nesta sessão, cada alteração relevante terá branch própria, commits separados e merge local na main ao concluir. Push e PR continuam sujeitos a autorização explícita. Cada etapa parte da main local com os merges anteriores; origin/main ainda não recebeu esses commits, pois não houve push autorizado. Se o remoto divergir, será necessário resolver a base sem reescrever histórico. Não haverá empilhamento silencioso.
 
 ## História preservada
 
