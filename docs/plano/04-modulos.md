@@ -75,7 +75,7 @@ Comandos e caminhos futuros nesta seção são **interfaces propostas**, não ar
 | Requisitos | 4, 10, 11, 19; base de recuperação dos demais fluxos |
 | Dependências/stubs | M00; M01 para integração PG/AMQP. Banco/clock fakes liberam testes unitários, não aceite de commit/ACK |
 | Arquivos estimados | Subpacote `smartfan_common/reliability/` com dependências opcionais de transporte e imports separados das features; migrações comuns; testes de integração |
-| Aceite | Injetar queda antes/depois de commit e confirm: evento aceito reaparece, efeito único, retry conserva ID/hash, ID igual com payload diferente é recusado; PG offline pausa ACK; quotas não descartam pendências |
+| Aceite | Injetar queda antes/depois de commit e confirm: evento aceito reaparece, efeito único, retry conserva ID/hash, ID igual com payload diferente é recusado; PG offline pausa ACK; quotas não descartam pendências; lease perdido bloqueia efeitos e novo dono até confirmar parada do antigo |
 | Testes | Unitário de backoff/lease/quota; contrato de falha; integração real de crash windows, concorrência, DLQ e reconciliação por IDs |
 | Risco/mitigação | Biblioteca virar framework amplo: apenas primitivas necessárias, sem copiar loops entre serviços. D0 obrigatório |
 
@@ -207,7 +207,7 @@ Comandos e caminhos futuros nesta seção são **interfaces propostas**, não ar
 | Requisitos | 3, 10, 16, 17 |
 | Dependências/stubs | M00–M02/M05/M09/M12; modelo fixture assinado pelo teste isola reload, mas aceite exige dois modelos treinados reais. UI pode vir depois |
 | Arquivos estimados | `services/inference/`, extensão preditiva do controle, model activation, tests e README |
-| Aceite | Telemetria persistida produz frame com origem/versão; ausência de modelo emite status, não RUL inventada; modelo novo entra sem restart; hash incompatível mantém antigo; 3 previsões ativam e 10 recuperadas limpam alerta; dado stale não limpa nem anima |
+| Aceite | Telemetria persistida produz frame com origem/versão; ausência de modelo emite status, não RUL inventada; modelo aprovado/desired entra sem restart; evento sem aprovação ou de revisão antiga não ativa; hash incompatível mantém antigo; 3 previsões ativam e 10 recuperadas limpam alerta; dado stale não limpa nem anima |
 | Testes | Unitário causalidade/ordem/histerese; contrato; integração Influx/AMQP/reload/crash; teste de reconciliação de resultados por evento-fonte |
 | Risco/mitigação | Previsão antiga com aparência atual: carimbar evento-fonte/idade/modelo; reconstruir só passado e abster-se no warmup. D0 obrigatório |
 
@@ -336,7 +336,7 @@ Todos os exemplos são didáticos e estáticos; não são leituras/credenciais r
 | Erro HTTP | M06 | Exemplo problem+json abaixo; status HTTP concorda com corpo, sem stack/segredo, correlation_id presente |
 | Comando/ACK | M00/M04/M09 | command_id igual ao ID da intenção; ACK aponta esse ID e revisão; alvo boot/expiry; repetições não repetem efeito físico; exemplo completo na arquitetura |
 | Eventos WS | M00/M07/M13 | Frame abaixo; source_event_id é ID da amostra bruta, causation_id aponta o evento imediatamente anterior; consumidor filtra autorização/ordem/frescor no servidor |
-| Tempo | M00/M03/M04 | Amostra timestamp `2026-11-08T22:00:00Z`, observed_at igual no exemplo, clock_scale=1; live acelerado mantém observação real do gateway e unidade simulada explícita |
+| Tempo | M00/M03/M04 | Amostra timestamp `2026-11-08T22:00:00Z`, observed_at igual no exemplo, clock_scale=1 obrigatório no live; acelerar somente degradação, sem alterar timestamps, janelas ou expiração |
 | Features/modelos | M00/M12/M13 | feature_version `hvac-window-v1` com ordem explícita; `rul_calendar_hours: 24.5` só em schema2.0; recusar artefato com `rul_operating_hours` ou features incompatíveis |
 | Jobs/manifesto | M00/M11/M12 | `job_id`/`dataset_id` UUID, seed 42, 30 equipamentos, 1 M vetores, arquivo/hash completos; job só completed após validação; leitura de referência a config imutável no PG |
 
