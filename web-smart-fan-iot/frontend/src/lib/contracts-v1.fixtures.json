@@ -1,0 +1,1552 @@
+[
+  {
+    "name": "valid_telemetry",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "persisted",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.persisted",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "state",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "device.state",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "mode": "auto"
+      }
+    }
+  },
+  {
+    "name": "availability",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "device.availability",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "status": "offline"
+      }
+    }
+  },
+  {
+    "name": "command",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "command.requested",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "target_boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "revision": 1,
+        "desired": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "mode": "manual",
+        "expires_at": "2026-10-26T15:00:10Z"
+      }
+    }
+  },
+  {
+    "name": "ack",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "command.applied",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "command_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "revision": 1,
+        "status": "applied",
+        "observed": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "reason": "ok"
+      }
+    }
+  },
+  {
+    "name": "insight",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "insight.predicted",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "source_event_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "model_version": "ridge_1",
+        "feature_version": "hvac-window-v1",
+        "status": "valid",
+        "rul_operating_hours": 20,
+        "health_score": 80
+      }
+    }
+  },
+  {
+    "name": "alert",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "alert.raised",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "alert_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "rule_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "severity": "warning",
+        "reason_code": "high_vibration"
+      }
+    }
+  },
+  {
+    "name": "generate",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "dataset.generate.requested",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "job_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "dataset_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "seed": 42,
+        "records": 1000000,
+        "equipment_count": 40,
+        "chunk_size": 10000,
+        "scenarios": [
+          "healthy",
+          "mechanical_wear"
+        ],
+        "noise_std": 0.1,
+        "missing_fraction": 0.01,
+        "outlier_fraction": 0.01
+      }
+    }
+  },
+  {
+    "name": "train",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "model.train.requested",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "job_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "dataset_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "seed": 42,
+        "feature_version": "hvac-window-v1",
+        "algorithms": [
+          "ridge",
+          "hist_gradient_boosting"
+        ]
+      }
+    }
+  },
+  {
+    "name": "progress",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "job.progress",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "job_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "kind": "model.train",
+        "status": "running",
+        "processed": 0,
+        "total": 100
+      }
+    }
+  },
+  {
+    "name": "model",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "model.activated",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "model_version": "ridge_1",
+        "feature_version": "hvac-window-v1",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  },
+  {
+    "name": "ack_rejected",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "command.rejected",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "command_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "revision": 1,
+        "status": "rejected",
+        "observed": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "reason": "interlock"
+      }
+    }
+  },
+  {
+    "name": "ack_expired",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "command.expired",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "command_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "revision": 1,
+        "status": "expired",
+        "observed": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "reason": "expired"
+      }
+    }
+  },
+  {
+    "name": "alert_cleared",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "alert.cleared",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "alert_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "rule_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "severity": "warning",
+        "reason_code": "high_vibration"
+      }
+    }
+  },
+  {
+    "name": "alert_acknowledged",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "alert.acknowledged",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "alert_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "rule_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "severity": "warning",
+        "reason_code": "high_vibration"
+      }
+    }
+  },
+  {
+    "name": "model_activation",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "model.activation.requested",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "model_version": "ridge_1",
+        "feature_version": "hvac-window-v1",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    }
+  },
+  {
+    "name": "warming_up",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "insight.predicted",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "source_event_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "model_version": "ridge_1",
+        "feature_version": "hvac-window-v1",
+        "status": "warming_up",
+        "rul_operating_hours": null,
+        "health_score": 80
+      }
+    }
+  },
+  {
+    "name": "unknown_version",
+    "valid": false,
+    "value": {
+      "schema_version": "2.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "unknown_event",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "execute.shell",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "topic_injection",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac.01/#",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "numeric_identity",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": 42,
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "naive_time",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "year_zero",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "0000-01-01T00:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "leap_second",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-12-31T23:59:60Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "invalid_calendar",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-02-30T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "invalid_uuid",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "not-a-uuid",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "negative_sequence",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": -1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "boolean_sequence",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": true
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "unsafe_integer",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 9007199254740992
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "negative_current",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": -1,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "string_current",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": "5.2",
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "boolean_current",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": true,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "string_actuator",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": "false",
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "truth_in_readings",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030,
+          "rul_true": 10
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "truth_in_metadata",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1,
+        "damage": 0.9
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "truth_in_data",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        },
+        "labels": {
+          "rul": 10
+        }
+      }
+    }
+  },
+  {
+    "name": "truth_at_root",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      },
+      "ground_truth": 10
+    }
+  },
+  {
+    "name": "lab_in_live_contract",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "lab",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "missing_marker_without_null",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": 5.2,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": [
+            "current_a"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "null_without_missing_marker",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": null,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
+  },
+  {
+    "name": "missing_is_not_zero",
+    "valid": true,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": null,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": [
+            "current_a"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "duplicate_missing_marker",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "telemetry.sampled",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "simulator",
+        "boot_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "sequence": 1
+      },
+      "data": {
+        "readings": {
+          "current_a": null,
+          "compressor_case_temp_c": 67,
+          "vibration_rms_mm_s": 2.1,
+          "indoor_temp_c": 25.3,
+          "outdoor_temp_c": 32,
+          "power_w": 1030
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": [
+            "current_a",
+            "current_a"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "name": "valid_prediction_requires_rul",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "insight.predicted",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "source_event_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "model_version": "ridge_1",
+        "feature_version": "hvac-window-v1",
+        "status": "valid",
+        "rul_operating_hours": null,
+        "health_score": 80
+      }
+    }
+  },
+  {
+    "name": "unavailable_prediction_has_no_rul",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "insight.predicted",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "source_event_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "model_version": "ridge_1",
+        "feature_version": "hvac-window-v1",
+        "status": "warming_up",
+        "rul_operating_hours": 15,
+        "health_score": 80
+      }
+    }
+  },
+  {
+    "name": "applied_cannot_be_rejected",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "command.applied",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "command_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "revision": 1,
+        "status": "rejected",
+        "observed": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "reason": "ok"
+      }
+    }
+  },
+  {
+    "name": "applied_cannot_have_interlock_reason",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "command.applied",
+      "stream": "live",
+      "device_id": "ac_01",
+      "zone": "lab_a",
+      "equipment_type": "ac_split_onoff",
+      "metadata": {
+        "producer": "api"
+      },
+      "data": {
+        "command_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "revision": 1,
+        "status": "applied",
+        "observed": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "reason": "interlock"
+      }
+    }
+  },
+  {
+    "name": "distinct_algorithms_required",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "model.train.requested",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "job_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "dataset_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "seed": 42,
+        "feature_version": "hvac-window-v1",
+        "algorithms": [
+          "ridge",
+          "ridge"
+        ]
+      }
+    }
+  },
+  {
+    "name": "distinct_scenarios_required",
+    "valid": false,
+    "value": {
+      "schema_version": "1.0",
+      "id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+      "timestamp": "2026-10-26T15:00:00Z",
+      "type": "dataset.generate.requested",
+      "stream": "system",
+      "device_id": null,
+      "zone": null,
+      "equipment_type": null,
+      "metadata": {
+        "producer": "jobs-worker"
+      },
+      "data": {
+        "job_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "dataset_id": "b7b4d8ec-8b91-4a0a-9d51-56bf65fa1448",
+        "seed": 42,
+        "records": 1000000,
+        "equipment_count": 40,
+        "chunk_size": 10000,
+        "scenarios": [
+          "healthy",
+          "healthy"
+        ],
+        "noise_std": 0.1,
+        "missing_fraction": 0.01,
+        "outlier_fraction": 0.01
+      }
+    }
+  }
+]

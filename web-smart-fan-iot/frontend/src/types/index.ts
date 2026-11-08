@@ -9,6 +9,7 @@ export interface Device {
 }
 
 export interface TelemetryData {
+  persisted?: boolean;
   device_id: string;
   is_on: boolean;
   voltage_rms: number;
@@ -25,7 +26,17 @@ export interface MetricPoint {
   power_w: number;
 }
 
+export interface SeriesSegment {
+  kind: 'active' | 'off' | 'no-data';
+  from: string;
+  to: string;
+}
+
 export interface MetricsSummary {
+  coverage?: number;
+  covered_seconds?: number;
+  max_power_w?: number;
+  segments?: SeriesSegment[];
   device_id: string;
   period_start?: string;
   period_end?: string;

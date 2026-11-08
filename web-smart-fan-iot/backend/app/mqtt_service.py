@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import paho.mqtt.client as mqtt
@@ -9,9 +10,12 @@ from influxdb_client import Point
 
 from app.config import settings
 from app.database import SessionLocal, write_api
+from app.io_boundary import BoundedIO
 from app.models import Device
+from app.schemas import DeviceState, TelemetryPayload
 
 logger = logging.getLogger("MQTT_SERVICE")
+telemetry_io = BoundedIO(workers=1, timeout_seconds=2)
 
 
 class MQTTManager:
@@ -25,6 +29,9 @@ class MQTTManager:
         self.loop: asyncio.AbstractEventLoop | None = None
         self._connected = False
         self._started = False
+        # Último `is_on` conhecido por dispositivo, para não gravar no Postgres
+        # a cada mensagem de telemetria (que chega várias vezes por segundo).
+        self._last_is_on: dict[str, bool] = {}
 
     @property
     def is_connected(self) -> bool:
@@ -53,18 +60,24 @@ class MQTTManager:
 
     def on_message(self, client, userdata, msg) -> None:
         try:
+            if len(msg.payload) > 2048:
+                raise ValueError("payload MQTT exceeds 2048 bytes")
             payload = json.loads(msg.payload.decode("utf-8"))
             if not isinstance(payload, dict):
                 raise ValueError("payload MQTT deve ser um objeto JSON")
 
             topic_parts = msg.topic.split("/")
-            topic_device_id = topic_parts[1] if len(topic_parts) >= 3 else None
+            topic_device_id = (
+                topic_parts[1] if len(topic_parts) == 3 and topic_parts[0] == "devices" else None
+            )
             payload_device_id = payload.get("device_id")
 
-            if not topic_device_id or (
-                payload_device_id and payload_device_id != topic_device_id
-            ):
+            if not topic_device_id or (payload_device_id and payload_device_id != topic_device_id):
                 raise ValueError(f"device_id incoerente no tópico {msg.topic}")
+
+            payload["device_id"] = topic_device_id
+            schema = TelemetryPayload if topic_parts[-1] == "telemetry" else DeviceState
+            payload = schema.model_validate(payload).model_dump(exclude_none=True)
 
             if msg.topic.endswith("/telemetry"):
                 self._handle_telemetry(topic_device_id, payload)
@@ -87,6 +100,7 @@ class MQTTManager:
 
         point = (
             Point("electrical_measurement")
+            .time(datetime.now(timezone.utc))
             .tag("device_id", device_id)
             .field("is_on", int(is_on))
             .field("current_a", current_a)
@@ -94,18 +108,56 @@ class MQTTManager:
             .field("voltage_rms", voltage_rms)
         )
 
+        if "device_epoch_s" in payload:
+            point.field("device_epoch_s", payload["device_epoch_s"])
+
+        persisted = True
         try:
-            write_api.write(
-                bucket=settings.INFLUXDB_BUCKET,
-                org=settings.INFLUXDB_ORG,
-                record=point,
+            telemetry_io.call(
+                lambda: write_api.write(
+                    bucket=settings.INFLUXDB_BUCKET, org=settings.INFLUXDB_ORG, record=point
+                )
             )
         except Exception:
             # A visualização em tempo real não deve depender da disponibilidade
             # do InfluxDB. A falha fica registrada e a telemetria segue via WS.
+            persisted = False
             logger.exception("Falha ao gravar telemetria de %s no InfluxDB", device_id)
 
-        self._broadcast(payload, event="telemetry")
+        self._broadcast({**payload, "persisted": persisted}, event="telemetry")
+        # O estado real do relé chega em toda telemetria. Sincronizar aqui evita
+        # que o Postgres conserve um `is_on` obsoleto: o agendador de desligamento
+        # automático decide com base nesse campo, e um valor velho pode desligar
+        # (ou deixar ligado) um ventilador que não está no estado registrado.
+        self._sync_is_on(device_id, is_on)
+
+    def _sync_is_on(self, device_id: str, is_on: bool) -> None:
+        """Persiste `is_on` apenas quando o valor realmente muda."""
+        cached = self._last_is_on.get(device_id)
+        if cached is not None and cached == is_on:
+            return
+        self.set_device_is_on(device_id, is_on)
+
+    def set_device_is_on(self, device_id: str, is_on: bool) -> None:
+        """Única porta de escrita de `is_on`.
+
+        Atualiza o banco e o cache local juntos. Passar por aqui é obrigatório:
+        se um escritor gravasse só o banco, o cache ficaria divergente e a
+        sincronização por telemetria passaria a ignorar o valor novo — voltando
+        a persistir um estado obsoleto, que é a origem do desligamento incoerente.
+        """
+        db = SessionLocal()
+        try:
+            device = db.query(Device).filter(Device.device_id == device_id).first()
+            if device is not None and device.is_on != is_on:
+                device.is_on = is_on
+                db.commit()
+            self._last_is_on[device_id] = is_on
+        except Exception:
+            db.rollback()
+            logger.exception("Falha ao sincronizar is_on de %s", device_id)
+        finally:
+            db.close()
 
     def _sync_device(self, device_id: str, payload: dict[str, Any]) -> None:
         db = SessionLocal()
@@ -123,6 +175,8 @@ class MQTTManager:
                 device.auto_off_time = str(payload["shutdown_time"])
 
             db.commit()
+            if "is_on" in payload:
+                self._last_is_on[device_id] = payload["is_on"]
         except Exception:
             db.rollback()
             raise

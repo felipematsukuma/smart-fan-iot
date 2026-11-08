@@ -1,10 +1,11 @@
 import asyncio
+import json
 import math
 import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from typing import Iterator
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,17 +13,47 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import Base, engine, get_db, query_api
+from app.energy import downsample_samples, integrate_energy, series_metadata
+from app.io_boundary import BoundedIO
 from app.models import Device
 from app.mqtt_service import mqtt_manager
 from app.scheduler import scheduler, start_scheduler
-from app.schemas import DeviceCommand, ScheduleUpdate
+from app.schemas import (
+    AutoShutdownUpdate,
+    DeviceCommand,
+    DeviceCreate,
+    DeviceView,
+    MetricsView,
+    ScheduleUpdate,
+    TariffUpdate,
+)
 
 DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-MAX_ENERGY_SAMPLE_GAP_SECONDS = 10
-MAX_ANALYSIS_HOURS = 168
-MAX_HISTORY_POINTS = 120
 
-Base.metadata.create_all(bind=engine)
+# Integrate only intervals covered by sufficiently frequent raw telemetry.
+MAX_ENERGY_SAMPLE_GAP_SECONDS = 80
+
+MAX_ANALYSIS_HOURS = 168
+
+# Display budget; never used for integration or coverage.
+MAX_HISTORY_POINTS = 240
+history_io = BoundedIO(workers=2, timeout_seconds=3)
+
+
+def initialize_storage() -> None:
+    """Create the small development schema once services are ready."""
+    import time
+
+    from sqlalchemy.exc import OperationalError
+
+    for attempt in range(10):
+        try:
+            Base.metadata.create_all(bind=engine)
+            return
+        except OperationalError:
+            if attempt == 9:
+                raise
+            time.sleep(1)
 
 
 def validate_device_id(device_id: str) -> str:
@@ -39,20 +70,6 @@ def _to_utc(value: datetime) -> datetime:
 
 def _flux_datetime(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def _downsample_samples(
-    samples: list[tuple[datetime, float]],
-    max_points: int = MAX_HISTORY_POINTS,
-) -> list[tuple[datetime, float]]:
-    if len(samples) <= max_points:
-        return samples
-
-    last_index = len(samples) - 1
-    return [
-        samples[round(index * last_index / (max_points - 1))]
-        for index in range(max_points)
-    ]
 
 
 def ensure_default_device() -> None:
@@ -76,6 +93,7 @@ def ensure_default_device() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await asyncio.to_thread(initialize_storage)
     ensure_default_device()
     mqtt_manager.set_event_loop(asyncio.get_running_loop())
     mqtt_manager.start()
@@ -91,9 +109,9 @@ app = FastAPI(title="Smart Fan IoT API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
 
@@ -106,7 +124,22 @@ def health() -> dict:
     }
 
 
-@app.get("/api/device/{device_id}")
+@app.get("/api/devices", response_model=list[DeviceView])
+def list_devices(db: Session = Depends(get_db)):
+    return sorted(db.query(Device).all(), key=lambda device: device.device_id)
+
+
+@app.post("/api/devices", status_code=201)
+def create_device(body: DeviceCreate, db: Session = Depends(get_db)) -> dict:
+    if db.query(Device).filter(Device.device_id == body.device_id).first():
+        raise HTTPException(status_code=409, detail="Dispositivo já cadastrado")
+    device = Device(**body.model_dump())
+    db.add(device)
+    db.commit()
+    return {"device_id": body.device_id, "name": body.name}
+
+
+@app.get("/api/device/{device_id}", response_model=DeviceView)
 def get_device(device_id: str, db: Session = Depends(get_db)):
     validate_device_id(device_id)
     device = db.query(Device).filter(Device.device_id == device_id).first()
@@ -168,21 +201,75 @@ def update_schedule(
     }
 
 
+@app.put("/api/device/{device_id}/auto-shutdown")
+def update_auto_shutdown(
+    device_id: str,
+    sched: AutoShutdownUpdate,
+    db: Session = Depends(get_db),
+) -> dict:
+    validate_device_id(device_id)
+    device = db.query(Device).filter(Device.device_id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    configuration = {
+        "auto_mode": sched.auto_off_enabled,
+        "shutdown_time": sched.auto_off_time,
+    }
+    if not mqtt_manager.publish_configuration(device_id, configuration):
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Broker MQTT indisponível")
+
+    device.auto_off_time = sched.auto_off_time
+    device.auto_off_enabled = sched.auto_off_enabled
+    db.commit()
+
+    return {
+        "status": "updated",
+        "device_id": device.device_id,
+        "configuration_published": configuration,
+    }
+
+
+@app.put("/api/device/{device_id}/tariff")
+def update_tariff(
+    device_id: str,
+    tariff: TariffUpdate,
+    db: Session = Depends(get_db),
+) -> dict:
+    validate_device_id(device_id)
+    device = db.query(Device).filter(Device.device_id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    device.kwh_rate = tariff.kwh_rate
+    db.commit()
+
+    return {
+        "status": "updated",
+        "device_id": device.device_id,
+        "kwh_rate": device.kwh_rate,
+    }
+
+
 def _iter_power_samples(result) -> Iterator[tuple[datetime, float]]:
     for table in result:
         for record in table.records:
             value = record.get_value()
             if not isinstance(value, (int, float)) or not math.isfinite(float(value)):
                 continue
+            if float(value) < 0:
+                continue
             timestamp = record.get_time()
             if timestamp is not None:
                 yield timestamp, float(value)
 
 
-@app.get("/api/device/{device_id}/metrics")
+@app.get("/api/device/{device_id}/metrics", response_model=MetricsView)
 def get_metrics(
     device_id: str,
     range_hours: int = Query(default=8, ge=1, le=MAX_ANALYSIS_HOURS),
+    max_points: int = Query(default=MAX_HISTORY_POINTS, ge=2, le=1000),
     start: datetime | None = Query(default=None),
     end: datetime | None = Query(default=None),
 ) -> dict:
@@ -220,35 +307,41 @@ def get_metrics(
         )
 
     query = f'''
-    from(bucket: "{settings.INFLUXDB_BUCKET}")
+    from(bucket: {json.dumps(settings.INFLUXDB_BUCKET)})
       |> {range_clause}
       |> filter(fn: (r) => r["_measurement"] == "electrical_measurement")
       |> filter(fn: (r) => r["device_id"] == "{device_id}")
       |> filter(fn: (r) => r["_field"] == "power_w")
+      |> limit(n: 400001)
     '''
 
-    samples = sorted(_iter_power_samples(query_api.query(
-        org=settings.INFLUXDB_ORG,
-        query=query,
-    )))
+    try:
+        samples = sorted(
+            _iter_power_samples(
+                history_io.call(lambda: query_api.query(org=settings.INFLUXDB_ORG, query=query))
+            )
+        )
+    except Exception as error:
+        import logging
 
-    total_samples = len(samples)
-    sum_power = sum(power for _, power in samples)
-    avg_power_w = (sum_power / total_samples) if total_samples else 0.0
+        logging.getLogger(__name__).exception("History query unavailable")
+        raise HTTPException(
+            status_code=503, detail="Histórico temporariamente indisponível"
+        ) from error
 
-    energy_wh = 0.0
-    for (previous_time, previous_power), (current_time, current_power) in zip(
-        samples,
-        samples[1:],
-    ):
-        gap_seconds = (current_time - previous_time).total_seconds()
-        if 0 < gap_seconds <= MAX_ENERGY_SAMPLE_GAP_SECONDS:
-            average_interval_power = (previous_power + current_power) / 2
-            energy_wh += average_interval_power * gap_seconds / 3600
+    if len(samples) > 400000:
+        raise HTTPException(status_code=413, detail="Muitas amostras; reduza o intervalo")
+
+    # Integração e downsample vivem em app.energy, onde são cobertos por testes.
+    result = integrate_energy(samples, MAX_ENERGY_SAMPLE_GAP_SECONDS)
 
     history = [
         {"time": timestamp.isoformat(), "power_w": round(power, 2)}
-        for timestamp, power in _downsample_samples(samples)
+        for timestamp, power in downsample_samples(
+            samples,
+            max_points,
+            gap_limit_seconds=MAX_ENERGY_SAMPLE_GAP_SECONDS,
+        )
     ]
     duration_hours = (period_end - period_start).total_seconds() / 3600
 
@@ -257,16 +350,21 @@ def get_metrics(
         "period_start": period_start.isoformat(),
         "period_end": period_end.isoformat(),
         "duration_hours": round(duration_hours, 3),
-        "avg_power_w": round(avg_power_w, 2),
-        "energy_wh": round(energy_wh, 3),
-        "estimated_kwh": round(energy_wh / 1000, 6),
-        "history_count": total_samples,
+        "avg_power_w": result.avg_power_w,
+        "energy_wh": result.energy_wh,
+        "estimated_kwh": round(result.energy_wh / 1000, 6),
+        "history_count": result.total_samples,
         "history": history,
+        **series_metadata(samples, period_start, period_end, MAX_ENERGY_SAMPLE_GAP_SECONDS),
     }
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    origin = websocket.headers.get("origin")
+    if origin and origin not in settings.CORS_ORIGINS:
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     mqtt_manager.active_websockets.add(websocket)
     try:

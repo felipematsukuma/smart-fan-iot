@@ -15,24 +15,37 @@ scheduler = AsyncIOScheduler(timezone=app_timezone)
 
 
 async def check_auto_turn_off() -> None:
-    """Desliga devices no horário local configurado, com precisão de 30 s."""
+    """Request OFF while due and still observed ON; never invent a relay state.
+
+    A broker PUBACK is not an actuator acknowledgement. Retry every 30 seconds
+    in the due minute until telemetry/state confirms OFF.
+    """
     now_str = datetime.now(app_timezone).strftime("%H:%M")
     db = SessionLocal()
     try:
-        devices = db.query(Device).filter(
-            Device.auto_off_enabled.is_(True),
-            Device.auto_off_time == now_str,
-            Device.is_on.is_(True),
-        ).all()
+        devices = (
+            db.query(Device)
+            .filter(
+                Device.auto_off_enabled.is_(True),
+                Device.auto_off_time == now_str,
+                Device.is_on.is_(True),
+            )
+            .all()
+        )
 
-        for device in devices:
+        # `is_on` reflete a telemetria atual (ver mqtt_service._sync_is_on),
+        # então o comando só sai quando o ventilador está realmente ligado.
+        to_turn_off = [device.device_id for device in devices]
+
+        for device_id in to_turn_off:
             logger.info(
                 "Horário atingido (%s)! Enviando OFF para %s",
                 now_str,
-                device.device_id,
+                device_id,
             )
-            if mqtt_manager.publish_command(device.device_id, {"action": "OFF"}):
-                device.is_on = False
+            if not mqtt_manager.publish_command(device_id, {"action": "OFF"}):
+                logger.warning("OFF pending for %s: broker unavailable", device_id)
+
         db.commit()
     except Exception:
         db.rollback()
