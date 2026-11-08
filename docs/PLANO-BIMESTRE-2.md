@@ -2,6 +2,8 @@
 
 Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a documentação deve ser consolidada e revisada antes de qualquer implementação. Não é cronograma nem autorização de desenvolvimento.
 
+**Estado:** conteúdo das cinco etapas e oito ADRs consolidado documentalmente; revisão final do usuário pendente. A implementação AIoT, os ensaios e o aceite operacional não foram realizados por esta consolidação. O próximo trabalho depende de pedido explícito de módulo; push/PR continuam não autorizados.
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.
@@ -18,10 +20,10 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 | 1 — Inventário | [01-inventario.md](./plano/01-inventario.md) | `docs/plano-etapa-1-inventario` | Integrado à main local em `8b00596`; aceite operacional pendente |
 | 2 — Lacunas | [02-lacunas.md](./plano/02-lacunas.md) | `docs/plano-etapa-2-lacunas` | Integrado à main local em `d3d9230`; aceite operacional pendente |
 | 3 — Arquitetura e ADRs | [03-arquitetura.md](./plano/03-arquitetura.md) e [oito ADRs](./plano/03-arquitetura.md#14-adrs-pendências-e-limite-desta-entrega) | `docs/plano-etapa-3-arquitetura` | Integrado à main local em `b266854`; aceite operacional pendente |
-| 4 — Catálogo de módulos | [04-modulos.md](./plano/04-modulos.md) | `docs/plano-etapa-4-modulos` | Redigido conforme índice aprovado; merge local ao concluir |
-| 5 — Riscos e aceite | `docs/plano/05-riscos-aceite.md` (a criar) | `docs/plano-etapa-5-riscos-aceite` | Pendente de aprovação |
+| 4 — Catálogo de módulos | [04-modulos.md](./plano/04-modulos.md) | `docs/plano-etapa-4-modulos` | Integrado à main local em `b8c3c45`; aceite operacional pendente |
+| 5 — Riscos e aceite | [05-riscos-aceite.md](./plano/05-riscos-aceite.md) | `docs/plano-etapa-5-riscos-aceite` | Conteúdo consolidado; revisão final do usuário pendente |
 
-Os documentos ainda inexistentes são indicados sem links para evitar referências quebradas. Conforme atualização do usuário nesta sessão, cada alteração relevante terá branch própria, commits separados e merge local na main ao concluir. Push e PR continuam sujeitos a autorização explícita. Cada etapa parte da main local com os merges anteriores; origin/main ainda não recebeu esses commits, pois não houve push autorizado. Se o remoto divergir, será necessário resolver a base sem reescrever histórico. Não haverá empilhamento silencioso.
+Conforme atualização do usuário nesta sessão, cada alteração relevante terá branch própria, commits separados e merge local na main ao concluir. Push e PR continuam sujeitos a autorização explícita. Cada etapa parte da main local com os merges anteriores; origin/main ainda não recebeu esses commits, pois não houve push autorizado. Se o remoto divergir, será necessário resolver a base sem reescrever histórico. Não haverá empilhamento silencioso. Os 19 módulos do catálogo identificam unidades sob demanda, sem calendário ou divisão por integrante.
 
 ## História preservada
 
