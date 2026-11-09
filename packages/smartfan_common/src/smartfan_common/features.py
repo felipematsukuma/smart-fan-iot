@@ -68,6 +68,18 @@ class FeatureResult:
     values: tuple[float, ...] | None = None
 
 
+@dataclass(frozen=True)
+class FeatureSample:
+    """Version-independent observed input; never contains prediction/label fields."""
+
+    device_id: str
+    boot_id: str
+    sequence: int
+    timestamp: float
+    compressor_on: bool
+    readings: tuple[float | None, ...]
+
+
 @dataclass
 class _Window:
     boot_id: str
@@ -93,41 +105,54 @@ class FeatureWindow:
         self._devices: dict[str, _Window] = {}
 
     def push(self, event: TelemetryEvent) -> FeatureResult:
-        timestamp = datetime.fromisoformat(event.timestamp).timestamp()
-        window = self._devices.get(event.device_id)
+        return self.push_sample(
+            FeatureSample(
+                event.device_id,
+                event.metadata.boot_id,
+                event.metadata.sequence,
+                datetime.fromisoformat(event.timestamp).timestamp(),
+                event.data.actuators.compressor_on,
+                tuple(getattr(event.data.readings, sensor) for sensor in SENSORS),
+            )
+        )
+
+    def push_sample(self, sample: FeatureSample) -> FeatureResult:
+        if len(sample.readings) != len(SENSORS) or not isfinite(sample.timestamp):
+            raise ValueError("Invalid observed feature sample")
+        if any(value is not None and not isfinite(value) for value in sample.readings):
+            raise ValueError("Feature readings must be finite or absent")
+        timestamp = sample.timestamp
+        window = self._devices.get(sample.device_id)
         if window is not None:
             if timestamp <= window.timestamp:
                 return FeatureResult("ignored")
-            if (
-                window.boot_id == event.metadata.boot_id
-                and event.metadata.sequence <= window.sequence
-            ):
+            if window.boot_id == sample.boot_id and sample.sequence <= window.sequence:
                 return FeatureResult("ignored")
         if window is None:
             if len(self._devices) >= self.config.max_devices:
                 raise ValueError("Device capacity exhausted")
             window = _Window(
-                event.metadata.boot_id,
+                sample.boot_id,
                 -1,
                 timestamp,
-                event.data.actuators.compressor_on,
+                sample.compressor_on,
                 deque(maxlen=self.config.max_samples),
             )
-            self._devices[event.device_id] = window
+            self._devices[sample.device_id] = window
         if (
-            window.boot_id != event.metadata.boot_id
+            window.boot_id != sample.boot_id
             or timestamp - window.timestamp > self.config.max_gap_seconds
-            or window.compressor_on != event.data.actuators.compressor_on
+            or window.compressor_on != sample.compressor_on
         ):
             window.samples.clear()
-        window.boot_id = event.metadata.boot_id
-        window.sequence = event.metadata.sequence
+        window.boot_id = sample.boot_id
+        window.sequence = sample.sequence
         window.timestamp = timestamp
-        window.compressor_on = event.data.actuators.compressor_on
+        window.compressor_on = sample.compressor_on
         if not window.compressor_on:
             window.samples.clear()
             return FeatureResult("inactive")
-        readings = tuple(getattr(event.data.readings, sensor) for sensor in SENSORS)
+        readings = sample.readings
         window.samples.append((timestamp, readings))
         while window.samples and timestamp - window.samples[0][0] > self.config.window_seconds:
             window.samples.popleft()
