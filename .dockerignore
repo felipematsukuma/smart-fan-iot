@@ -14,5 +14,7 @@ secrets
 **/.pio
 artifacts
 evidence
+**/test-results
+**/playwright-report
 infra/tests
 services/**/tests

@@ -12,12 +12,13 @@
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "typecheck": "vue-tsc -b --force",
     "lint": "eslint .",
-    "format": "prettier --write src scripts index.html *.ts *.js .prettierrc.json",
-    "format:check": "prettier --check src scripts index.html *.ts *.js .prettierrc.json",
+    "format": "prettier --write src scripts e2e index.html *.ts *.js .prettierrc.json",
+    "format:check": "prettier --check src scripts e2e index.html *.ts *.js .prettierrc.json",
     "contracts:types": "node scripts/contracts-v1.mjs",
     "contracts:types:check": "node scripts/contracts-v1.mjs --check",
     "contracts:v2:types": "node scripts/contracts-v2.mjs",
-    "contracts:v2:types:check": "node scripts/contracts-v2.mjs --check"
+    "contracts:v2:types:check": "node scripts/contracts-v2.mjs --check",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "ajv": "^8.20.0",
@@ -26,10 +27,12 @@
     "chart.js": "^4.5.1",
     "lucide-vue-next": "^1.0.0",
     "vue": "^3.5.42",
-    "vue-chartjs": "^5.3.4"
+    "vue-chartjs": "^5.3.4",
+    "vue-router": "4.6.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.65.0",
     "@types/node": "^24.13.3",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vitest/coverage-v8": "^5.0.5",

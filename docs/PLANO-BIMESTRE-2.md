@@ -19,6 +19,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M05 — writer e histórico HVAC | Implementado em `feat/gravador-influxdb`: [garantias, consultas e medições](../services/writer/README.md). Reserva de ponto antes do upsert, token de escrita restrito a live e persisted após InfluxDB; consultas limitadas e energia sem preencher lacunas. Ensaio isolado: 1 M vetores em 30,001 s; consulta agregada p95 0,123 s. Fluxo integrado de carga, API/UI, limpeza operacional, CI remoto e scan permanecem pendentes |
 
+| M06 — API, auth e auditoria | [V] Implementado em `feat/api-auth-auditoria`: [operação e limites](../services/api/README.md). JWT/sessões, três papéis, bcrypt calibrado para a máquina, rate limit, auditoria append-only e shell/login Vue. Apenas frontend em loopback; telemetria/WS e negócio de outros módulos permanecem pendentes. CI remoto e scan ainda [N] |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.

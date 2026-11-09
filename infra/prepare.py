@@ -80,6 +80,9 @@ def prepare(directory: Path) -> dict[str, int]:
         "influx_bootstrap",
         "influx_admin_token",
         "jwt_signing_key",
+        "initial_admin_password",
+        "initial_operator_password",
+        "initial_viewer_password",
     ):
         credential(name)
     for role in ROLES:

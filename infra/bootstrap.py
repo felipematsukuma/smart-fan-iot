@@ -11,6 +11,7 @@ from smartfan_common.routing_v2 import QUEUES_V2
 
 from infra.database import provision_database
 from infra.influx_credentials import provision_writer
+from services.api.auth import seed_users
 
 
 def request(url: str, headers: dict[str, str], value: dict | None = None):
@@ -26,6 +27,7 @@ def main() -> None:
     database_engine = engine_for("bootstrap", Path("/run/secrets/postgres_bootstrap"))
     try:
         provision_database(database_engine, Path("/run/secrets"))
+        seed_users(database_engine, Path("/run/secrets"))
     finally:
         database_engine.dispose()
     password = Path("/run/secrets/rabbit_bootstrap").read_text().strip()
