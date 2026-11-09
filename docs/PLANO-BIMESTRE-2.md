@@ -22,6 +22,7 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 | M06 — API, auth e auditoria | [V] Implementado em `feat/api-auth-auditoria`: [operação e limites](../services/api/README.md). JWT/sessões, três papéis, bcrypt calibrado para a máquina, rate limit, auditoria append-only e shell/login Vue. Apenas frontend em loopback; telemetria/WS e negócio de outros módulos permanecem pendentes. CI remoto e scan ainda [N] |
 
 | M07 — WebSocket e dashboard | [V] Implementado em `feat/websocket-dashboard`: [contratos, segurança e limites](../services/api/REALTIME.md). Ticket com escopo, consumidor API, snapshot durável, store e gráfico live; histórico/energia separados. 171 testes Python, 231 Vitest, 10 integrações e quatro Playwright passaram. Validação pré-compilada mantém CSP sem unsafe-eval; origem impede replays reenriquecidos. Inferência M13 contínua, carga, CI remoto e scan permanecem pendentes |
+| M08 — Cadastro de dispositivos | [V] Implementado em `feat/cadastro-dispositivos`: [perfil, versões, permissões e limites](../services/api/DEVICES.md). Cinco sensores/dois atuadores com IDs estáveis, edição administrativa, concorrência 409, desativação lógica e histórico preservado. 184 testes Python, 231 Vitest, 22 integrações e cinco Playwright passaram. Provisionamento de outro cliente MQTT/instância não é automático; comandos HTTP completos ficam em M09 |
 
 ## Decisões desta consolidação
 
