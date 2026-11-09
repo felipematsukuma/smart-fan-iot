@@ -7,6 +7,7 @@ import {
   Users,
   ScrollText,
   LogOut,
+  AirVent,
 } from 'lucide-vue-next';
 import { currentUser, signOut, sessionNotice } from './auth';
 import { router } from './router';
@@ -45,6 +46,9 @@ async function logout() {
       <nav aria-label="Navegação principal">
         <RouterLink to="/"
           ><LayoutDashboard :size="18" />Visão geral</RouterLink
+        >
+        <RouterLink to="/dispositivos"
+          ><AirVent :size="18" />Dispositivos</RouterLink
         >
         <template v-if="currentUser.role === 'administrador'">
           <p class="nav-label">ADMINISTRAÇÃO</p>
