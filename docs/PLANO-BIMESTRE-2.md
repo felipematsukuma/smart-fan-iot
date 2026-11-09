@@ -15,6 +15,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 | M02 — entrega durável | Implementado em `feat/entrega-duravel`: [garantias e operação](../packages/smartfan_common/src/smartfan_common/reliability/README.md). 138 testes do pacote e 11 integrações PostgreSQL/AMQP reais; transações, dedupe, quota, RLS, fencing, retry, DLQ e confirms verificados localmente. Consumidores de negócio, supervisão dos jobs, carga/chaos completo e CI remoto permanecem pendentes |
 | M03 — simulador Python | Implementado em `feat/simulador-python`: [uso e limites](../services/simulator/README.md). Cinco sensores, dois atuadores, degradação, proteções e spool SQLite; estado versionado v2.1 com revisão observada. Oito testes do dispositivo, 141 do pacote e integração MQTT real com fixture de gateway persistente. Gateway M04 permanente, Web/controle/inferência e CI remoto ainda pendentes |
 
+| M04 — gateway MQTT↔AMQP | Implementado em `feat/gateway-mqtt-amqp`: [garantias e operação](../services/gateway/README.md). Recebimento durável, origem autenticada, confirmação física, presença e expiração; 15 integrações isoladas e um percurso real pelo gateway. Interrupções reais: spool 0→4→0 e outbox 0→4→0 após retomada. Cadastro dinâmico, gravador, Web, carga integrada e CI remoto permanecem pendentes |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.

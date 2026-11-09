@@ -438,6 +438,19 @@ class DurableStore:
                 ).scalar_one_or_none(),
             )
 
+    def received_at(self, event_id: str, connection: Connection | None = None) -> datetime | None:
+        _uuid(event_id)
+        with self.transaction(connection) as conn:
+            return cast(
+                datetime | None,
+                conn.execute(
+                    text(
+                        "SELECT observed_at FROM transport.inbox WHERE owner=:owner AND event_id=:id"
+                    ),
+                    {"owner": self.owner, "id": event_id},
+                ).scalar_one_or_none(),
+            )
+
     def pending_outbox(self) -> list[Mapping[str, Any]]:
         with self.engine.connect() as conn:
             rows = conn.execute(
