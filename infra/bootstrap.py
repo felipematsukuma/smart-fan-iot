@@ -6,7 +6,10 @@ import time
 import urllib.request
 from pathlib import Path
 
+from smartfan_common.reliability.database import engine_for
 from smartfan_common.routing_v2 import QUEUES_V2
+
+from infra.database import provision_database
 
 
 def request(url: str, headers: dict[str, str], value: dict | None = None):
@@ -19,6 +22,11 @@ def request(url: str, headers: dict[str, str], value: dict | None = None):
 
 
 def main() -> None:
+    database_engine = engine_for("bootstrap", Path("/run/secrets/postgres_bootstrap"))
+    try:
+        provision_database(database_engine, Path("/run/secrets"))
+    finally:
+        database_engine.dispose()
     password = Path("/run/secrets/rabbit_bootstrap").read_text().strip()
     rabbit_headers = {
         "Authorization": "Basic "
