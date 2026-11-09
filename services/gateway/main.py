@@ -28,7 +28,7 @@ def main() -> None:
     secrets = Path("/run/secrets")
     engine = engine_for("gateway", secrets / "postgres_gateway")
     store = DurableStore(engine, "gateway")
-    bridge = GatewayBridge(store, {"ac_01": "quarto"})
+    bridge = GatewayBridge(store)
     client = mqtt.Client(client_id="gateway", clean_session=False)
     client.username_pw_set("gateway", (secrets / "mqtt_gateway").read_text().strip())
     client.reconnect_delay_set(1, 30)

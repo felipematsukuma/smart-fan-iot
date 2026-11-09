@@ -128,6 +128,10 @@ class Hub:
                     if not valid:
                         await asyncio.wait_for(socket.close(code=1008), timeout=1)
                         return
+                    # Disabling a device revokes an already-open scope as well.
+                    await asyncio.wait_for(
+                        asyncio.to_thread(events.authorize, client.devices), timeout=2
+                    )
                     last_check = now
                 if now - last_ping >= 15:
                     ping_id = str(uuid4())

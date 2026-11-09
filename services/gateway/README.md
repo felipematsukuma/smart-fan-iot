@@ -40,7 +40,9 @@ exercitadas localmente: spool e outbox cresceram e esvaziaram após a retomada.
 
 ## Limites explícitos
 
-- Registro inicial fixo `ac_01`/`quarto`; cadastro dinâmico pertence a M08.
+- Registro consultado no PostgreSQL por M08; identidade inicial `ac_01`/`quarto`.
+  Telemetria de cadastro desativado é preservada; comandos são recusados também no
+  despacho. Cadastro não provisiona automaticamente novos clientes/ACL MQTT.
 - Não implementa termostato, API Web, gravador InfluxDB nem inferência.
 - A visão SQL `transport.device_status` expõe somente metadados; usuários consumidores
   não recebem acesso de escrita às tabelas do gateway.
