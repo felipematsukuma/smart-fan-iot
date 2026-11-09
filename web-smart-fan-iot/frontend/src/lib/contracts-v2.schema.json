@@ -108,7 +108,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -227,7 +230,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -394,7 +400,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -558,7 +567,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -621,6 +633,34 @@
     },
     "DeviceStateV2": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "schema_version": {
+                "const": "2.1"
+              }
+            },
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "conteudo": {
+                "properties": {
+                  "last_revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "last_revision"
+                ],
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ],
       "properties": {
         "id": {
           "format": "uuid",
@@ -629,7 +669,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -724,7 +767,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -983,7 +1029,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -1054,7 +1103,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -1146,7 +1198,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -1248,7 +1303,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -1310,7 +1368,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -1800,7 +1861,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -2126,6 +2190,20 @@
           "pattern": "^[A-Za-z0-9_-]{1,64}$",
           "title": "Reason Code",
           "type": "string"
+        },
+        "last_revision": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Revision"
         }
       },
       "required": [
@@ -2415,7 +2493,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -2478,7 +2559,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -2541,7 +2625,10 @@
           "type": "string"
         },
         "schema_version": {
-          "const": "2.0",
+          "enum": [
+            "2.0",
+            "2.1"
+          ],
           "title": "Schema Version",
           "type": "string"
         },
@@ -2936,6 +3023,6 @@
     }
   ],
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:smartfan:message:2.0",
+  "$id": "urn:smartfan:message:2.1",
   "title": "EventV2"
 }

@@ -114,7 +114,7 @@ class ModelMetadata(MetadataV2):
 
 class EnvelopeV2(WireModel):
     id: UUIDString
-    schema_version: Literal["2.0"]
+    schema_version: Literal["2.0", "2.1"]
     timestamp: UTC
     correlation_id: UUIDString | None
 
@@ -262,13 +262,41 @@ class StateDataV2(WireModel):
     mode: Literal["manual", "auto"]
     manual_cooling_block: Annotated[bool, Field(strict=True)]
     reason_code: Identifier
+    last_revision: Unsigned | None = None
 
 
 class DeviceStateV2(EnvelopeV2):
+    model_config = {
+        "extra": "forbid",
+        "frozen": True,
+        "json_schema_extra": {
+            "allOf": [
+                {
+                    "if": {"type": "object", "properties": {"schema_version": {"const": "2.1"}}},
+                    "then": {
+                        "type": "object",
+                        "properties": {
+                            "conteudo": {
+                                "type": "object",
+                                "required": ["last_revision"],
+                                "properties": {"last_revision": {"type": "integer"}},
+                            }
+                        },
+                    },
+                }
+            ]
+        },
+    }
     tipo: Literal["device.state"]
     dispositivo: Identifier
     metadata: SimulatorMetadata
     conteudo: StateDataV2
+
+    @model_validator(mode="after")
+    def revision_required_in_v21(self) -> "DeviceStateV2":
+        if self.schema_version == "2.1" and self.conteudo.last_revision is None:
+            raise ValueError("State v2.1 requires observed command revision")
+        return self
 
 
 class AvailabilityDataV2(WireModel):

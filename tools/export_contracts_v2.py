@@ -28,7 +28,7 @@ def export_values():
     schema.update(
         {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "$id": "urn:smartfan:message:2.0",
+            "$id": "urn:smartfan:message:2.1",
             "title": "EventV2",
         }
     )
@@ -316,6 +316,12 @@ def export_values():
     micro["timestamp"] = "2026-11-08T22:00:00.000001Z"
     micro["conteudo"]["expires_at"] = "2026-11-08T22:00:00.000002Z"
     cases.append({"name": "submillisecond_lifetime", "valid": True, "value": micro})
+    state = copy.deepcopy(next(c["value"] for c in cases if c["name"] == "state"))
+    state["schema_version"] = "2.1"
+    state["conteudo"]["last_revision"] = 12
+    cases.append({"name": "state_v21_revision", "valid": True, "value": state})
+    invalid("state_v21_without_revision", "state", ["schema_version"], "2.1")
+    invalid("unknown_major", "sample", ["schema_version"], "3.0")
     return schema, cases
 
 

@@ -13,7 +13,7 @@ services:
   volume-init:
     image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
     user: "0:0"
-    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001)]]"]
+    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001)]]"]
     network_mode: none
     volumes:
       - postgres_data:/vol/postgres
@@ -22,6 +22,7 @@ services:
       - influxdb_data:/vol/influxdb
       - influxdb_config:/vol/influxconfig
       - ollama_models:/vol/ollama
+      - simulator_spool:/vol/simulator
     mem_limit: 128m
 
   postgres:
@@ -137,7 +138,7 @@ services:
   bootstrap:
     build: {context: ., dockerfile: infra/Dockerfile}
     pull_policy: build
-    image: smartfan-python:0.3.0
+    image: smartfan-python:0.4.0
     command: [python, -m, infra.bootstrap]
     user: "10001:10001"
     depends_on:
@@ -162,8 +163,34 @@ services:
     cap_drop: [ALL]
     mem_limit: 192m
 
+  simulator:
+    <<: *runtime
+    image: smartfan-python:0.4.0
+    pull_policy: never
+    command: [python, -m, services.simulator.main]
+    user: "10001:10001"
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+      mosquitto: {condition: service_healthy}
+    volumes:
+      - simulator_spool:/data
+      - ./secrets/mqtt_simulator_ac_01:/run/secrets/mqtt_password:ro
+    environment:
+      MQTT_HOST: mosquitto
+      SIM_DEVICE_ID: ac_01
+    networks: [backend_net]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/ready',timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    mem_limit: 128m
+    cpus: 0.5
+
   ollama-init:
-    image: smartfan-python:0.3.0
+    image: smartfan-python:0.4.0
     pull_policy: never
     command: [python, -m, infra.model_init]
     user: "10001:10001"
@@ -190,3 +217,4 @@ volumes:
   influxdb_data: {}
   influxdb_config: {}
   ollama_models: {}
+  simulator_spool: {}

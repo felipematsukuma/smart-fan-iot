@@ -129,13 +129,13 @@ O schema abaixo é o envelope fechado comum. Cada `tipo` seleciona também um sc
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:smartfan:message:2.0",
+  "$id": "urn:smartfan:message:2.1",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "schema_version", "timestamp", "tipo", "dispositivo", "correlation_id", "conteudo", "metadata"],
   "properties": {
     "id": {"type": "string", "format": "uuid"},
-    "schema_version": {"const": "2.0"},
+    "schema_version": {"enum": ["2.0", "2.1"]},
     "timestamp": {"type": "string", "format": "date-time", "pattern": "Z$"},
     "tipo": {"enum": ["telemetry.sampled", "telemetry.persisted", "frame.ready", "insight.predicted", "command.requested", "command.applied", "command.rejected", "command.expired", "device.state", "device.availability", "transport.received", "alert.raised", "alert.cleared", "job.generate", "job.train", "job.progress", "model.available", "model.activated", "message.quarantined"]},
     "dispositivo": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9_-]{1,64}$"},
@@ -172,7 +172,7 @@ Todos os objetos abaixo são fechados; campos listados são obrigatórios salvo 
 | insight.predicted | Mesmo objeto `insight` do frame, acrescido de `source_event_id`; evento separado para controle, sem reproduzir telemetria no conteúdo |
 | command.requested | `command_id` igual a id do envelope, `target_boot_id`, `revision` inteiro >=0, `desired` com dois booleanos, `mode` manual/auto, `expires_at` UTC e `reason_code` identificador; compressor ON e ventilador OFF é inválido |
 | command.applied/rejected/expired | `command_id`, `revision`, `observed` com os dois atuadores, `reason_code`; aplicado só após simular aplicação; rejeitado/expirado não alteram estado |
-| device.state | `actuators`, `mode` manual/auto, `manual_cooling_block` booleano, `reason_code` |
+| device.state | `actuators`, `mode` manual/auto, `manual_cooling_block` booleano, `reason_code`; em v2.1, `last_revision` inteiro seguro obrigatório para ressincronizar comandos após restore; v2.0 continua legível com watermark desconhecido |
 | device.availability | `status` online/offline, `reason_code`; metadata boot e instante observado no gateway |
 | transport.received | `source_event_id`, `status` igual a `durably_received`; só gateway→simulador; não confirma persistência Influx nem efeito físico |
 | alert.raised/cleared | `alert_id`, `rule_id`, `severity` info/warning/critical, `source_event_id`, `reason_code`; transição persistida no PostgreSQL |

@@ -1,5 +1,9 @@
 # Núcleo compartilhado — M00
 
+## Evolução de estado v2.1 — M03
+
+Pacote 0.4.0: o leitor da família v2 aceita mensagens v2.0 e v2.1. Estado v2.1 exige `last_revision` para recuperar o watermark de comandos após restart/restore; estado v2.0 continua legível com revisão desconhecida, sem assumir zero. A mudança está coberta nas mesmas fixtures Python/JSON Schema/TS. O [simulador Python](../../services/simulator/README.md) emite o estado retido atualizado junto ao ACK, na mesma transação local. Campos de RUL/features e o leitor v1 não mudam.
+
 ## Entrega durável opcional — M02
 
 A versão 0.3.0 acrescenta o extra `smartfan-common[reliability]`, com migrações Alembic, inbox/outbox, retry/DLQ, RLS, leases, publicação AMQP confirmada e auxiliares de health/logs. [Operação, garantias e testes](./src/smartfan_common/reliability/README.md). Não altera a semântica dos contratos v1/v2 nem cria consumidores automaticamente.
