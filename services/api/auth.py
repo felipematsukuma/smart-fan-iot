@@ -32,6 +32,7 @@ class Principal:
     auth_version: int
     session_id: str
     expires_at: datetime
+    device_scope: tuple[str, ...] | None = None
 
 
 def audit(
@@ -337,17 +338,24 @@ class AuthService:
                 correlation,
             )
 
-    def ticket(self, principal: Principal, origin: str, correlation: str) -> str:
+    def ticket(
+        self,
+        principal: Principal,
+        origin: str,
+        correlation: str,
+        devices: tuple[str, ...] = (),
+    ) -> str:
         token = secrets.token_urlsafe(32)
         with self.engine.begin() as conn:
             inserted = conn.execute(
                 text(
-                    "INSERT INTO app.ws_tickets(token_hash,session_id,origin,expires_at) SELECT :hash,id,:origin,LEAST(expires_at,clock_timestamp()+interval '30 seconds') FROM app.sessions WHERE id=:session AND revoked_at IS NULL AND expires_at>clock_timestamp()"
+                    "INSERT INTO app.ws_tickets(token_hash,session_id,origin,expires_at,scope) SELECT :hash,id,:origin,LEAST(expires_at,clock_timestamp()+interval '30 seconds'),CAST(:scope AS jsonb) FROM app.sessions WHERE id=:session AND revoked_at IS NULL AND expires_at>clock_timestamp()"
                 ),
                 {
                     "hash": hashlib.sha256(token.encode()).hexdigest(),
                     "origin": origin,
                     "session": principal.session_id,
+                    "scope": json.dumps(devices),
                 },
             )
             if inserted.rowcount != 1:
@@ -372,7 +380,7 @@ class AuthService:
                 WHERE t.token_hash=:hash AND t.origin=:origin AND t.consumed_at IS NULL AND t.expires_at>clock_timestamp()
                 AND s.id=t.session_id AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()
                 AND u.id=s.user_id AND u.enabled AND u.auth_version=s.auth_version
-                RETURNING u.id,u.username,u.role,u.auth_version,s.id AS session_id,s.expires_at"""),
+                RETURNING u.id,u.username,u.role,u.auth_version,s.id AS session_id,s.expires_at,t.scope"""),
                     {
                         "hash": hashlib.sha256(token.encode()).hexdigest(),
                         "origin": origin,
@@ -390,7 +398,23 @@ class AuthService:
             row["auth_version"],
             str(row["session_id"]),
             row["expires_at"],
+            tuple(row["scope"]),
         )
+
+    def session_valid(self, principal: Principal) -> bool:
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text("""SELECT 1 FROM app.users u JOIN app.sessions s ON s.user_id=u.id
+                WHERE u.id=:user AND s.id=:session AND u.enabled AND s.revoked_at IS NULL
+                AND s.expires_at>clock_timestamp() AND u.auth_version=:version AND s.auth_version=u.auth_version AND u.role=:role"""),
+                {
+                    "user": principal.id,
+                    "session": principal.session_id,
+                    "version": principal.auth_version,
+                    "role": principal.role,
+                },
+            ).scalar_one_or_none()
+        return result is not None
 
     @staticmethod
     def require_admin(principal: Principal) -> None:

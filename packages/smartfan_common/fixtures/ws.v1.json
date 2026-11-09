@@ -1,0 +1,424 @@
+[
+  {
+    "name": "authenticate",
+    "kind": "client",
+    "valid": true,
+    "value": {
+      "type": "authenticate",
+      "ticket": "ttttttttttttttttttttttttttttttttttttttttttt",
+      "devices": [
+        "ac_01"
+      ]
+    }
+  },
+  {
+    "name": "subscribe",
+    "kind": "client",
+    "valid": true,
+    "value": {
+      "type": "subscribe",
+      "devices": [
+        "ac_01"
+      ]
+    }
+  },
+  {
+    "name": "ping",
+    "kind": "client",
+    "valid": true,
+    "value": {
+      "type": "ping",
+      "id": "33333333-3333-4333-8333-333333333333"
+    }
+  },
+  {
+    "name": "authenticated",
+    "kind": "server",
+    "valid": true,
+    "value": {
+      "type": "authenticated",
+      "server_time": "2026-11-08T22:00:00Z",
+      "heartbeat_seconds": 15,
+      "stale_after_seconds": 6
+    }
+  },
+  {
+    "name": "snapshot",
+    "kind": "server",
+    "valid": true,
+    "value": {
+      "type": "snapshot",
+      "server_time": "2026-11-08T22:00:00Z",
+      "devices": [
+        {
+          "id": "ac_01",
+          "name": "Ar-condicionado ac_01",
+          "zone": "quarto",
+          "equipment_type": "ac_split_onoff",
+          "enabled": true,
+          "sensor_ids": {
+            "current_a": "ac_01_current",
+            "compressor_case_temp_c": "ac_01_case_temp",
+            "vibration_rms_mm_s": "ac_01_vibration",
+            "indoor_temp_c": "ac_01_indoor_temp",
+            "outdoor_temp_c": "ac_01_outdoor_temp"
+          },
+          "actuator_ids": {
+            "compressor_on": "ac_01_compressor",
+            "condenser_fan_on": "ac_01_condenser_fan"
+          },
+          "boot_id": "33333333-3333-4333-8333-333333333333",
+          "last_sample_at": "2026-11-08T22:00:00Z"
+        }
+      ],
+      "events": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "schema_version": "2.0",
+          "timestamp": "2026-11-08T22:00:00Z",
+          "tipo": "frame.ready",
+          "dispositivo": "ac_01",
+          "correlation_id": null,
+          "metadata": {
+            "producer": "inference",
+            "causation_id": null,
+            "boot_id": "33333333-3333-4333-8333-333333333333",
+            "sequence": 120,
+            "zone": "quarto",
+            "equipment_type": "ac_split_onoff",
+            "clock_scale": 1,
+            "observed_at": "2026-11-08T22:00:00Z"
+          },
+          "conteudo": {
+            "source_event_id": "22222222-2222-4222-8222-222222222222",
+            "telemetry": {
+              "readings": {
+                "current_a": 4.2,
+                "compressor_case_temp_c": 58.0,
+                "vibration_rms_mm_s": 1.2,
+                "indoor_temp_c": 26.0,
+                "outdoor_temp_c": 32.0,
+                "power_w": 850.0
+              },
+              "actuators": {
+                "compressor_on": true,
+                "condenser_fan_on": true
+              },
+              "quality": {
+                "missing_fields": []
+              },
+              "source_event_id": "22222222-2222-4222-8222-222222222222"
+            },
+            "insight": {
+              "status": "valid",
+              "model_version": "hvac_demo_001",
+              "feature_version": "hvac-window-v1",
+              "health_score": 72.0,
+              "rul_calendar_hours": 24.5
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "backlog",
+    "kind": "server",
+    "valid": true,
+    "value": {
+      "type": "notice",
+      "code": "backlog_skipped",
+      "count": 5
+    }
+  },
+  {
+    "name": "jwt_not_ticket",
+    "kind": "client",
+    "valid": false,
+    "value": {
+      "type": "authenticate",
+      "ticket": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "extra_subscription",
+    "kind": "client",
+    "valid": false,
+    "value": {
+      "type": "subscribe",
+      "devices": [
+        "ac_01"
+      ],
+      "role": "administrador"
+    }
+  },
+  {
+    "name": "too_many_devices",
+    "kind": "client",
+    "valid": false,
+    "value": {
+      "type": "subscribe",
+      "devices": [
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01",
+        "ac_01"
+      ]
+    }
+  },
+  {
+    "name": "wrong_boolean",
+    "kind": "server",
+    "valid": false,
+    "value": {
+      "type": "snapshot",
+      "server_time": "2026-11-08T22:00:00Z",
+      "devices": [
+        {
+          "id": "ac_01",
+          "name": "Ar-condicionado ac_01",
+          "zone": "quarto",
+          "equipment_type": "ac_split_onoff",
+          "enabled": 1,
+          "sensor_ids": {
+            "current_a": "ac_01_current",
+            "compressor_case_temp_c": "ac_01_case_temp",
+            "vibration_rms_mm_s": "ac_01_vibration",
+            "indoor_temp_c": "ac_01_indoor_temp",
+            "outdoor_temp_c": "ac_01_outdoor_temp"
+          },
+          "actuator_ids": {
+            "compressor_on": "ac_01_compressor",
+            "condenser_fan_on": "ac_01_condenser_fan"
+          },
+          "boot_id": "33333333-3333-4333-8333-333333333333",
+          "last_sample_at": "2026-11-08T22:00:00Z"
+        }
+      ],
+      "events": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "schema_version": "2.0",
+          "timestamp": "2026-11-08T22:00:00Z",
+          "tipo": "frame.ready",
+          "dispositivo": "ac_01",
+          "correlation_id": null,
+          "metadata": {
+            "producer": "inference",
+            "causation_id": null,
+            "boot_id": "33333333-3333-4333-8333-333333333333",
+            "sequence": 120,
+            "zone": "quarto",
+            "equipment_type": "ac_split_onoff",
+            "clock_scale": 1,
+            "observed_at": "2026-11-08T22:00:00Z"
+          },
+          "conteudo": {
+            "source_event_id": "22222222-2222-4222-8222-222222222222",
+            "telemetry": {
+              "readings": {
+                "current_a": 4.2,
+                "compressor_case_temp_c": 58.0,
+                "vibration_rms_mm_s": 1.2,
+                "indoor_temp_c": 26.0,
+                "outdoor_temp_c": 32.0,
+                "power_w": 850.0
+              },
+              "actuators": {
+                "compressor_on": true,
+                "condenser_fan_on": true
+              },
+              "quality": {
+                "missing_fields": []
+              },
+              "source_event_id": "22222222-2222-4222-8222-222222222222"
+            },
+            "insight": {
+              "status": "valid",
+              "model_version": "hvac_demo_001",
+              "feature_version": "hvac-window-v1",
+              "health_score": 72.0,
+              "rul_calendar_hours": 24.5
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "source_mismatch",
+    "kind": "server",
+    "valid": false,
+    "value": {
+      "type": "snapshot",
+      "server_time": "2026-11-08T22:00:00Z",
+      "devices": [
+        {
+          "id": "ac_01",
+          "name": "Ar-condicionado ac_01",
+          "zone": "quarto",
+          "equipment_type": "ac_split_onoff",
+          "enabled": true,
+          "sensor_ids": {
+            "current_a": "ac_01_current",
+            "compressor_case_temp_c": "ac_01_case_temp",
+            "vibration_rms_mm_s": "ac_01_vibration",
+            "indoor_temp_c": "ac_01_indoor_temp",
+            "outdoor_temp_c": "ac_01_outdoor_temp"
+          },
+          "actuator_ids": {
+            "compressor_on": "ac_01_compressor",
+            "condenser_fan_on": "ac_01_condenser_fan"
+          },
+          "boot_id": "33333333-3333-4333-8333-333333333333",
+          "last_sample_at": "2026-11-08T22:00:00Z"
+        }
+      ],
+      "events": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "schema_version": "2.0",
+          "timestamp": "2026-11-08T22:00:00Z",
+          "tipo": "frame.ready",
+          "dispositivo": "ac_01",
+          "correlation_id": null,
+          "metadata": {
+            "producer": "inference",
+            "causation_id": null,
+            "boot_id": "33333333-3333-4333-8333-333333333333",
+            "sequence": 120,
+            "zone": "quarto",
+            "equipment_type": "ac_split_onoff",
+            "clock_scale": 1,
+            "observed_at": "2026-11-08T22:00:00Z"
+          },
+          "conteudo": {
+            "source_event_id": "33333333-3333-4333-8333-333333333333",
+            "telemetry": {
+              "readings": {
+                "current_a": 4.2,
+                "compressor_case_temp_c": 58.0,
+                "vibration_rms_mm_s": 1.2,
+                "indoor_temp_c": 26.0,
+                "outdoor_temp_c": 32.0,
+                "power_w": 850.0
+              },
+              "actuators": {
+                "compressor_on": true,
+                "condenser_fan_on": true
+              },
+              "quality": {
+                "missing_fields": []
+              },
+              "source_event_id": "22222222-2222-4222-8222-222222222222"
+            },
+            "insight": {
+              "status": "valid",
+              "model_version": "hvac_demo_001",
+              "feature_version": "hvac-window-v1",
+              "health_score": 72.0,
+              "rul_calendar_hours": 24.5
+            }
+          }
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "Authenticate": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "authenticate",
+          "title": "Type",
+          "type": "string"
+        },
+        "ticket": {
+          "maxLength": 128,
+          "minLength": 32,
+          "title": "Ticket",
+          "type": "string"
+        },
+        "devices": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Devices"
+        }
+      },
+      "required": [
+        "type",
+        "ticket"
+      ],
+      "title": "Authenticate",
+      "type": "object"
+    },
+    "Ping": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "ping",
+          "title": "Type",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "Ping",
+      "type": "object"
+    },
+    "Pong": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "pong",
+          "title": "Type",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "title": "Pong",
+      "type": "object"
+    },
+    "Subscribe": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "subscribe",
+          "title": "Type",
+          "type": "string"
+        },
+        "devices": {
+          "items": {
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Devices",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "devices"
+      ],
+      "title": "Subscribe",
+      "type": "object"
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Authenticate"
+    },
+    {
+      "$ref": "#/$defs/Subscribe"
+    },
+    {
+      "$ref": "#/$defs/Ping"
+    },
+    {
+      "$ref": "#/$defs/Pong"
+    }
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:smartfan:ws-client:1",
+  "title": "ClientPacket"
+}

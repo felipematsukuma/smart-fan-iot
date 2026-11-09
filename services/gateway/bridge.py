@@ -15,6 +15,7 @@ from smartfan_common.contracts_v2 import (
     serialize_event_v2,
 )
 from smartfan_common.reliability.amqp import authenticated_publisher
+from smartfan_common.reliability.origins import record_origin
 from smartfan_common.reliability.store import DurableStore, Outbound
 from smartfan_common.routing_v2 import (
     mqtt_topic_v2,
@@ -73,6 +74,8 @@ class GatewayBridge:
                 return None
             observed = self.store.received_at(event.id, connection=conn)
             assert observed is not None
+            if isinstance(event, TelemetrySampleV2):
+                record_origin(conn, event)
             if result == "accepted":
                 if isinstance(event, DeviceAvailabilityV2):
                     report = event.model_dump()

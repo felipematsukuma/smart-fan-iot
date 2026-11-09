@@ -13,7 +13,7 @@ services:
   volume-init:
     image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
     user: "0:0"
-    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001)]]"]
+    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001),('api_credentials',10001,10001)]]"]
     network_mode: none
     volumes:
       - postgres_data:/vol/postgres
@@ -24,6 +24,7 @@ services:
       - ollama_models:/vol/ollama
       - simulator_spool:/vol/simulator
       - writer_credentials:/vol/writer_credentials
+      - api_credentials:/vol/api_credentials
     mem_limit: 128m
 
   postgres:
@@ -139,7 +140,7 @@ services:
   bootstrap:
     build: {context: ., dockerfile: infra/Dockerfile}
     pull_policy: build
-    image: smartfan-python:0.7.0
+    image: smartfan-python:0.8.0
     command: [python, -m, infra.bootstrap]
     user: "10001:10001"
     depends_on:
@@ -158,6 +159,7 @@ services:
       - ./secrets/postgres_api:/run/secrets/postgres_api:ro
       - ./secrets/postgres_jobs-worker:/run/secrets/postgres_jobs-worker:ro
       - writer_credentials:/credentials/writer
+      - api_credentials:/credentials/api
       - ./secrets/initial_admin_password:/run/secrets/initial_admin_password:ro
       - ./secrets/initial_operator_password:/run/secrets/initial_operator_password:ro
       - ./secrets/initial_viewer_password:/run/secrets/initial_viewer_password:ro
@@ -170,7 +172,7 @@ services:
 
   simulator:
     <<: *runtime
-    image: smartfan-python:0.7.0
+    image: smartfan-python:0.8.0
     pull_policy: never
     command: [python, -m, services.simulator.main]
     user: "10001:10001"
@@ -196,7 +198,7 @@ services:
 
   gateway:
     <<: *runtime
-    image: smartfan-python:0.7.0
+    image: smartfan-python:0.8.0
     pull_policy: never
     command: [python, -m, services.gateway.main]
     user: "10001:10001"
@@ -221,9 +223,9 @@ services:
 
   api:
     <<: *runtime
-    image: smartfan-python:0.7.0
+    image: smartfan-python:0.8.0
     pull_policy: never
-    command: [uvicorn, services.api.main:create_app, --factory, --host, 0.0.0.0, --port, "8000", --no-access-log, --no-proxy-headers]
+    command: [uvicorn, services.api.main:create_app, --factory, --host, 0.0.0.0, --port, "8000", --no-access-log, --no-proxy-headers, --ws-max-size, "16384"]
     user: "10001:10001"
     depends_on:
       bootstrap: {condition: service_completed_successfully}
@@ -231,6 +233,8 @@ services:
     volumes:
       - ./secrets/postgres_api:/run/secrets/postgres_api:ro
       - ./secrets/jwt_signing_key:/run/secrets/jwt_signing_key:ro
+      - ./secrets/rabbit_api:/run/secrets/rabbit_api:ro
+      - api_credentials:/run/influx:ro
     networks: [frontend_net, backend_net, data_net]
     read_only: true
     tmpfs: [/tmp]
@@ -245,7 +249,7 @@ services:
   frontend:
     <<: *runtime
     build: {context: ., dockerfile: infra/frontend/Dockerfile}
-    image: smartfan-frontend:0.7.0
+    image: smartfan-frontend:0.8.0
     user: "101:101"
     depends_on:
       api: {condition: service_healthy}
@@ -263,7 +267,7 @@ services:
 
   writer:
     <<: *runtime
-    image: smartfan-python:0.7.0
+    image: smartfan-python:0.8.0
     pull_policy: never
     command: [python, -m, services.writer.main]
     user: "10001:10001"
@@ -287,7 +291,7 @@ services:
     cpus: 1
 
   ollama-init:
-    image: smartfan-python:0.7.0
+    image: smartfan-python:0.8.0
     pull_policy: never
     command: [python, -m, infra.model_init]
     user: "10001:10001"
@@ -316,3 +320,4 @@ volumes:
   ollama_models: {}
   simulator_spool: {}
   writer_credentials: {}
+  api_credentials: {}

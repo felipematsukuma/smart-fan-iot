@@ -6,12 +6,13 @@ import html
 import json
 import os
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Query, Request, Response
+from fastapi import Depends, FastAPI, Query, Request, Response, WebSocket
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -24,15 +25,22 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from smartfan_common.influx_v2 import InfluxHTTP
 from smartfan_common.reliability.database import engine_for
 from smartfan_common.reliability.runtime import configure_logging
+from smartfan_common.reliability.store import DurableStore
+from smartfan_common.ws_protocol import TicketRequest
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 
 from .auth import AuthService, Principal
+from .bus import ApiBus
 from .errors import Problem
+from .history import metrics
+from .realtime import EventStore
 from .security import Role, password_bytes
+from .stream import Hub
 
 
 class Login(BaseModel):
@@ -170,6 +178,8 @@ def create_app(
     key: bytes | None = None,
     origins: tuple[str, ...] | None = None,
     auth: AuthService | None = None,
+    realtime: bool | None = None,
+    influx: InfluxHTTP | None = None,
 ) -> FastAPI:
     logger = configure_logging("api")
     database = (
@@ -193,12 +203,32 @@ def create_app(
         for origin in allowed
     ):
         raise ValueError("Configure explicit local or HTTPS web origins")
+    events = EventStore(DurableStore(database, "api"))
+    hub = Hub()
+    enabled = realtime if realtime is not None else engine is None
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        bus = ApiBus(events, hub, asyncio.get_running_loop()) if enabled else None
+        app.state.bus = bus
+        if bus:
+            bus.thread.start()
+        try:
+            yield
+        finally:
+            if bus:
+                bus.stop.set()
+                await asyncio.to_thread(bus.thread.join, 10)
+            if engine is None:
+                database.dispose()
+
     application = FastAPI(
         title="Smart Fan AIoT — Ar-condicionado",
         version="2.0.0",
         openapi_url="/api/v1/openapi.json",
         docs_url=None,
         redoc_url=None,
+        lifespan=lifespan,
         responses={
             status: {
                 "description": "Erro padronizado",
@@ -214,6 +244,12 @@ def create_app(
     application.state.auth = auth or AuthService(database, signing)
     application.state.engine = database
     application.state.origins = allowed
+    application.state.events = events
+    application.state.hub = hub
+    application.state.bus = None
+    application.state.influx = influx or (
+        InfluxHTTP(Path("/run/influx/token"), timeout=10) if enabled else None
+    )
     application.add_middleware(BodyLimit)
     application.add_middleware(
         CORSMiddleware,
@@ -337,6 +373,12 @@ def create_app(
             ).scalar_one()
         if not exists:
             raise Problem(503, "schema_unavailable", "Migrações pendentes.")
+        if enabled and (
+            application.state.bus is None or not application.state.bus.ready
+        ):
+            raise Problem(
+                503, "messaging_unavailable", "Mensageria temporariamente indisponível."
+            )
         return {"status": "ready", "dependencies": {"postgres": True}}
 
     @application.post("/api/v1/auth/login")
@@ -364,14 +406,45 @@ def create_app(
         return Response(status_code=204)
 
     @application.post("/api/v1/auth/ws-ticket")
-    def ticket(request: Request, principal: Annotated[Principal, Depends(current)]):
+    def ticket(
+        request: Request,
+        principal: Annotated[Principal, Depends(current)],
+        body: TicketRequest | None = None,
+    ):
         origin = request.headers.get("origin")
         if origin not in allowed:
             raise Problem(403, "origin_forbidden", "Origem não permitida.")
         value = application.state.auth.ticket(
-            principal, origin, request.state.correlation_id
+            principal,
+            origin,
+            request.state.correlation_id,
+            events.authorize(body.devices if body else None),
         )
         return {"ticket": value, "expires_in": 30}
+
+    @application.get("/api/v1/snapshot")
+    def snapshot(
+        principal: Annotated[Principal, Depends(current)],
+        device: Annotated[list[str] | None, Query(max_length=100)] = None,
+    ):
+        return events.snapshot(events.authorize(device)).model_dump(mode="json")
+
+    @application.websocket("/ws")
+    async def websocket(socket: WebSocket):
+        await hub.endpoint(socket, application.state.auth, events, allowed)
+
+    @application.get("/api/v1/devices/{identity}/metrics")
+    def history_metrics(
+        identity: str,
+        principal: Annotated[Principal, Depends(current)],
+        hours: Annotated[int, Query(ge=1, le=168)] = 24,
+    ):
+        events.authorize([identity])
+        if application.state.influx is None:
+            raise Problem(
+                503, "history_unavailable", "Histórico temporariamente indisponível."
+            )
+        return metrics(application.state.influx, identity, hours)
 
     def page(table: str, columns: str, limit: int, cursor: str | None) -> dict:
         parameters: dict = {"limit": limit + 1}

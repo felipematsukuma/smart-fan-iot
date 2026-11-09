@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { currentUser, type Role } from './auth';
 import { mayVisit } from './access';
 import LoginPage from './pages/LoginPage.vue';
-import OverviewPage from './pages/OverviewPage.vue';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -20,7 +19,11 @@ export const router = createRouter({
       component: LoginPage,
       meta: { public: true, title: 'Entrar' },
     },
-    { path: '/', component: OverviewPage, meta: { title: 'Visão geral' } },
+    {
+      path: '/',
+      component: () => import('./pages/OverviewPage.vue'),
+      meta: { title: 'Visão geral' },
+    },
     {
       path: '/usuarios',
       component: () => import('./pages/UsersPage.vue'),
