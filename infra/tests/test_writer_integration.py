@@ -223,3 +223,37 @@ def test_real_history_pagination_and_chart(database, influx, tmp_path):
         assert 1 <= len(chart) <= 10 and "current_a" in chart[0]
     finally:
         device.close()
+
+
+def test_flux_energy_preserves_missing_boot_and_gap_boundaries(
+    database, influx, tmp_path
+):
+    _, engines = database
+    worker = Writer(DurableStore(engines["writer"], "writer"), influx)
+    device = SimulatorDevice(
+        tmp_path / "energy.sqlite3", PlantConfig(), device_id="ac_energy"
+    )
+    base = datetime.now(UTC) - timedelta(seconds=60)
+    try:
+        for index, offset in enumerate((0, 2, 4, 6, 8, 20)):
+            data = parse_event_v2(
+                device.sample(base + timedelta(seconds=offset))
+            ).model_dump()
+            data["conteudo"]["readings"]["power_w"] = None if index == 2 else 1000.0
+            if index >= 4:
+                data["metadata"]["boot_id"] = "22222222-2222-4222-8222-222222222222"
+            worker.process(
+                accept(engines, worker, TelemetrySampleV2.model_validate(data))
+            )
+        summary = influx.query(
+            influx.energy_query(
+                "ac_energy", base - timedelta(seconds=1), base + timedelta(seconds=21)
+            )
+        )
+        assert len(summary) == 1
+        assert float(summary[0]["energy_wh"]) == pytest.approx(1000 * 2 / 3600)
+        assert int(summary[0]["missing_samples"]) == 1
+        assert float(summary[0]["covered_seconds"]) == 2
+        assert int(summary[0]["discarded_intervals"]) == 2
+    finally:
+        device.close()

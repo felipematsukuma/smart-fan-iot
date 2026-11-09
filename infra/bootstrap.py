@@ -10,7 +10,7 @@ from smartfan_common.reliability.database import engine_for
 from smartfan_common.routing_v2 import QUEUES_V2
 
 from infra.database import provision_database
-from infra.influx_credentials import provision_writer
+from infra.influx_credentials import provision_token, provision_writer
 from services.api.auth import seed_users
 
 
@@ -72,6 +72,17 @@ def main() -> None:
     live = next(b for b in buckets if b["name"] == "live")
     provision_writer(
         influx_headers, orgs[0]["id"], live["id"], Path("/credentials/writer")
+    )
+    buckets = request(
+        "http://influxdb:8086/api/v2/buckets?org=smartfan", influx_headers
+    )["buckets"]
+    lab = next(bucket for bucket in buckets if bucket["name"] == "lab")
+    provision_token(
+        influx_headers,
+        orgs[0]["id"],
+        [(live["id"], "read"), (lab["id"], "read")],
+        Path("/credentials/api"),
+        "smartfan-api-read-v1",
     )
     print(
         json.dumps(

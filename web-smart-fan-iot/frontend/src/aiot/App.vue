@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { watch, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   Wind,
@@ -10,11 +10,15 @@ import {
 } from 'lucide-vue-next';
 import { currentUser, signOut, sessionNotice } from './auth';
 import { router } from './router';
+import { startRealtime, stopRealtime } from './realtime';
 
 const route = useRoute();
 watch(currentUser, (value) => {
+  if (value) startRealtime();
+  else stopRealtime();
   if (!value && !route.meta.public) void router.replace('/entrar');
 });
+onBeforeUnmount(stopRealtime);
 async function logout() {
   try {
     await signOut();

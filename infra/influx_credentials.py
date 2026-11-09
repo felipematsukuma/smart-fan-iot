@@ -6,8 +6,12 @@ import urllib.request
 from pathlib import Path
 
 
-def provision_writer(
-    headers: dict[str, str], org_id: str, bucket_id: str, directory: Path
+def provision_token(
+    headers: dict[str, str],
+    org_id: str,
+    bucket_permissions: list[tuple[str, str]],
+    directory: Path,
+    description: str,
 ) -> None:
     def request(path, body=None):
         req = urllib.request.Request(
@@ -18,12 +22,12 @@ def provision_writer(
         with urllib.request.urlopen(req, timeout=5) as response:
             return json.load(response)
 
-    description = "smartfan-writer-live-v1"
     permissions = [
         {
-            "action": "write",
+            "action": action,
             "resource": {"type": "buckets", "id": bucket_id, "orgID": org_id},
         }
+        for bucket_id, action in bucket_permissions
     ]
     candidates = [
         item
@@ -49,10 +53,12 @@ def provision_writer(
     )
     actual = authorization["permissions"]
     if (
-        len(actual) != 1
-        or actual[0]["action"] != "write"
-        or actual[0]["resource"]["type"] != "buckets"
-        or actual[0]["resource"].get("id") != bucket_id
+        len(actual) != len(permissions)
+        or {
+            (item["resource"].get("id"), item["action"], item["resource"]["type"])
+            for item in actual
+        }
+        != {(bucket, action, "buckets") for bucket, action in bucket_permissions}
         or authorization["status"] != "active"
     ):
         raise RuntimeError("Writer token scope is invalid")
@@ -66,3 +72,11 @@ def provision_writer(
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
         with os.fdopen(fd, "w") as stream:
             stream.write(token + "\n")
+
+
+def provision_writer(
+    headers: dict[str, str], org_id: str, bucket_id: str, directory: Path
+) -> None:
+    provision_token(
+        headers, org_id, [(bucket_id, "write")], directory, "smartfan-writer-live-v1"
+    )
