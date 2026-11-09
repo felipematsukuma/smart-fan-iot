@@ -2,6 +2,7 @@
 
 import json
 
+from smartfan_common.control import RuleConfig
 from smartfan_common.device_registry import DeviceCreate, DeviceUpdate
 from smartfan_common.ws_protocol import default_descriptor
 from sqlalchemy import Engine, text
@@ -137,6 +138,18 @@ class DeviceRegistry:
                     correlation,
                     {"revision": 1},
                 )
+                conn.execute(
+                    text(
+                        "INSERT INTO app.rules(device_id,revision,configuration) VALUES(:id,1,CAST(:config AS jsonb))"
+                    ),
+                    {"id": body.id, "config": json.dumps(RuleConfig().model_dump())},
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO app.rule_versions(device_id,revision,configuration) SELECT device_id,revision,configuration FROM app.rules WHERE device_id=:id"
+                    ),
+                    {"id": body.id},
+                )
         except IntegrityError:
             raise Problem(
                 409, "device_exists", "ID de dispositivo ou componente já cadastrado."
@@ -147,6 +160,10 @@ class DeviceRegistry:
         self, identity: str, body: DeviceUpdate, actor: Principal, correlation: str
     ) -> dict:
         with self.engine.begin() as conn:
+            conn.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key,0))"),
+                {"key": "command-device:" + identity},
+            )
             row = (
                 conn.execute(
                     text("SELECT * FROM app.devices WHERE id=:id FOR UPDATE"),
