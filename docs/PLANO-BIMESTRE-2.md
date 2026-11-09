@@ -2,9 +2,15 @@
 
 Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a documentação deve ser consolidada e revisada antes de qualquer implementação. Não é cronograma nem autorização de desenvolvimento.
 
-**Estado:** conteúdo das cinco etapas e oito ADRs consolidado documentalmente; revisão final do usuário pendente. A implementação AIoT, os ensaios e o aceite operacional não foram realizados por esta consolidação. O próximo trabalho depende de pedido explícito de módulo; push/PR continuam não autorizados.
+**Estado:** conteúdo das cinco etapas e oito ADRs consolidado documentalmente. Após a revisão final, o usuário autorizou execução contínua dos módulos conforme o plano, sem confirmação entre módulos. Branch por módulo, validação e merge local permanecem obrigatórios; push/PR continuam não autorizados. Só interromper por bloqueio que exija decisão do usuário. O aceite operacional depende dos testes reais, não da autorização de execução.
 
 **Revisão técnica final:** os três refinamentos aprovados foram incorporados: ativação apenas de modelo aprovado e selecionado no registro; lease renovável com fencing e recuperação segura; UTC real no live, acelerando apenas a degradação do cenário. Especificações em [arquitetura](./plano/03-arquitetura.md), critérios em [módulos](./plano/04-modulos.md) e [aceite](./plano/05-riscos-aceite.md). Nenhum desses controles foi implementado por esta revisão documental.
+
+## Registro de execução sob demanda
+
+| Módulo | Evidência e limite |
+|---|---|
+| M00 — contratos v2 | Implementado e validado localmente em `feat/contratos-v2`; [README do pacote](../packages/smartfan_common/README.md). 134 testes Python do pacote, 216 frontend, 153 backend, lint/tipos/geração e build locais aprovados; CI remoto e fluxo AIoT integrado pendentes. Os demais módulos continuam pendentes |
 
 ## Decisões desta consolidação
 
