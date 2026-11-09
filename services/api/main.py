@@ -49,6 +49,7 @@ from .commands import get_rule, update_rule
 from .devices import DeviceRegistry
 from .errors import Problem
 from .history import metrics
+from .messaging import FailureJournal, Management
 from .realtime import EventStore
 from .security import Role, password_bytes
 from .stream import Hub
@@ -191,6 +192,7 @@ def create_app(
     auth: AuthService | None = None,
     realtime: bool | None = None,
     influx: InfluxHTTP | None = None,
+    management: Management | None = None,
 ) -> FastAPI:
     logger = configure_logging("api")
     database = (
@@ -258,6 +260,10 @@ def create_app(
     application.state.events = events
     registry = DeviceRegistry(database)
     commands = CommandService(events.store)
+    journal = FailureJournal(database)
+    monitor = management or (
+        Management(Path("/run/secrets/rabbit_api-monitor")) if enabled else None
+    )
     application.state.hub = hub
     application.state.bus = None
     application.state.influx = influx or (
@@ -619,6 +625,37 @@ def create_app(
                 "current_boot": str(row["current_boot"]),
             },
         }
+
+    @application.get("/api/v1/messaging")
+    def messaging_snapshot(principal: Annotated[Principal, Depends(admin)]):
+        if monitor is None:
+            raise Problem(
+                503, "messaging_unavailable", "Mensageria temporariamente indisponível."
+            )
+        return monitor.snapshot()
+
+    @application.get("/api/v1/messaging/failures")
+    def messaging_failures(
+        principal: Annotated[Principal, Depends(admin)],
+        limit: int = Query(default=50, ge=1, le=100),
+        before: UUID | None = None,
+    ):
+        return journal.page(limit, before)
+
+    class ReplayRequest(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        request_id: UUID
+
+    @application.post("/api/v1/messaging/failures/{identity}/replay", status_code=202)
+    def messaging_replay(
+        identity: UUID,
+        body: ReplayRequest,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        return journal.replay(
+            identity, body.request_id, principal.id, request.state.correlation_id
+        )
 
     @application.websocket("/ws")
     async def websocket(socket: WebSocket):
