@@ -199,16 +199,20 @@ class Lab:
             raise Problem(404, "job_not_found", "Job não encontrado.")
         return dict(row)
 
-    def jobs(self, before: UUID | None, limit: int) -> dict:
+    def jobs(self, before: UUID | None, limit: int, kind: str | None = None) -> dict:
         with self.store.engine.connect() as conn:
             rows = (
                 conn.execute(
                     text(
                         "SELECT "
                         + JOB_COLUMNS
-                        + " FROM app.jobs WHERE (:before IS NULL OR (created_at,id)<(SELECT created_at,id FROM app.jobs WHERE id=CAST(:before AS uuid))) ORDER BY created_at DESC,id DESC LIMIT :limit"
+                        + " FROM app.jobs WHERE (:kind IS NULL OR kind=:kind) AND (:before IS NULL OR (created_at,id)<(SELECT created_at,id FROM app.jobs WHERE id=CAST(:before AS uuid))) ORDER BY created_at DESC,id DESC LIMIT :limit"
                     ),
-                    {"before": str(before) if before else None, "limit": limit + 1},
+                    {
+                        "before": str(before) if before else None,
+                        "limit": limit + 1,
+                        "kind": kind,
+                    },
                 )
                 .mappings()
                 .all()

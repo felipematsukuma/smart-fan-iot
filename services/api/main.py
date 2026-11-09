@@ -9,7 +9,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, Query, Request, Response, WebSocket
@@ -32,6 +32,7 @@ from smartfan_common.lab_config import LabConfig
 from smartfan_common.reliability.database import engine_for
 from smartfan_common.reliability.runtime import configure_logging
 from smartfan_common.reliability.store import DurableStore
+from smartfan_common.training_config import TrainingRequest
 from smartfan_common.ws_protocol import TicketRequest
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -52,6 +53,7 @@ from .errors import Problem
 from .history import metrics
 from .lab import Lab
 from .messaging import FailureJournal, Management
+from .models import Models
 from .realtime import EventStore
 from .security import Role, password_bytes
 from .stream import Hub
@@ -265,6 +267,7 @@ def create_app(
     commands = CommandService(events.store)
     journal = FailureJournal(database)
     lab = Lab(events.store)
+    models = Models(events.store)
     monitor = management or (
         Management(Path("/run/secrets/rabbit_api-monitor")) if enabled else None
     )
@@ -666,8 +669,9 @@ def create_app(
         principal: Annotated[Principal, Depends(admin)],
         limit: int = Query(default=50, ge=1, le=100),
         before: UUID | None = None,
+        kind: Literal["generate", "train"] | None = None,
     ):
-        return lab.jobs(before, limit)
+        return lab.jobs(before, limit, kind)
 
     @application.get("/api/v1/jobs/{identity}")
     def job_get(identity: UUID, principal: Annotated[Principal, Depends(admin)]):
@@ -697,6 +701,73 @@ def create_app(
         from .lab import preview
 
         return preview(artifacts_root / "datasets" / str(identity), dataset, limit)
+
+    @application.post("/api/v1/training/jobs", status_code=202)
+    def training_create(
+        body: TrainingRequest,
+        request: Request,
+        response: Response,
+        principal: Annotated[Principal, Depends(admin)],
+        idempotency_key: Annotated[
+            str, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+        ],
+    ):
+        result = models.train(
+            body, principal, idempotency_key, request.state.correlation_id
+        )
+        response.headers["Location"] = "/api/v1/jobs/" + str(result["id"])
+        return result
+
+    @application.get("/api/v1/models")
+    def models_list(
+        principal: Annotated[Principal, Depends(admin)],
+        limit: int = Query(default=50, ge=1, le=100),
+        before: str | None = Query(
+            default=None, max_length=64, pattern=r"^mdl_[a-f0-9]{32}$"
+        ),
+    ):
+        return models.list(limit, before)
+
+    @application.get("/api/v1/models/{version}")
+    def model_get(version: str, principal: Annotated[Principal, Depends(admin)]):
+        return models.get(version)
+
+    @application.get("/api/v1/models/{version}/card")
+    def model_card(version: str, principal: Annotated[Principal, Depends(admin)]):
+        model = models.get(version)
+        if model["status"] != "completed":
+            raise Problem(409, "model_not_ready", "Model card ainda indisponível.")
+        try:
+            raw = (
+                artifacts_root / "models" / model["version"] / "model-card.md"
+            ).read_bytes()
+            if len(raw) > 16384:
+                raise ValueError("Card size exceeded")
+            return {"markdown": raw.decode("utf-8")}
+        except (OSError, ValueError):
+            raise Problem(
+                503, "artifact_unavailable", "Model card indisponível."
+            ) from None
+
+    class PromotionRequest(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        request_id: UUID
+        expected_revision: int = Field(strict=True, ge=0)
+
+    @application.post("/api/v1/models/{version}/promote", status_code=202)
+    def model_promote(
+        version: str,
+        body: PromotionRequest,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        return models.promote(
+            version,
+            body.request_id,
+            body.expected_revision,
+            principal,
+            request.state.correlation_id,
+        )
 
     @application.get("/api/v1/messaging")
     def messaging_snapshot(principal: Annotated[Principal, Depends(admin)]):

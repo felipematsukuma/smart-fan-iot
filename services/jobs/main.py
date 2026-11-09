@@ -53,9 +53,11 @@ def main() -> None:
                     ch.basic_ack(method.delivery_tag)
 
                 channel.basic_consume("q.jobs.generate", receive, auto_ack=False)
+                channel.basic_consume("q.jobs.train", receive, auto_ack=False)
                 while not stop.is_set():
                     broker.process_data_events(time_limit=0.1)
                     supervisor.tick()
+                    supervisor.enqueue_activation()
                     for _ in range(8):
                         if not publisher.publish_one(store):
                             break
