@@ -28,6 +28,7 @@ from pydantic import (
 from smartfan_common.control import CommandIntent, RuleUpdate
 from smartfan_common.device_registry import DeviceCreate, DeviceUpdate
 from smartfan_common.influx_v2 import InfluxHTTP
+from smartfan_common.lab_config import LabConfig
 from smartfan_common.reliability.database import engine_for
 from smartfan_common.reliability.runtime import configure_logging
 from smartfan_common.reliability.store import DurableStore
@@ -49,6 +50,7 @@ from .commands import get_rule, update_rule
 from .devices import DeviceRegistry
 from .errors import Problem
 from .history import metrics
+from .lab import Lab
 from .messaging import FailureJournal, Management
 from .realtime import EventStore
 from .security import Role, password_bytes
@@ -193,6 +195,7 @@ def create_app(
     realtime: bool | None = None,
     influx: InfluxHTTP | None = None,
     management: Management | None = None,
+    artifacts_root: Path = Path("/artifacts"),
 ) -> FastAPI:
     logger = configure_logging("api")
     database = (
@@ -261,6 +264,7 @@ def create_app(
     registry = DeviceRegistry(database)
     commands = CommandService(events.store)
     journal = FailureJournal(database)
+    lab = Lab(events.store)
     monitor = management or (
         Management(Path("/run/secrets/rabbit_api-monitor")) if enabled else None
     )
@@ -625,6 +629,74 @@ def create_app(
                 "current_boot": str(row["current_boot"]),
             },
         }
+
+    @application.get("/api/v1/lab/defaults")
+    def lab_defaults(principal: Annotated[Principal, Depends(admin)]):
+        config = LabConfig()
+        return {
+            "configuration": config.model_dump(),
+            "rows": config.total,
+            "estimated_bytes": config.estimated_bytes,
+        }
+
+    @application.post("/api/v1/lab/estimate")
+    def lab_estimate(body: LabConfig, principal: Annotated[Principal, Depends(admin)]):
+        return {
+            "rows": body.total,
+            "estimated_bytes": body.estimated_bytes,
+            "samples_per_equipment": body.samples_per_equipment,
+        }
+
+    @application.post("/api/v1/lab/jobs", status_code=202)
+    def lab_create(
+        body: LabConfig,
+        request: Request,
+        response: Response,
+        principal: Annotated[Principal, Depends(admin)],
+        idempotency_key: Annotated[
+            str, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+        ],
+    ):
+        job = lab.create(body, principal, idempotency_key, request.state.correlation_id)
+        response.headers["Location"] = "/api/v1/jobs/" + str(job["id"])
+        return job
+
+    @application.get("/api/v1/jobs")
+    def jobs_list(
+        principal: Annotated[Principal, Depends(admin)],
+        limit: int = Query(default=50, ge=1, le=100),
+        before: UUID | None = None,
+    ):
+        return lab.jobs(before, limit)
+
+    @application.get("/api/v1/jobs/{identity}")
+    def job_get(identity: UUID, principal: Annotated[Principal, Depends(admin)]):
+        return lab.job(identity)
+
+    @application.post("/api/v1/jobs/{identity}/cancel", status_code=202)
+    def job_cancel(
+        identity: UUID,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        return lab.cancel(identity, principal, request.state.correlation_id)
+
+    @application.get("/api/v1/datasets/{identity}")
+    def dataset_get(identity: UUID, principal: Annotated[Principal, Depends(admin)]):
+        return lab.dataset(identity)
+
+    @application.get("/api/v1/datasets/{identity}/preview")
+    def dataset_preview(
+        identity: UUID,
+        principal: Annotated[Principal, Depends(admin)],
+        limit: int = Query(default=20, ge=1, le=200),
+    ):
+        dataset = lab.dataset(identity)
+        if dataset["status"] != "completed":
+            raise Problem(409, "dataset_not_ready", "Dataset ainda não está completo.")
+        from .lab import preview
+
+        return preview(artifacts_root / "datasets" / str(identity), dataset, limit)
 
     @application.get("/api/v1/messaging")
     def messaging_snapshot(principal: Annotated[Principal, Depends(admin)]):
