@@ -93,6 +93,21 @@ def main() -> None:
 
     def on_disconnect(client: Any, userdata: Any, rc: int) -> None:
         connected.clear()
+        if not stop.is_set():
+            try:
+                # Paho 1.6 keeps these values for the NEXT CONNECT. Give each
+                # connection a distinct will ID; configuration time is not loss time.
+                client.will_set(
+                    f"devices/{device_id}/availability",
+                    device.availability(utc_now(), "offline", will=True),
+                    qos=1,
+                    retain=True,
+                )
+            except (ValueError, sqlite3.Error):
+                logger.warning(
+                    "next_will_pending",
+                    extra={"event": "next_will_pending", "device_id": device_id},
+                )
 
     def on_message(client: Any, userdata: Any, message: Any) -> None:
         try:
