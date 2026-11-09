@@ -18,7 +18,10 @@ const content = await format(generated, {
   filepath: output,
 });
 if (process.argv.includes('--check')) {
-  if ((await readFile(output, 'utf8')) !== content) {
+  if (
+    (await readFile(output, 'utf8')).replaceAll('\r\n', '\n') !==
+    content.replaceAll('\r\n', '\n')
+  ) {
     throw new Error('Generated wire types differ; run npm run contracts:types');
   }
 } else {
