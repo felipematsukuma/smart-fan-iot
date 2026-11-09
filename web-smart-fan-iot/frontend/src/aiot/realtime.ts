@@ -1,4 +1,5 @@
-import { ref } from 'vue';
+import { ref, shallowReactive } from 'vue';
+import type { EventV2 } from '../lib/contracts-v2.generated';
 import type { Snapshot } from '../lib/ws-server.generated';
 import { isServerControl } from '../lib/ws-control';
 import { isEventV2 } from '../lib/contracts-v2';
@@ -6,6 +7,9 @@ import { api, currentUser, onSessionEnded } from './auth';
 import { LiveStore } from './live-store';
 
 export const live = new LiveStore();
+export const jobUpdates = shallowReactive(
+  new Map<string, Extract<EventV2, { tipo: 'job.progress' }>>(),
+);
 export const streamStatus = ref<
   'offline' | 'connecting' | 'authenticating' | 'connected' | 'reconnecting'
 >('offline');
@@ -28,6 +32,7 @@ export function stopRealtime() {
   socket = null;
   streamStatus.value = 'offline';
   live.clear();
+  jobUpdates.clear();
 }
 onSessionEnded(stopRealtime);
 
@@ -81,6 +86,16 @@ export function startRealtime() {
             throw new Error('Stream muito grande.');
           const packet: unknown = JSON.parse(message.data);
           if (isEventV2(packet)) {
+            if (packet.tipo === 'job.progress') {
+              const previous = jobUpdates.get(packet.conteudo.job_id);
+              if (
+                !previous ||
+                Date.parse(previous.timestamp) < Date.parse(packet.timestamp)
+              )
+                jobUpdates.set(packet.conteudo.job_id, packet);
+              if (jobUpdates.size > 100)
+                jobUpdates.delete(jobUpdates.keys().next().value!);
+            }
             live.apply(packet);
           } else if (isServerControl(packet)) {
             if (packet.type === 'authenticated') {
