@@ -4,10 +4,23 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smartfan-common"
-version = "0.2.0"
+version = "0.3.0"
 description = "Versioned AIoT wire contracts and causal HVAC features"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.14.1,<3"]
+
+[project.optional-dependencies]
+reliability = [
+    "SQLAlchemy==2.0.55",
+    "psycopg2-binary==2.9.13",
+    "pika==1.4.4",
+    "alembic==1.20.1",
+    "Mako==1.4.3",
+    "MarkupSafe==3.0.4",
+]
+
+[tool.setuptools.package-data]
+smartfan_common = ["py.typed", "reliability/migrations/*.py", "reliability/migrations/versions/*.py"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -25,3 +38,7 @@ select = ["E4", "E7", "E9", "F", "I"]
 [tool.mypy]
 files = ["src"]
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["pika", "pika.*"]
+ignore_missing_imports = true
