@@ -2,6 +2,8 @@
 
 O Compose da raiz executa a infraestrutura nova em projeto/volumes `smartfan-aiot`, separado do legado em [web-smart-fan-iot](../web-smart-fan-iot/README.md). API, frontend e consumidores HVAC serão acrescentados nos módulos seguintes; esta entrega não satisfaz sozinha o aceite integrado do requisito 19.
 
+M02 amplia o bootstrap com contas PostgreSQL por serviço e migrações Alembic do schema transport. Os segredos administrativos continuam somente no processo privilegiado de instalação. Testes reais de durabilidade: `tools/bootstrap/test-reliability.ps1`; esse teste usa banco descartável e não remove dados da aplicação.
+
 ## Preparar e executar
 
 Na raiz, com Docker Desktop ativo e o ambiente Python de desenvolvimento do backend disponível:

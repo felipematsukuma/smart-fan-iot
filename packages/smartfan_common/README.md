@@ -1,5 +1,9 @@
 # Núcleo compartilhado — M00
 
+## Entrega durável opcional — M02
+
+A versão 0.3.0 acrescenta o extra `smartfan-common[reliability]`, com migrações Alembic, inbox/outbox, retry/DLQ, RLS, leases, publicação AMQP confirmada e auxiliares de health/logs. [Operação, garantias e testes](./src/smartfan_common/reliability/README.md). Não altera a semântica dos contratos v1/v2 nem cria consumidores automaticamente.
+
 ## Contratos v2 — implementação local
 
 A versão 0.2.0 acrescenta `contracts_v2`, `routing_v2` e `features_v2`, preservando os imports, schemas e fixtures v1. A aplicação operacional do ventilador ainda usa seus contratos anteriores; disponibilizar a biblioteca não migra o transporte.
