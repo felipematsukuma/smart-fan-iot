@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Query, Request, Response, WebSocket
+from fastapi import Depends, FastAPI, Header, Query, Request, Response, WebSocket
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -25,6 +25,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from smartfan_common.control import CommandIntent, RuleUpdate
 from smartfan_common.device_registry import DeviceCreate, DeviceUpdate
 from smartfan_common.influx_v2 import InfluxHTTP
 from smartfan_common.reliability.database import engine_for
@@ -35,8 +36,16 @@ from sqlalchemy import Engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 
+from services.control.domain import (
+    PUBLIC_COLUMNS,
+    CommandService,
+    ControlError,
+    public_command,
+)
+
 from .auth import AuthService, Principal
 from .bus import ApiBus
+from .commands import get_rule, update_rule
 from .devices import DeviceRegistry
 from .errors import Problem
 from .history import metrics
@@ -248,6 +257,7 @@ def create_app(
     application.state.origins = allowed
     application.state.events = events
     registry = DeviceRegistry(database)
+    commands = CommandService(events.store)
     application.state.hub = hub
     application.state.bus = None
     application.state.influx = influx or (
@@ -261,6 +271,7 @@ def create_app(
         allow_headers=[
             "Authorization",
             "Content-Type",
+            "Idempotency-Key",
             "Idempotency-Key",
             "X-Correlation-ID",
         ],
@@ -351,6 +362,13 @@ def create_app(
 
     def admin(principal: Annotated[Principal, Depends(current)]) -> Principal:
         application.state.auth.require_admin(principal)
+        return principal
+
+    def operator(principal: Annotated[Principal, Depends(current)]) -> Principal:
+        if principal.role not in ("operador", "administrador"):
+            raise Problem(
+                403, "role_forbidden", "Ação exige operador ou administrador."
+            )
         return principal
 
     @application.get("/health")
@@ -484,6 +502,123 @@ def create_app(
         principal: Annotated[Principal, Depends(admin)],
     ):
         return registry.update(identity, body, principal, request.state.correlation_id)
+
+    @application.get("/api/v1/devices/{identity}/rule")
+    def rule_get(identity: str, principal: Annotated[Principal, Depends(current)]):
+        registry.get(identity)
+        return get_rule(database, identity)
+
+    @application.patch("/api/v1/devices/{identity}/rule")
+    def rule_edit(
+        identity: str,
+        body: RuleUpdate,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        return update_rule(
+            database, identity, body, principal, request.state.correlation_id
+        )
+
+    @application.post("/api/v1/devices/{identity}/commands", status_code=202)
+    def command_create(
+        identity: str,
+        body: CommandIntent,
+        request: Request,
+        response: Response,
+        principal: Annotated[Principal, Depends(operator)],
+        idempotency_key: Annotated[
+            str, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_-]+$")
+        ],
+    ):
+        try:
+            result = commands.manual(
+                identity,
+                body,
+                principal.id,
+                idempotency_key,
+                request.state.correlation_id,
+            )
+        except ControlError as error:
+            raise Problem(409, error.code, error.message) from None
+        response.headers["Location"] = "/api/v1/commands/" + result["id"]
+        return result
+
+    @application.get("/api/v1/commands/{identity}")
+    def command_get(identity: UUID, principal: Annotated[Principal, Depends(current)]):
+        with database.connect() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "SELECT " + PUBLIC_COLUMNS + " FROM app.commands WHERE id=:id"
+                    ),
+                    {"id": str(identity)},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            raise Problem(404, "command_not_found", "Comando não encontrado.")
+        return public_command(row)
+
+    @application.get("/api/v1/devices/{identity}/commands")
+    def command_list(
+        identity: str,
+        principal: Annotated[Principal, Depends(current)],
+        limit: int = Query(default=20, ge=1, le=100),
+        before: UUID | None = None,
+    ):
+        registry.get(identity)
+        with database.connect() as conn:
+            rows = (
+                conn.execute(
+                    text(
+                        "SELECT "
+                        + PUBLIC_COLUMNS
+                        + " FROM app.commands WHERE device_id=:id AND (:before IS NULL OR (created_at,id)<(SELECT created_at,id FROM app.commands WHERE id=CAST(:before AS uuid) AND device_id=:id)) ORDER BY created_at DESC,id DESC LIMIT :limit"
+                    ),
+                    {
+                        "id": identity,
+                        "before": str(before) if before else None,
+                        "limit": limit + 1,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+        return {
+            "items": [public_command(row) for row in rows[:limit]],
+            "next_cursor": str(rows[limit - 1]["id"]) if len(rows) > limit else None,
+        }
+
+    @application.get("/api/v1/devices/{identity}/control")
+    def control_state(identity: str, principal: Annotated[Principal, Depends(current)]):
+        registry.get(identity)
+        with database.connect() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "SELECT o.sampled_at,o.telemetry,o.boot_id,p.boot_id AS current_boot,p.mode,p.manual_cooling_block,p.last_revision FROM app.control_observations o JOIN transport.device_status p USING(device_id) WHERE o.device_id=:id"
+                    ),
+                    {"id": identity},
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return {"fresh": False, "observation": None}
+        return {
+            "fresh": row["boot_id"] == row["current_boot"]
+            and 0
+            <= (
+                datetime.now(row["sampled_at"].tzinfo) - row["sampled_at"]
+            ).total_seconds()
+            <= 6,
+            "observation": {
+                **dict(row),
+                "boot_id": str(row["boot_id"]),
+                "current_boot": str(row["current_boot"]),
+            },
+        }
 
     @application.websocket("/ws")
     async def websocket(socket: WebSocket):

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, toRaw } from 'vue';
 import { api, currentUser } from '../auth';
 import { startRealtime } from '../realtime';
 import HistoryPanel from '../components/HistoryPanel.vue';
+import ControlPanel from '../components/ControlPanel.vue';
 
 type Field =
   | 'current_a'
@@ -364,6 +365,12 @@ onMounted(() => void load());
       previsão de saúde ou vida restante no cadastro.
     </p>
   </section>
+  <ControlPanel
+    v-if="selected"
+    :key="selected.id"
+    :device-id="selected.id"
+    :enabled="selected.enabled"
+  />
   <HistoryPanel v-if="selected" :device-id="selected.id" />
 </template>
 <style scoped>

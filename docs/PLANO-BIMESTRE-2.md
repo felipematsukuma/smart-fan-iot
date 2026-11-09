@@ -23,6 +23,7 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M07 — WebSocket e dashboard | [V] Implementado em `feat/websocket-dashboard`: [contratos, segurança e limites](../services/api/REALTIME.md). Ticket com escopo, consumidor API, snapshot durável, store e gráfico live; histórico/energia separados. 171 testes Python, 231 Vitest, 10 integrações e quatro Playwright passaram. Validação pré-compilada mantém CSP sem unsafe-eval; origem impede replays reenriquecidos. Inferência M13 contínua, carga, CI remoto e scan permanecem pendentes |
 | M08 — Cadastro de dispositivos | [V] Implementado em `feat/cadastro-dispositivos`: [perfil, versões, permissões e limites](../services/api/DEVICES.md). Cinco sensores/dois atuadores com IDs estáveis, edição administrativa, concorrência 409, desativação lógica e histórico preservado. 184 testes Python, 231 Vitest, 22 integrações e cinco Playwright passaram. Provisionamento de outro cliente MQTT/instância não é automático; comandos HTTP completos ficam em M09 |
+| M09 — Controle de atuadores | [V] Implementado em `feat/controle-atuadores`: [termostato, agenda, prioridade manual e ACK](../services/control/README.md). Outbox transacional, chave idempotente, revisão/boot, timeout com resultado desconhecido, comando Web e regra automática demonstrados no Compose real. 193 testes Python, 231 Vitest, 27 integrações e seis Playwright passaram. Histerese preditiva, cenário físico pela UI e carga integrada permanecem em módulos posteriores |
 
 ## Decisões desta consolidação
 

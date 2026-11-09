@@ -54,7 +54,7 @@ def database():
     migrate(admin)  # Upgrade head twice must be harmless.
     engines = {
         role: engine_for(role, SECRETS / ("postgres_" + role), database=name)
-        for role in ("writer", "gateway", "api", "jobs-worker")
+        for role in ("writer", "gateway", "api", "control", "jobs-worker")
     }
     with admin.begin() as conn:
         conn.execute(
@@ -83,7 +83,7 @@ def reset_disposable_rows(database):
     with admin.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE transport.inbox,transport.outbox,transport.failures,transport.resource_leases,transport.test_effects,transport.device_presence,transport.command_results,transport.influx_points"
+                "TRUNCATE transport.inbox,transport.outbox,transport.failures,transport.resource_leases,transport.test_effects,transport.device_presence,transport.command_results,transport.influx_points,app.commands,app.command_sequences,app.control_observations"
             )
         )
 
