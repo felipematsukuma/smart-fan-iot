@@ -17,6 +17,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M04 — gateway MQTT↔AMQP | Implementado em `feat/gateway-mqtt-amqp`: [garantias e operação](../services/gateway/README.md). Recebimento durável, origem autenticada, confirmação física, presença e expiração; 15 integrações isoladas e um percurso real pelo gateway. Interrupções reais: spool 0→4→0 e outbox 0→4→0 após retomada. Cadastro dinâmico, gravador, Web, carga integrada e CI remoto permanecem pendentes |
 
+| M05 — writer e histórico HVAC | Implementado em `feat/gravador-influxdb`: [garantias, consultas e medições](../services/writer/README.md). Reserva de ponto antes do upsert, token de escrita restrito a live e persisted após InfluxDB; consultas limitadas e energia sem preencher lacunas. Ensaio isolado: 1 M vetores em 30,001 s; consulta agregada p95 0,123 s. Fluxo integrado de carga, API/UI, limpeza operacional, CI remoto e scan permanecem pendentes |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.
