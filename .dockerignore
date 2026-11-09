@@ -1,0 +1,17 @@
+.git
+**/.venv
+**/node_modules
+**/.env
+**/.env.*
+secrets
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/dist
+**/build
+**/*.egg-info
+**/.pio
+artifacts
+evidence
+infra/tests
