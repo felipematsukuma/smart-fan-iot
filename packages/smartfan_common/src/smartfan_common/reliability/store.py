@@ -222,7 +222,11 @@ class DurableStore:
             )
             if row is None:
                 return None
-            if table == "inbox" and row["attempts"] >= 5:
+            if (
+                table == "inbox"
+                and row["attempts"] >= 5
+                and not row.get("dependency_failure", False)
+            ):
                 self._failure(
                     conn,
                     str(row["event_id"]),
@@ -319,13 +323,21 @@ class DurableStore:
             return False
 
     def retry(
-        self, delivery: Delivery, reason_code: str, *, permanent: bool = False, jitter: float = 0
+        self,
+        delivery: Delivery,
+        reason_code: str,
+        *,
+        permanent: bool = False,
+        jitter: float = 0,
+        dependency_failure: bool = False,
     ) -> None:
         _identifier(reason_code)
         delay = backoff_seconds(delivery.attempts, jitter)
         with self.transaction() as conn:
             now = self._owned(conn, delivery)
-            if permanent or (delivery.table == "inbox" and delivery.attempts >= 5):
+            if permanent or (
+                delivery.table == "inbox" and delivery.attempts >= 5 and not dependency_failure
+            ):
                 self._failure(
                     conn,
                     delivery.event_id,
@@ -337,6 +349,16 @@ class DurableStore:
                 state = "failed"
             else:
                 state = "pending"
+            conn.execute(
+                text(
+                    "UPDATE transport.inbox SET dependency_failure=:dependency WHERE owner=:owner AND event_id=:id"
+                )
+                if delivery.table == "inbox"
+                else text("SELECT 1"),
+                {"owner": self.owner, "id": delivery.event_id, "dependency": dependency_failure}
+                if delivery.table == "inbox"
+                else {},
+            )
             conn.execute(
                 text(f"""UPDATE transport.{delivery.table} SET state=:state,
                 reason_code=:reason,available_at=:due,leased_until=NULL,finished_at=:finished
