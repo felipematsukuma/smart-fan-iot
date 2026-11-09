@@ -9,6 +9,7 @@ import {
   LogOut,
   AirVent,
   Network,
+  FlaskConical,
 } from 'lucide-vue-next';
 import { currentUser, signOut, sessionNotice } from './auth';
 import { router } from './router';
@@ -56,6 +57,9 @@ async function logout() {
           <RouterLink to="/usuarios"><Users :size="18" />Usuários</RouterLink>
           <RouterLink to="/mensageria"
             ><Network :size="18" />Mensageria</RouterLink
+          >
+          <RouterLink to="/laboratorio"
+            ><FlaskConical :size="18" />Laboratório</RouterLink
           >
           <RouterLink to="/auditoria"
             ><ScrollText :size="18" />Auditoria</RouterLink

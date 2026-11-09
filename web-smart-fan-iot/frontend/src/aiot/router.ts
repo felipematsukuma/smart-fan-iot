@@ -35,6 +35,11 @@ export const router = createRouter({
       meta: { title: 'Usuários', roles: ['administrador'] },
     },
     {
+      path: '/laboratorio',
+      component: () => import('./pages/LabPage.vue'),
+      meta: { title: 'Laboratório', roles: ['administrador'] },
+    },
+    {
       path: '/mensageria',
       component: () => import('./pages/MessagingPage.vue'),
       meta: { title: 'Mensageria', roles: ['administrador'] },
