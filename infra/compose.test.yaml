@@ -1,0 +1,5 @@
+# Only disposable integration runners; runtime bootstrap remains a small one-shot.
+services:
+  bootstrap:
+    mem_limit: 768m
+    cpus: 2

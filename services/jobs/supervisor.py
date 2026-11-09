@@ -19,6 +19,7 @@ from uuid import uuid4
 from smartfan_common.contracts_v2 import (
     JobProgressV2,
     JobRequestedV2,
+    ModelAvailableV2,
     parse_event_v2,
     payload_sha256,
     serialize_event_v2,
@@ -33,6 +34,7 @@ from smartfan_common.reliability.store import (
     Outbound,
 )
 from smartfan_common.routing_v2 import routing_key_v2
+from smartfan_common.training_config import TRAINING_FAILURE_REASONS, TrainingTask
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -45,7 +47,7 @@ fcntl: Any = importlib.import_module("fcntl") if os.name == "posix" else None
 class Work:
     delivery: Delivery
     job: dict
-    config: LabConfig
+    config: LabConfig | TrainingTask
     token: ResourceToken
     path: Path
     process: subprocess.Popen
@@ -121,15 +123,21 @@ class Supervisor:
         with self.store.transaction() as conn:
             rows = conn.execute(
                 text(
-                    "UPDATE app.jobs SET status='queued',worker_instance=NULL,resource_generation=NULL,reason_code='worker_restarted',updated_at=clock_timestamp() WHERE status='running' RETURNING id,dataset_id"
+                    "UPDATE app.jobs SET status='queued',worker_instance=NULL,resource_generation=NULL,reason_code='worker_restarted',updated_at=clock_timestamp() WHERE status='running' RETURNING id,dataset_id,kind"
                 )
             ).all()
             for row in rows:
                 conn.execute(
                     text(
-                        "UPDATE app.datasets SET status='queued' WHERE id=:id AND status='running'"
+                        "UPDATE app.datasets SET status='queued' WHERE id=:id AND status='running' AND :kind='generate'"
                     ),
-                    {"id": row[1]},
+                    {"id": row[1], "kind": row[2]},
+                )
+                conn.execute(
+                    text(
+                        "UPDATE app.models SET status='queued' WHERE job_id=:id AND status='running'"
+                    ),
+                    {"id": row[0]},
                 )
                 conn.execute(
                     text(
@@ -152,17 +160,17 @@ class Supervisor:
             event = parse_event_v2(raw)
             if (
                 not isinstance(event, JobRequestedV2)
-                or event.tipo != "job.generate"
+                or event.tipo not in ("job.generate", "job.train")
                 or not authenticated_publisher(event, user_id)
                 or event.id != message_id
-                or route != "job.generate"
+                or route != event.tipo
                 or event.id != event.conteudo.job_id
             ):
                 raise ValueError("Invalid generation request")
             with self.store.transaction() as conn:
                 row = conn.execute(
                     text(
-                        "SELECT dataset_id,event_sha256 FROM app.jobs WHERE id=:id AND kind='generate'"
+                        "SELECT dataset_id,event_sha256,kind FROM app.jobs WHERE id=:id"
                     ),
                     {"id": event.id},
                 ).first()
@@ -171,6 +179,7 @@ class Supervisor:
                     or str(row[0]) != event.conteudo.dataset_id
                     or row[1] != payload_sha256(raw)
                     or event.conteudo.config_version != 1
+                    or row[2] != event.tipo.split(".")[1]
                 ):
                     raise ValueError("Request differs from committed configuration")
                 self.store.receive(event.id, raw, route, connection=conn)
@@ -251,7 +260,7 @@ class Supervisor:
             row = (
                 conn.execute(
                     text(
-                        "SELECT j.*,d.configuration,d.configuration_sha256 FROM app.jobs j JOIN app.datasets d ON d.id=j.dataset_id WHERE j.id=:id"
+                        "SELECT j.*,CASE WHEN j.kind='generate' THEN d.configuration ELSE t.configuration END AS configuration,CASE WHEN j.kind='generate' THEN d.configuration_sha256 ELSE t.configuration_sha256 END AS configuration_sha256 FROM app.jobs j JOIN app.datasets d ON d.id=j.dataset_id LEFT JOIN app.training_requests t ON t.job_id=j.id WHERE j.id=:id"
                     ),
                     {"id": event.conteudo.job_id},
                 )
@@ -267,7 +276,15 @@ class Supervisor:
                 delivery, job, "cancelled", "cancel_requested", job["processed"]
             )
             return
-        config = LabConfig.model_validate(job["configuration"])
+        try:
+            config: LabConfig | TrainingTask = (
+                LabConfig.model_validate(job["configuration"])
+                if job["kind"] == "generate"
+                else TrainingTask.model_validate(job["configuration"])
+            )
+        except ValueError:
+            self.terminal(delivery, job, "failed", "configuration_changed", 0)
+            return
         if (
             hashlib.sha256(canonical(config.model_dump())).hexdigest()
             != job["configuration_sha256"]
@@ -277,7 +294,7 @@ class Supervisor:
         if job["attempts"] >= 3:
             self.terminal(delivery, job, "failed", "job_attempts_exhausted", 0)
             return
-        token = self.leases.acquire(self.instance, "generate")
+        token = self.leases.acquire(self.instance, job["kind"])
         if token is None:
             self.store.retry(delivery, "resource_busy", dependency_failure=True)
             return
@@ -302,7 +319,14 @@ class Supervisor:
             (path / "config.json").write_bytes(canonical(config.model_dump()))
             self.heartbeat(path)
             process = subprocess.Popen(
-                [sys.executable, "-m", "services.jobs.generate", str(path)],
+                [
+                    sys.executable,
+                    "-m",
+                    "services.jobs.generate"
+                    if job["kind"] == "generate"
+                    else "services.jobs.train",
+                    str(path),
+                ],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -331,8 +355,14 @@ class Supervisor:
                     },
                 )
                 conn.execute(
-                    text("UPDATE app.datasets SET status='running' WHERE id=:id"),
-                    {"id": job["dataset_id"]},
+                    text(
+                        "UPDATE app.datasets SET status='running' WHERE id=:id AND :kind='generate'"
+                    ),
+                    {"id": job["dataset_id"], "kind": job["kind"]},
+                )
+                conn.execute(
+                    text("UPDATE app.models SET status='running' WHERE job_id=:id"),
+                    {"id": job["id"]},
                 )
                 self.emit(conn, job, "running", 0)
         except (OSError, RuntimeError) as error:
@@ -404,10 +434,11 @@ class Supervisor:
             )
             conn.execute(
                 text(
-                    "UPDATE app.datasets SET status=:status,sha256=:hash,manifest=CAST(:manifest AS jsonb),completed_at=CASE WHEN :status='completed' THEN clock_timestamp() ELSE NULL END WHERE id=:id"
+                    "UPDATE app.datasets SET status=:status,sha256=:hash,manifest=CAST(:manifest AS jsonb),completed_at=CASE WHEN :status='completed' THEN clock_timestamp() ELSE NULL END WHERE id=:id AND :kind='generate'"
                 ),
                 {
                     "id": job["dataset_id"],
+                    "kind": job["kind"],
                     "status": final,
                     "hash": manifest["sha256"]
                     if manifest and final == "completed"
@@ -417,6 +448,24 @@ class Supervisor:
                     else None,
                 },
             )
+            if job["kind"] == "train":
+                complete = manifest is not None and final == "completed"
+                conn.execute(
+                    text(
+                        "UPDATE app.models SET status=:status,artifact_sha256=:hash,manifest=CAST(:manifest AS jsonb),report=CAST(:report AS jsonb) WHERE job_id=:id"
+                    ),
+                    {
+                        "id": job["id"],
+                        "status": final,
+                        "hash": manifest["sha256"]
+                        if manifest is not None and complete
+                        else None,
+                        "manifest": json.dumps(manifest) if complete else None,
+                        "report": json.dumps(manifest["content"]["report"])
+                        if manifest is not None and complete
+                        else None,
+                    },
+                )
             self.emit(conn, job, final, processed, reason)
             conn.execute(
                 text(
@@ -434,12 +483,49 @@ class Supervisor:
 
         self.store.finish(delivery, effects=effects)
 
-    def verify(self, path: Path, config: LabConfig, work: Work) -> dict:
+    def verify(self, path: Path, config: LabConfig | TrainingTask, work: Work) -> dict:
         raw = (path / "manifest.json").read_bytes()
         if len(raw) > 2 * 1024 * 1024:
             raise ValueError("Invalid manifest size")
         manifest = json.loads(raw)
         content = manifest["content"]
+        if isinstance(config, TrainingTask):
+            if (
+                content["task"] != config.model_dump()
+                or content["model_version"] != config.model_version
+                or manifest["sha256"] != hashlib.sha256(canonical(content)).hexdigest()
+            ):
+                raise ValueError("Training manifest differs")
+            expected = {
+                "bundle.joblib",
+                "report.json",
+                "model-card.md",
+                "benchmark/manifest.json",
+            } | {
+                "benchmark/" + name
+                for name in (
+                    "readings.npy",
+                    "timestamp_seconds.npy",
+                    "equipment_index.npy",
+                    "compressor_on.npy",
+                    "condenser_fan_on.npy",
+                    "health_score.npy",
+                    "rul_calendar_hours.npy",
+                    "censored.npy",
+                    "outliers.npy",
+                )
+            }
+            if set(content["files"]) != expected:
+                raise ValueError("Unexpected model artifact files")
+            for filename, digest in content["files"].items():
+
+                def check_training():
+                    self.maintain(work)
+                    return work.forced_reason is not None
+
+                if digest_file(path / filename, check_training) != digest:
+                    raise ValueError("Model artifact changed")
+            return manifest
         if (
             content["rows"] != config.total
             or content["configuration"] != config.model_dump(exclude={"block_size"})
@@ -468,6 +554,61 @@ class Supervisor:
             if digest_file(path / filename, check) != digest:
                 raise ValueError("Artifact hash differs")
         return manifest
+
+    def enqueue_activation(self) -> None:
+        with self.store.transaction() as conn:
+            row = (
+                conn.execute(
+                    text(
+                        "SELECT n.*,m.artifact_sha256,m.report FROM app.activation_notifications n JOIN app.models m ON m.version=n.version WHERE n.state='pending' AND m.approved AND m.status='completed' ORDER BY n.revision LIMIT 1 FOR UPDATE OF n SKIP LOCKED"
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            if row is None:
+                return
+            selected = conn.execute(
+                text(
+                    "SELECT desired_version,activation_revision FROM app.model_selection WHERE singleton"
+                )
+            ).one()
+            if selected[0] != row["version"] or selected[1] != row["revision"]:
+                conn.execute(
+                    text(
+                        "UPDATE app.activation_notifications SET state='superseded' WHERE id=:id"
+                    ),
+                    {"id": row["id"]},
+                )
+                return
+            event = ModelAvailableV2.model_validate(
+                {
+                    "id": str(row["id"]),
+                    "schema_version": "2.1",
+                    "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                    "tipo": "model.available",
+                    "dispositivo": None,
+                    "correlation_id": str(row["correlation_id"]),
+                    "metadata": {"producer": "jobs-worker", "causation_id": None},
+                    "conteudo": {
+                        "model_version": row["version"],
+                        "feature_version": row["report"]["feature_version"],
+                        "dataset_id": row["report"]["dataset_id"],
+                        "sha256": row["artifact_sha256"],
+                    },
+                }
+            )
+            exchange, route = routing_key_v2(event)
+            self.store.enqueue(
+                Outbound(event.id, serialize_event_v2(event), exchange, route),
+                connection=conn,
+            )
+            conn.execute(
+                text(
+                    "UPDATE app.activation_notifications SET state='enqueued' WHERE id=:id"
+                ),
+                {"id": row["id"]},
+            )
 
     def tick(self) -> None:
         work = self.work
@@ -512,10 +653,25 @@ class Supervisor:
             return
         status = "cancelled" if cancel or work.process.returncode == 2 else "failed"
         reason: str | None = work.forced_reason or "child_failed"
+        if (
+            reason == "child_failed"
+            and work.job["kind"] == "train"
+            and (work.path / "error.json").exists()
+        ):
+            raw = (work.path / "error.json").read_bytes()
+            if (
+                len(raw) <= 1024
+                and json.loads(raw).get("reason") in TRAINING_FAILURE_REASONS
+            ):
+                reason = json.loads(raw)["reason"]
         manifest = None
         if work.process.returncode == 0 and not cancel and work.forced_reason is None:
             manifest = self.verify(work.path, work.config, work)
-            destination = self.root / "datasets" / str(work.job["dataset_id"])
+            destination = (
+                self.root / "models" / work.config.model_version
+                if isinstance(work.config, TrainingTask)
+                else self.root / "datasets" / str(work.job["dataset_id"])
+            )
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists():
                 existing = self.verify(destination, work.config, work)

@@ -141,9 +141,12 @@ async function refresh() {
   const request = new AbortController();
   controller = request;
   try {
-    const response = await api<{ items: Job[] }>('/jobs?limit=30', {
-      signal: request.signal,
-    });
+    const response = await api<{ items: Job[] }>(
+      '/jobs?limit=30&kind=generate',
+      {
+        signal: request.signal,
+      },
+    );
     if (disposed) return;
     jobs.value = response.items;
     loadingError.value = '';
