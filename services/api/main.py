@@ -25,6 +25,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from smartfan_common.device_registry import DeviceCreate, DeviceUpdate
 from smartfan_common.influx_v2 import InfluxHTTP
 from smartfan_common.reliability.database import engine_for
 from smartfan_common.reliability.runtime import configure_logging
@@ -36,6 +37,7 @@ from starlette.exceptions import HTTPException
 
 from .auth import AuthService, Principal
 from .bus import ApiBus
+from .devices import DeviceRegistry
 from .errors import Problem
 from .history import metrics
 from .realtime import EventStore
@@ -245,6 +247,7 @@ def create_app(
     application.state.engine = database
     application.state.origins = allowed
     application.state.events = events
+    registry = DeviceRegistry(database)
     application.state.hub = hub
     application.state.bus = None
     application.state.influx = influx or (
@@ -429,6 +432,59 @@ def create_app(
     ):
         return events.snapshot(events.authorize(device)).model_dump(mode="json")
 
+    @application.get("/api/v1/devices")
+    def device_list(
+        principal: Annotated[Principal, Depends(current)],
+        after: str = Query(default="", max_length=32, pattern=r"^[A-Za-z0-9_-]*$"),
+        limit: int = Query(default=50, ge=1, le=100),
+    ):
+        return registry.list(after, limit)
+
+    @application.get("/api/v1/devices/{identity}")
+    def device_get(identity: str, principal: Annotated[Principal, Depends(current)]):
+        return registry.get(identity)
+
+    @application.get("/api/v1/devices/{identity}/configurations")
+    def device_versions(
+        identity: str,
+        principal: Annotated[Principal, Depends(current)],
+        before: int = Query(default=2147483647, ge=1, le=2147483647),
+        limit: int = Query(default=50, ge=1, le=100),
+    ):
+        registry.get(identity)
+        with database.connect() as conn:
+            rows = (
+                conn.execute(
+                    text(
+                        "SELECT revision,configuration,created_at FROM app.device_configurations WHERE device_id=:id AND revision<:before ORDER BY revision DESC LIMIT :limit"
+                    ),
+                    {"id": identity, "before": before, "limit": limit + 1},
+                )
+                .mappings()
+                .all()
+            )
+        return {
+            "items": [dict(row) for row in rows[:limit]],
+            "next_cursor": rows[limit - 1]["revision"] if len(rows) > limit else None,
+        }
+
+    @application.post("/api/v1/devices", status_code=201)
+    def device_create(
+        body: DeviceCreate,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        return registry.create(body, principal, request.state.correlation_id)
+
+    @application.patch("/api/v1/devices/{identity}")
+    def device_update(
+        identity: str,
+        body: DeviceUpdate,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        return registry.update(identity, body, principal, request.state.correlation_id)
+
     @application.websocket("/ws")
     async def websocket(socket: WebSocket):
         await hub.endpoint(socket, application.state.auth, events, allowed)
@@ -439,7 +495,7 @@ def create_app(
         principal: Annotated[Principal, Depends(current)],
         hours: Annotated[int, Query(ge=1, le=168)] = 24,
     ):
-        events.authorize([identity])
+        registry.get(identity)
         if application.state.influx is None:
             raise Problem(
                 503, "history_unavailable", "Histórico temporariamente indisponível."

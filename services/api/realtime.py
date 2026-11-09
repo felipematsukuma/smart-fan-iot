@@ -56,7 +56,7 @@ class EventStore:
             rows = (
                 conn.execute(
                     text(
-                        "SELECT device_id,zone,boot_id,last_sample_at FROM transport.device_status ORDER BY device_id LIMIT 1000"
+                        "SELECT d.id AS device_id,d.name,d.zone,p.boot_id,p.last_sample_at FROM app.device_registry d LEFT JOIN transport.device_status p ON p.device_id=d.id WHERE d.enabled ORDER BY d.id LIMIT 100"
                     )
                 )
                 .mappings()
@@ -66,9 +66,9 @@ class EventStore:
             row["device_id"]: default_descriptor(
                 row["device_id"],
                 row["zone"],
-                str(row["boot_id"]),
+                str(row["boot_id"]) if row["boot_id"] else None,
                 wire_time(row["last_sample_at"]) if row["last_sample_at"] else None,
-            )
+            ).model_copy(update={"name": row["name"]})
             for row in rows
         }
 
@@ -189,7 +189,7 @@ class EventStore:
                 if event.dispositivo is not None:
                     device = conn.execute(
                         text(
-                            "SELECT zone,boot_id FROM transport.device_status WHERE device_id=:id"
+                            "SELECT d.zone,p.boot_id,d.enabled FROM app.device_registry d LEFT JOIN transport.device_status p ON p.device_id=d.id WHERE d.id=:id"
                         ),
                         {"id": event.dispositivo},
                     ).first()
@@ -198,6 +198,8 @@ class EventStore:
                         and event.metadata.zone != device[0]
                     ):
                         raise ValueError("Unregistered event device")
+                    if not device[2]:
+                        recent = False
                     if hasattr(
                         event.metadata, "boot_id"
                     ) and event.metadata.boot_id != str(device[1]):

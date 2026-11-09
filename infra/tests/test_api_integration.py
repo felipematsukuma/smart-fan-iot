@@ -36,9 +36,12 @@ def api(database):
     with admin.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE app.audit,app.ws_tickets,app.login_attempts,app.sessions,app.users"
+                "TRUNCATE app.audit,app.ws_tickets,app.login_attempts,app.sessions"
             )
         )
+        # Test database only: keep device metadata while replacing disposable actors.
+        conn.execute(text("UPDATE app.device_configurations SET actor_user_id=NULL"))
+        conn.execute(text("DELETE FROM app.users"))
         for username, role in [
             ("admin", "administrador"),
             ("operador", "operador"),

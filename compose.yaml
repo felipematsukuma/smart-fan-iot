@@ -140,7 +140,7 @@ services:
   bootstrap:
     build: {context: ., dockerfile: infra/Dockerfile}
     pull_policy: build
-    image: smartfan-python:0.8.0
+    image: smartfan-python:0.9.0
     command: [python, -m, infra.bootstrap]
     user: "10001:10001"
     depends_on:
@@ -172,7 +172,7 @@ services:
 
   simulator:
     <<: *runtime
-    image: smartfan-python:0.8.0
+    image: smartfan-python:0.9.0
     pull_policy: never
     command: [python, -m, services.simulator.main]
     user: "10001:10001"
@@ -198,7 +198,7 @@ services:
 
   gateway:
     <<: *runtime
-    image: smartfan-python:0.8.0
+    image: smartfan-python:0.9.0
     pull_policy: never
     command: [python, -m, services.gateway.main]
     user: "10001:10001"
@@ -223,7 +223,7 @@ services:
 
   api:
     <<: *runtime
-    image: smartfan-python:0.8.0
+    image: smartfan-python:0.9.0
     pull_policy: never
     command: [uvicorn, services.api.main:create_app, --factory, --host, 0.0.0.0, --port, "8000", --no-access-log, --no-proxy-headers, --ws-max-size, "16384"]
     user: "10001:10001"
@@ -249,7 +249,7 @@ services:
   frontend:
     <<: *runtime
     build: {context: ., dockerfile: infra/frontend/Dockerfile}
-    image: smartfan-frontend:0.8.0
+    image: smartfan-frontend:0.9.0
     user: "101:101"
     depends_on:
       api: {condition: service_healthy}
@@ -267,7 +267,7 @@ services:
 
   writer:
     <<: *runtime
-    image: smartfan-python:0.8.0
+    image: smartfan-python:0.9.0
     pull_policy: never
     command: [python, -m, services.writer.main]
     user: "10001:10001"
@@ -291,7 +291,7 @@ services:
     cpus: 1
 
   ollama-init:
-    image: smartfan-python:0.8.0
+    image: smartfan-python:0.9.0
     pull_policy: never
     command: [python, -m, infra.model_init]
     user: "10001:10001"

@@ -26,10 +26,21 @@ from sqlalchemy import text
 
 
 class GatewayBridge:
-    def __init__(self, store: DurableStore, devices: dict[str, str]):
+    def __init__(self, store: DurableStore, devices: dict[str, str] | None = None):
         if store.owner != "gateway":
             raise ValueError("Gateway requires its own durable store")
-        self.store, self.devices = store, dict(devices)
+        self.store = store
+        self.devices = dict(devices) if devices is not None else None
+
+    def registered(self, identity: str, zone: str, *, active: bool = False) -> bool:
+        if self.devices is not None:
+            return self.devices.get(identity) == zone
+        with self.store.engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT zone,enabled FROM app.device_registry WHERE id=:id"),
+                {"id": identity},
+            ).first()
+        return bool(row and row[0] == zone and (row[1] or not active))
 
     def receive_device(self, topic: str, payload: bytes) -> tuple[str, bytes] | None:
         try:
@@ -53,7 +64,7 @@ class GatewayBridge:
                     "command.rejected",
                     "command.expired",
                 )
-                or self.devices.get(event.dispositivo or "") != event.metadata.zone
+                or not self.registered(event.dispositivo or "", event.metadata.zone)
             ):
                 raise ValueError("Device identity is not registered")
         except ValueError:
@@ -227,6 +238,8 @@ class GatewayBridge:
             )
 
     def ready_for(self, command: CommandRequestedV2, now: datetime) -> bool:
+        if not self.registered(command.dispositivo, command.metadata.zone, active=True):
+            return False
         with self.store.engine.connect() as conn:
             row = (
                 conn.execute(
@@ -253,7 +266,9 @@ class GatewayBridge:
                 not isinstance(event, CommandRequestedV2)
                 or not authenticated_publisher(event, user_id)
                 or routing_key_v2(event)[1] != route
-                or self.devices.get(event.dispositivo) != event.metadata.zone
+                or not self.registered(
+                    event.dispositivo, event.metadata.zone, active=True
+                )
                 or (
                     event.metadata.producer == "control"
                     and event.conteudo.mode != "auto"
