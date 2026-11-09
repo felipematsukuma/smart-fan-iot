@@ -29,6 +29,17 @@ def verify() -> dict[str, object]:
         for line in docker("ps", "-a", "--format", "json").stdout.splitlines()
     ]
     states = {row["Service"]: row for row in rows}
+    for service, row in states.items():
+        published = [p for p in (row.get("Publishers") or []) if p.get("PublishedPort")]
+        if service == "frontend":
+            assert all(
+                p["URL"] == "127.0.0.1"
+                and p["PublishedPort"] == 8080
+                and p["TargetPort"] == 8080
+                for p in published
+            ), "Frontend must remain loopback-only"
+        else:
+            assert not published, "Only frontend may publish host ports by default"
     for service in ("postgres", "influxdb", "rabbitmq", "mosquitto", "ollama"):
         assert states[service]["Health"] == "healthy", service
         assert all(
