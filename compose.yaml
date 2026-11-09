@@ -1,0 +1,183 @@
+name: smartfan-aiot
+
+x-runtime: &runtime
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  pids_limit: 256
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+services:
+  volume-init:
+    image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
+    user: "0:0"
+    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001)]]"]
+    network_mode: none
+    volumes:
+      - postgres_data:/vol/postgres
+      - rabbitmq_data:/vol/rabbitmq
+      - mosquitto_data:/vol/mosquitto
+      - influxdb_data:/vol/influxdb
+      - influxdb_config:/vol/influxconfig
+      - ollama_models:/vol/ollama
+    mem_limit: 128m
+
+  postgres:
+    <<: *runtime
+    image: postgres:15.19-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
+    user: "70:70"
+    depends_on: {volume-init: {condition: service_completed_successfully}}
+    environment:
+      POSTGRES_USER: smartfan_bootstrap
+      POSTGRES_DB: smartfan
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_bootstrap
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./secrets/postgres_bootstrap:/run/secrets/postgres_bootstrap:ro
+    networks: [data_net]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U smartfan_bootstrap -d smartfan"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    mem_limit: 512m
+    cpus: 1
+
+  influxdb:
+    <<: *runtime
+    image: influxdb:2.7.12-alpine@sha256:991673dc2d237bd79b15d6627410d72de111387e7dac673dbb92cf3333ffcc8c
+    user: "10001:10001"
+    depends_on: {volume-init: {condition: service_completed_successfully}}
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: smartfan_bootstrap
+      DOCKER_INFLUXDB_INIT_PASSWORD_FILE: /run/secrets/influx_bootstrap
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN_FILE: /run/secrets/influx_admin_token
+      DOCKER_INFLUXDB_INIT_ORG: smartfan
+      DOCKER_INFLUXDB_INIT_BUCKET: live
+      DOCKER_INFLUXDB_INIT_RETENTION: 30d
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+      - ./secrets/influx_bootstrap:/run/secrets/influx_bootstrap:ro
+      - ./secrets/influx_admin_token:/run/secrets/influx_admin_token:ro
+    networks: [data_net]
+    healthcheck:
+      test: [CMD, influx, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    mem_limit: 1g
+    cpus: 1
+
+  rabbitmq:
+    <<: *runtime
+    image: rabbitmq:4.4.0-management-alpine@sha256:4841f6384ef8313c3594cd3f2e9f40c10805f8a61c45f08a9a5d9ddea8199267
+    user: "100:101"
+    hostname: rabbitmq
+    depends_on: {volume-init: {condition: service_completed_successfully}}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./secrets/rabbitmq-definitions.json:/run/secrets/rabbitmq-definitions.json:ro
+    networks: [backend_net]
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, check_running]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 512m
+    cpus: 1
+
+  mosquitto:
+    <<: *runtime
+    image: eclipse-mosquitto:2.0.22@sha256:199ea8ef2e35ec2b1b37e59cfd1dbae538ed4dfa4a2251a121a52215a6248a21
+    user: "1883:1883"
+    depends_on: {volume-init: {condition: service_completed_successfully}}
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/acl:/mosquitto/config/acl:ro
+      - ./secrets/mosquitto-passwords:/run/secrets/mosquitto-passwords:ro
+      - ./secrets/mqtt_health:/run/secrets/mqtt_health:ro
+    networks: [backend_net]
+    healthcheck:
+      test: [CMD-SHELL, "mosquitto_pub -h 127.0.0.1 -u health -P \"$$(cat /run/secrets/mqtt_health)\" -t health/mosquitto -m health -q 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 64m
+    cpus: 0.5
+
+  ollama:
+    <<: *runtime
+    image: ollama/ollama:0.40.15@sha256:0e59999e0e8f9fd4e704bd788a89b7e4cad399367fb1365f8c102ac662288761
+    user: "10001:10001"
+    depends_on: {volume-init: {condition: service_completed_successfully}}
+    environment:
+      HOME: /tmp/ollama
+      OLLAMA_MODELS: /models
+      OLLAMA_CONTEXT_LENGTH: "2048"
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NO_CLOUD: "1"
+    volumes: [ollama_models:/models]
+    tmpfs: [/tmp]
+    networks: [backend_net]
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 4g
+    cpus: 4
+
+  bootstrap:
+    build: {context: ., dockerfile: infra/Dockerfile}
+    image: smartfan-python:0.2.0
+    command: [python, -m, infra.bootstrap]
+    user: "10001:10001"
+    depends_on:
+      postgres: {condition: service_healthy}
+      influxdb: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      mosquitto: {condition: service_healthy}
+    volumes:
+      - ./secrets/rabbit_bootstrap:/run/secrets/rabbit_bootstrap:ro
+      - ./secrets/influx_admin_token:/run/secrets/influx_admin_token:ro
+    networks: [backend_net, data_net]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 192m
+
+  ollama-init:
+    image: smartfan-python:0.2.0
+    command: [python, -m, infra.model_init]
+    user: "10001:10001"
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+      ollama: {condition: service_healthy}
+    volumes: [ollama_models:/cache]
+    networks: [backend_net]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 128m
+
+networks:
+  frontend_net: {}
+  backend_net: {}
+  data_net: {internal: true}
+
+volumes:
+  postgres_data: {}
+  rabbitmq_data: {}
+  mosquitto_data: {}
+  influxdb_data: {}
+  influxdb_config: {}
+  ollama_models: {}

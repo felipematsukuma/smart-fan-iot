@@ -1,0 +1,18 @@
+user simulator_ac_01
+topic write devices/ac_01/telemetry
+topic write devices/ac_01/state
+topic write devices/ac_01/acks
+topic write devices/ac_01/availability
+topic read devices/ac_01/commands
+topic read devices/ac_01/receipts
+
+user gateway
+topic read devices/+/telemetry
+topic read devices/+/state
+topic read devices/+/acks
+topic read devices/+/availability
+topic write devices/+/commands
+topic write devices/+/receipts
+
+user health
+topic readwrite health/mosquitto

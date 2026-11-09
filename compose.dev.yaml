@@ -1,0 +1,6 @@
+# Explicit local-only management ports. Never required by the default stack.
+services:
+  rabbitmq:
+    ports: ["127.0.0.1:15672:15672"]
+  influxdb:
+    ports: ["127.0.0.1:8086:8086"]

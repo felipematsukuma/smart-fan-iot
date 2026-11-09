@@ -1,5 +1,7 @@
 # Smart Fan IoT
 
+**Evolução AIoT em execução:** [planejamento e registro dos módulos](./docs/PLANO-BIMESTRE-2.md). A [infraestrutura nova](./infra/README.md) usa o Compose da raiz e volumes separados. A descrição abaixo preserva o sistema operacional do ventilador do primeiro bimestre; o frontend e os consumidores HVAC serão integrados nos módulos seguintes.
+
 Controle e acompanhamento do consumo estimado de um ventilador: evitar funcionamento esquecido, programar desligamento e visualizar energia/custo ao longo do tempo. O público inicial é o usuário residencial que deseja entender e reduzir desperdício; a simulação permite validar o fluxo antes de conectar um equipamento real.
 
 ```mermaid
