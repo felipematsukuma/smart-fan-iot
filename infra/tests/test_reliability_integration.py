@@ -1,8 +1,12 @@
 """Real PG/AMQP checks in a disposable test database, never the live schema."""
 
+import base64
 import hashlib
+import json
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import quote
 from uuid import uuid4
 
 import pika
@@ -79,7 +83,7 @@ def reset_disposable_rows(database):
     with admin.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE transport.inbox,transport.outbox,transport.failures,transport.resource_leases,transport.test_effects"
+                "TRUNCATE transport.inbox,transport.outbox,transport.failures,transport.resource_leases,transport.test_effects,transport.device_presence,transport.command_results"
             )
         )
 
@@ -262,33 +266,82 @@ def test_resource_expiry_cannot_grant_new_owner_or_release_with_old_token(databa
 def test_confirmed_publish_unroutable_and_topic_acl(database):
     admin, engines = database
     store = DurableStore(engines["writer"], "writer")
+    vhost = "test_smartfan_" + uuid4().hex
+    authorization = base64.b64encode(
+        ("bootstrap:" + (SECRETS / "rabbit_bootstrap").read_text().strip()).encode()
+    ).decode()
+
+    def management(method, path, body=None):
+        request = urllib.request.Request(
+            "http://rabbitmq:15672/api/" + path,
+            data=json.dumps(body).encode() if body is not None else None,
+            method=method,
+            headers={
+                "Authorization": "Basic " + authorization,
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                response.read()
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(error.read().decode()) from None
+
+    encoded = quote(vhost, safe="")
+    management("PUT", "vhosts/" + encoded, {})
+    management(
+        "PUT",
+        "permissions/" + encoded + "/bootstrap",
+        {"configure": ".*", "write": ".*", "read": ".*"},
+    )
+    management(
+        "PUT",
+        "permissions/" + encoded + "/writer",
+        {"configure": "^$", "write": "^smartfan\\.events$", "read": "^$"},
+    )
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(
             host="rabbitmq",
-            virtual_host="/smartfan",
+            virtual_host=vhost,
             credentials=pika.PlainCredentials(
                 "bootstrap", (SECRETS / "rabbit_bootstrap").read_text().strip()
             ),
         )
     )
+    writer_connection = connect_amqp(
+        "writer", SECRETS / "rabbit_writer", virtual_host=vhost
+    )
     try:
         channel = connection.channel()
+        channel.exchange_declare("smartfan.events", exchange_type="topic", durable=True)
+        management(
+            "PUT",
+            "topic-permissions/" + encoded + "/writer",
+            {
+                "exchange": "smartfan.events",
+                "write": "^persisted\\.[^.]+\\.hvac\\.[^.]+$",
+                "read": "^$",
+            },
+        )
         queue = channel.queue_declare(
             queue="", exclusive=True, auto_delete=True
         ).method.queue
-        route = "test." + uuid4().hex
+        route = "persisted.quarto.hvac.ac_test"
         channel.queue_bind(queue=queue, exchange="smartfan.events", routing_key=route)
-        publisher = ConfirmedPublisher(channel)
+        writer_channel = writer_connection.channel()
+        publisher = ConfirmedPublisher(writer_channel)
         identity = str(uuid4())
         store.enqueue(
             Outbound(identity, b"confirmation-probe", "smartfan.events", route)
         )
         first = claimed(store, "outbox")
-        channel.basic_publish(
+        writer_channel.basic_publish(
             "smartfan.events",
             route,
             first.payload,
-            properties=pika.BasicProperties(message_id=identity, delivery_mode=2),
+            properties=pika.BasicProperties(
+                message_id=identity, delivery_mode=2, user_id="writer"
+            ),
             mandatory=True,
         )
         # Inject the cut AFTER broker confirmation and BEFORE PG completion.
@@ -313,16 +366,28 @@ def test_confirmed_publish_unroutable_and_topic_acl(database):
         assert results == ["accepted", "duplicate"]
         store.enqueue(
             Outbound(
-                str(uuid4()), b"{}", "smartfan.events", "test.missing." + uuid4().hex
+                str(uuid4()), b"{}", "smartfan.events", "persisted.missing.hvac.ac_test"
             )
         )
         with pytest.raises(pika.exceptions.UnroutableError):
             publisher.publish_one(store)
         assert store.pending_outbox()[0]["state"] == "pending"
     finally:
-        connection.close()  # Exclusive test queue disappears, real queues untouched.
+        writer_connection.close()
+        connection.close()
+        management("DELETE", "vhosts/" + encoded)
     broker = connect_amqp("writer", SECRETS / "rabbit_writer")
     try:
+        spoof = broker.channel()
+        spoof.confirm_delivery()
+        with pytest.raises(pika.exceptions.ChannelClosedByBroker):
+            spoof.basic_publish(
+                "smartfan.events",
+                "persisted.quarto.hvac.ac_test",
+                b"forged",
+                properties=pika.BasicProperties(user_id="api"),
+                mandatory=True,
+            )
         channel = broker.channel()
         channel.confirm_delivery()
         with pytest.raises(pika.exceptions.ChannelClosedByBroker):
