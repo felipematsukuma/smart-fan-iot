@@ -18,7 +18,11 @@
     "contracts:types:check": "node scripts/contracts-v1.mjs --check",
     "contracts:v2:types": "node scripts/contracts-v2.mjs",
     "contracts:v2:types:check": "node scripts/contracts-v2.mjs --check",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "contracts:ws:types": "node scripts/contracts-ws.mjs",
+    "contracts:ws:types:check": "node scripts/contracts-ws.mjs --check",
+    "contracts:validators": "node scripts/contracts-validators.mjs",
+    "contracts:validators:check": "node scripts/contracts-validators.mjs --check"
   },
   "dependencies": {
     "ajv": "^8.20.0",

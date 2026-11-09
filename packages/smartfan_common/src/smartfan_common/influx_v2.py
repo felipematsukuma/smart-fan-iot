@@ -121,11 +121,32 @@ class InfluxHTTP:
         for row in csv.reader(io.StringIO(body.decode())):
             if not row or row[0].startswith("#"):
                 continue
-            if "_time" in row or "_value" in row:
+            if len(row) > 2 and row[1] == "result" and row[2] == "table":
                 header = row
             elif header is not None:
                 rows.append(dict(zip(header, row, strict=True)))
         return rows
+
+    def energy_query(self, device_id: str, start: datetime, stop: datetime) -> str:
+        self.history_query(device_id, start, stop)
+        begin = start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        end = stop.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        return f"""from(bucket:{json.dumps(self.bucket)})
+          |> range(start:time(v:{json.dumps(begin)}),stop:time(v:{json.dumps(end)}))
+          |> filter(fn:(r)=>r._measurement=="hvac_telemetry" and r.device_id=={json.dumps(device_id)})
+          |> filter(fn:(r)=>r._field=="power_w" or r._field=="boot_id")
+          |> pivot(rowKey:["_time","device_id","zone","equipment_type"],columnKey:["_field"],valueColumn:"_value")
+          |> group() |> sort(columns:["_time"])
+          |> reduce(identity:{{energy_wh:0.0,covered_seconds:0.0,total_samples:0,missing_samples:0,discarded_intervals:0,previous_ns:0,previous_power:0.0,previous_boot:"",previous_valid:false}},fn:(r,accumulator)=>{{
+            valid=exists r.power_w
+            gap=float(v:int(v:r._time)-accumulator.previous_ns)/1000000000.0
+            contiguous=valid and accumulator.previous_valid and r.boot_id==accumulator.previous_boot and gap>0.0 and gap<=6.0
+            return {{energy_wh:accumulator.energy_wh+(if contiguous then (accumulator.previous_power+r.power_w)*0.5*gap/3600.0 else 0.0),
+              covered_seconds:accumulator.covered_seconds+(if contiguous then gap else 0.0),total_samples:accumulator.total_samples+1,
+              missing_samples:accumulator.missing_samples+(if valid then 0 else 1),
+              discarded_intervals:accumulator.discarded_intervals+(if valid and accumulator.previous_valid and not contiguous then 1 else 0),
+              previous_ns:int(v:r._time),previous_power:if valid then r.power_w else 0.0,previous_boot:r.boot_id,previous_valid:valid}}
+          }})"""
 
     def history_query(
         self,

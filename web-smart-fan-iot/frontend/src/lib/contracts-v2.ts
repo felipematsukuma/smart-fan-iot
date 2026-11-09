@@ -1,15 +1,5 @@
-import Ajv2020 from 'ajv/dist/2020.js';
-import addFormats from 'ajv-formats';
-import schema from './contracts-v2.schema.json';
+import { eventV2 as structural } from './validators.generated.mjs';
 import type { EventV2 } from './contracts-v2.generated';
-
-const ajv = new Ajv2020({
-  allErrors: true,
-  coerceTypes: false,
-  useDefaults: false,
-});
-addFormats(ajv);
-const structural = ajv.compile<EventV2>(schema);
 
 // UTC timestamps have at most six fractional digits. Date.parse truncates
 // microseconds, so use an equivalent fixed-precision key after schema validation.

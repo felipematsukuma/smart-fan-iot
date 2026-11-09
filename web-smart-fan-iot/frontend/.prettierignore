@@ -6,3 +6,6 @@ src/lib/contracts-v1.schema.json
 src/lib/contracts-v1.fixtures.json
 src/lib/contracts-v2.schema.json
 src/lib/contracts-v2.fixtures.json
+src/lib/ws-client.schema.json
+src/lib/ws-server.schema.json
+src/lib/ws.fixtures.json
