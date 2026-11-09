@@ -83,7 +83,7 @@ def reset_disposable_rows(database):
     with admin.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE transport.inbox,transport.outbox,transport.failures,transport.resource_leases,transport.test_effects,transport.device_presence,transport.command_results"
+                "TRUNCATE transport.inbox,transport.outbox,transport.failures,transport.resource_leases,transport.test_effects,transport.device_presence,transport.command_results,transport.influx_points"
             )
         )
 

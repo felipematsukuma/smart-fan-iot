@@ -13,7 +13,7 @@ services:
   volume-init:
     image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
     user: "0:0"
-    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001)]]"]
+    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001)]]"]
     network_mode: none
     volumes:
       - postgres_data:/vol/postgres
@@ -23,6 +23,7 @@ services:
       - influxdb_config:/vol/influxconfig
       - ollama_models:/vol/ollama
       - simulator_spool:/vol/simulator
+      - writer_credentials:/vol/writer_credentials
     mem_limit: 128m
 
   postgres:
@@ -138,7 +139,7 @@ services:
   bootstrap:
     build: {context: ., dockerfile: infra/Dockerfile}
     pull_policy: build
-    image: smartfan-python:0.5.0
+    image: smartfan-python:0.6.0
     command: [python, -m, infra.bootstrap]
     user: "10001:10001"
     depends_on:
@@ -156,6 +157,7 @@ services:
       - ./secrets/postgres_control:/run/secrets/postgres_control:ro
       - ./secrets/postgres_api:/run/secrets/postgres_api:ro
       - ./secrets/postgres_jobs-worker:/run/secrets/postgres_jobs-worker:ro
+      - writer_credentials:/credentials/writer
     networks: [backend_net, data_net]
     read_only: true
     tmpfs: [/tmp]
@@ -165,7 +167,7 @@ services:
 
   simulator:
     <<: *runtime
-    image: smartfan-python:0.5.0
+    image: smartfan-python:0.6.0
     pull_policy: never
     command: [python, -m, services.simulator.main]
     user: "10001:10001"
@@ -191,7 +193,7 @@ services:
 
   gateway:
     <<: *runtime
-    image: smartfan-python:0.5.0
+    image: smartfan-python:0.6.0
     pull_policy: never
     command: [python, -m, services.gateway.main]
     user: "10001:10001"
@@ -214,8 +216,33 @@ services:
     mem_limit: 192m
     cpus: 0.5
 
+  writer:
+    <<: *runtime
+    image: smartfan-python:0.6.0
+    pull_policy: never
+    command: [python, -m, services.writer.main]
+    user: "10001:10001"
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+      rabbitmq: {condition: service_healthy}
+      influxdb: {condition: service_healthy}
+    volumes:
+      - ./secrets/postgres_writer:/run/secrets/postgres_writer:ro
+      - ./secrets/rabbit_writer:/run/secrets/rabbit_writer:ro
+      - writer_credentials:/run/influx:ro
+    networks: [backend_net, data_net]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/ready',timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    mem_limit: 256m
+    cpus: 1
+
   ollama-init:
-    image: smartfan-python:0.5.0
+    image: smartfan-python:0.6.0
     pull_policy: never
     command: [python, -m, infra.model_init]
     user: "10001:10001"
@@ -243,3 +270,4 @@ volumes:
   influxdb_config: {}
   ollama_models: {}
   simulator_spool: {}
+  writer_credentials: {}

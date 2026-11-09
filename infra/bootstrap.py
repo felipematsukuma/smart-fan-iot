@@ -10,6 +10,7 @@ from smartfan_common.reliability.database import engine_for
 from smartfan_common.routing_v2 import QUEUES_V2
 
 from infra.database import provision_database
+from infra.influx_credentials import provision_writer
 
 
 def request(url: str, headers: dict[str, str], value: dict | None = None):
@@ -66,6 +67,10 @@ def main() -> None:
                 "retentionRules": [{"type": "expire", "everySeconds": 604800}],
             },
         )
+    live = next(b for b in buckets if b["name"] == "live")
+    provision_writer(
+        influx_headers, orgs[0]["id"], live["id"], Path("/credentials/writer")
+    )
     print(
         json.dumps(
             {
