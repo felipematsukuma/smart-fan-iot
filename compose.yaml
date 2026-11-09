@@ -136,7 +136,8 @@ services:
 
   bootstrap:
     build: {context: ., dockerfile: infra/Dockerfile}
-    image: smartfan-python:0.2.0
+    pull_policy: build
+    image: smartfan-python:0.3.0
     command: [python, -m, infra.bootstrap]
     user: "10001:10001"
     depends_on:
@@ -147,6 +148,13 @@ services:
     volumes:
       - ./secrets/rabbit_bootstrap:/run/secrets/rabbit_bootstrap:ro
       - ./secrets/influx_admin_token:/run/secrets/influx_admin_token:ro
+      - ./secrets/postgres_bootstrap:/run/secrets/postgres_bootstrap:ro
+      - ./secrets/postgres_gateway:/run/secrets/postgres_gateway:ro
+      - ./secrets/postgres_writer:/run/secrets/postgres_writer:ro
+      - ./secrets/postgres_inference:/run/secrets/postgres_inference:ro
+      - ./secrets/postgres_control:/run/secrets/postgres_control:ro
+      - ./secrets/postgres_api:/run/secrets/postgres_api:ro
+      - ./secrets/postgres_jobs-worker:/run/secrets/postgres_jobs-worker:ro
     networks: [backend_net, data_net]
     read_only: true
     tmpfs: [/tmp]
@@ -155,7 +163,8 @@ services:
     mem_limit: 192m
 
   ollama-init:
-    image: smartfan-python:0.2.0
+    image: smartfan-python:0.3.0
+    pull_policy: never
     command: [python, -m, infra.model_init]
     user: "10001:10001"
     depends_on:

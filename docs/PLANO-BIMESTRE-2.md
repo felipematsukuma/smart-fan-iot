@@ -12,6 +12,7 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 |---|---|
 | M00 — contratos v2 | Implementado e validado localmente em `feat/contratos-v2`, merge `83f89e4`; [README do pacote](../packages/smartfan_common/README.md). 134 testes Python do pacote, 216 frontend, 153 backend, lint/tipos/geração e build locais aprovados; CI remoto e fluxo AIoT integrado pendentes |
 | M01 — infraestrutura | Fundação implementada em `feat/infra-aiot`; [execução e limites](../infra/README.md). Compose novo isolado, imagens pinadas, segredos locais, serviços sem root, brokers autenticados, oito filas quorum e modelo local preparado. Verificação real da infraestrutura e quatro testes de preparo; consumidores/frontend HVAC, scan de imagens e CI remoto ainda pendentes. O ciclo prossegue com M02; demais módulos pendentes |
+| M02 — entrega durável | Implementado em `feat/entrega-duravel`: [garantias e operação](../packages/smartfan_common/src/smartfan_common/reliability/README.md). 138 testes do pacote e 11 integrações PostgreSQL/AMQP reais; transações, dedupe, quota, RLS, fencing, retry, DLQ e confirms verificados localmente. Consumidores de negócio, supervisão dos jobs, carga/chaos completo e CI remoto permanecem pendentes |
 
 ## Decisões desta consolidação
 
