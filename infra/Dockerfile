@@ -10,7 +10,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY --from=builder /wheels /wheels
 COPY web-smart-fan-iot/backend/requirements.txt web-smart-fan-iot/backend/requirements.lock /tmp/
-RUN pip install --no-index --find-links=/wheels -r /tmp/requirements.txt 'smartfan-common[reliability]==0.12.0' && rm -rf /wheels
+RUN pip install --no-index --find-links=/wheels -r /tmp/requirements.txt 'smartfan-common[reliability]==0.13.0' && rm -rf /wheels
 COPY infra ./infra
 COPY services ./services
 COPY web-smart-fan-iot/backend/app ./app

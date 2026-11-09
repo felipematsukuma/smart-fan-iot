@@ -161,34 +161,68 @@ class FeatureWindow:
             or timestamp - window.samples[0][0] < self.config.min_span_seconds
         ):
             return FeatureResult("warming_up")
-        features: list[float] = []
-        coverages: list[float] = []
-        indoor_slope = 0.0
-        for index, sensor in enumerate(SENSORS):
-            points = [(t, v[index]) for t, v in window.samples if v[index] is not None]
-            present: list[tuple[float, float]] = [(t, float(v)) for t, v in points if v is not None]
-            coverage = len(present) / len(window.samples)
-            if len(present) < self.config.min_samples or coverage < self.config.min_coverage:
-                return FeatureResult("insufficient_data")
-            values = [v for _, v in present]
-            slope = _slope(present)
-            features.extend([fmean(values), pstdev(values), slope])
-            coverages.append(coverage)
-            if sensor == "indoor_temp_c":
-                indoor_slope = slope
-        deltas = [
-            float(v[1]) - float(v[4])
-            for _, v in window.samples
-            if v[1] is not None and v[4] is not None
-        ]
-        if not deltas:
-            return FeatureResult("insufficient_data")
-        features.extend([fmean(deltas), -indoor_slope * 60, min(coverages)])
-        return FeatureResult("valid", tuple(features))
+        return summarize_window(window.samples, at=timestamp, config=self.config)
 
     def forget(self, device_id: str) -> None:
         """Release a disabled device explicitly; do not evict active devices silently."""
         self._devices.pop(device_id, None)
+
+
+def summarize_window(
+    samples: Iterable[tuple[float, tuple[float | None, ...]]],
+    *,
+    at: float,
+    config: FeatureConfig,
+) -> FeatureResult:
+    """One numerical kernel for selected batch windows and incremental live windows.
+
+    Callers split equipment/boot/actuator runs first. Future observations are rejected,
+    never silently included; warmup, missingness and slopes match the reference stream.
+    """
+    points = list(samples)
+    if not isfinite(at) or any(t > at or not isfinite(t) for t, _ in points):
+        raise ValueError("Future or invalid observation in causal window")
+    points = [(t, values) for t, values in points if t >= at - config.window_seconds]
+    if any(
+        len(values) != len(SENSORS)
+        or any(value is not None and not isfinite(value) for value in values)
+        for _, values in points
+    ):
+        raise ValueError("Invalid observed channels")
+    if len(points) < config.min_samples or at - points[0][0] < config.min_span_seconds:
+        return FeatureResult("warming_up")
+    if any(
+        not 0 < right[0] - left[0] <= config.max_gap_seconds
+        for left, right in zip(points, points[1:])
+    ):
+        return FeatureResult("insufficient_data")
+    features: list[float] = []
+    coverages: list[float] = []
+    indoor_slope = 0.0
+    for index, sensor in enumerate(SENSORS):
+        present: list[tuple[float, float]] = []
+        for stamp, readings in points:
+            value = readings[index]
+            if value is not None:
+                present.append((stamp, float(value)))
+        coverage = len(present) / len(points)
+        if len(present) < config.min_samples or coverage < config.min_coverage:
+            return FeatureResult("insufficient_data")
+        values = [value for _, value in present]
+        slope = _slope(present)
+        features.extend([fmean(values), pstdev(values), slope])
+        coverages.append(coverage)
+        if sensor == "indoor_temp_c":
+            indoor_slope = slope
+    deltas = [
+        float(values[1]) - float(values[4])
+        for _, values in points
+        if values[1] is not None and values[4] is not None
+    ]
+    if not deltas:
+        return FeatureResult("insufficient_data")
+    features.extend([fmean(deltas), -indoor_slope * 60, min(coverages)])
+    return FeatureResult("valid", tuple(features))
 
 
 def iter_features(
