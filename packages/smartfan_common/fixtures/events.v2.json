@@ -2170,5 +2170,104 @@
         "reason_code": "manual_on"
       }
     }
+  },
+  {
+    "name": "state_v21_revision",
+    "valid": true,
+    "value": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "schema_version": "2.1",
+      "timestamp": "2026-11-08T22:00:00Z",
+      "tipo": "device.state",
+      "dispositivo": "ac_01",
+      "correlation_id": null,
+      "metadata": {
+        "producer": "simulator",
+        "causation_id": null,
+        "boot_id": "33333333-3333-4333-8333-333333333333",
+        "sequence": 120,
+        "zone": "quarto",
+        "equipment_type": "ac_split_onoff",
+        "clock_scale": 1
+      },
+      "conteudo": {
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "mode": "auto",
+        "manual_cooling_block": false,
+        "reason_code": "thermostat",
+        "last_revision": 12
+      }
+    }
+  },
+  {
+    "name": "state_v21_without_revision",
+    "valid": false,
+    "value": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "schema_version": "2.1",
+      "timestamp": "2026-11-08T22:00:00Z",
+      "tipo": "device.state",
+      "dispositivo": "ac_01",
+      "correlation_id": null,
+      "metadata": {
+        "producer": "simulator",
+        "causation_id": null,
+        "boot_id": "33333333-3333-4333-8333-333333333333",
+        "sequence": 120,
+        "zone": "quarto",
+        "equipment_type": "ac_split_onoff",
+        "clock_scale": 1
+      },
+      "conteudo": {
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "mode": "auto",
+        "manual_cooling_block": false,
+        "reason_code": "thermostat"
+      }
+    }
+  },
+  {
+    "name": "unknown_major",
+    "valid": false,
+    "value": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "schema_version": "3.0",
+      "timestamp": "2026-11-08T22:00:00Z",
+      "tipo": "telemetry.sampled",
+      "dispositivo": "ac_01",
+      "correlation_id": null,
+      "metadata": {
+        "producer": "simulator",
+        "causation_id": null,
+        "boot_id": "33333333-3333-4333-8333-333333333333",
+        "sequence": 120,
+        "zone": "quarto",
+        "equipment_type": "ac_split_onoff",
+        "clock_scale": 1
+      },
+      "conteudo": {
+        "readings": {
+          "current_a": 4.2,
+          "compressor_case_temp_c": 58.0,
+          "vibration_rms_mm_s": 1.2,
+          "indoor_temp_c": 26.0,
+          "outdoor_temp_c": 32.0,
+          "power_w": 850.0
+        },
+        "actuators": {
+          "compressor_on": true,
+          "condenser_fan_on": true
+        },
+        "quality": {
+          "missing_fields": []
+        }
+      }
+    }
   }
 ]
