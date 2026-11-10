@@ -1,0 +1,33 @@
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: Ruff lint
+        entry: python -m ruff check --no-cache
+        language: python
+        additional_dependencies: [ruff==0.17.2]
+        types: [python]
+      - id: ruff-format
+        name: Ruff format check
+        entry: python -m ruff format --check --no-cache
+        language: python
+        additional_dependencies: [ruff==0.17.2]
+        types: [python]
+      - id: secrets-staged
+        name: Gitleaks staged, redacted
+        entry: python tools/quality/secret_scan.py staged
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: frontend-checks
+        name: Frontend lint, types and format
+        entry: python tools/quality/frontend_hook.py
+        language: system
+        files: ^web-smart-fan-iot/frontend/
+        pass_filenames: false
+      - id: conventional-commit
+        name: Conventional Commit title
+        entry: python tools/quality/conventional.py
+        language: system
+        stages: [commit-msg]

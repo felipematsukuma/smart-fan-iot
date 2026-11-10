@@ -1,0 +1,164 @@
+[
+  {
+    "fingerprint": "83a8314aa0433dab53ad075ba1640aaf69578629:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+    "commit": "83a8314aa0433dab53ad075ba1640aaf69578629",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 2,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "83a8314aa0433dab53ad075ba1640aaf69578629:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+    "commit": "83a8314aa0433dab53ad075ba1640aaf69578629",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 9,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "bf4e54161d4cd92686cc4e451d6fa1c641b876a0:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+    "commit": "bf4e54161d4cd92686cc4e451d6fa1c641b876a0",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 2,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "bf4e54161d4cd92686cc4e451d6fa1c641b876a0:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+    "commit": "bf4e54161d4cd92686cc4e451d6fa1c641b876a0",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 9,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "fe6d52536185390c3ff98479a81fe01d645533d4:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+    "commit": "fe6d52536185390c3ff98479a81fe01d645533d4",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 2,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "fe6d52536185390c3ff98479a81fe01d645533d4:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+    "commit": "fe6d52536185390c3ff98479a81fe01d645533d4",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 9,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 21,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 40,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 64,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 67,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 2,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 9,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 2,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 9,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 21,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 40,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 64,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 67,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_unverified",
+    "note": "Exact historical finding; never suppresses a new commit or future value."
+  }
+]
