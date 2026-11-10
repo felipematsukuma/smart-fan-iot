@@ -1,0 +1,49 @@
+# Explicit test-only overlay. Production stays on the runtime image without coverage.
+x-python-coverage: &coverage
+  image: smartfan-python-qa:0.14.0
+  environment:
+    COVERAGE_RCFILE: /coverage.ini
+    COVERAGE_FILE: /coverage/.coverage
+  volumes:
+    - ./.coveragerc:/coverage.ini:ro
+    - ./evidence/coverage/python-runtime:/coverage
+
+services:
+  bootstrap:
+    <<: *coverage
+    build: {context: ., dockerfile: infra/Dockerfile, target: qa}
+    command: [python, -m, coverage, run, -m, infra.bootstrap]
+    mem_limit: 1024m
+    cpus: 2
+    volumes:
+      - ./.coveragerc:/coverage.ini:ro
+      - ./evidence/coverage/python-runtime:/coverage
+      - ./infra/tests:/tests:ro
+      - ./secrets/rabbit_writer:/run/secrets/rabbit_writer:ro
+      - ./secrets/rabbit_api-monitor:/run/secrets/rabbit_api-monitor:ro
+  gateway:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, services.gateway.main]
+  writer:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, services.writer.main]
+  simulator:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, services.simulator.main]
+  control:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, services.control.main]
+  inference:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, services.inference.main]
+  jobs-worker:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, services.jobs.main]
+  api:
+    <<: *coverage
+    command: [python, -m, coverage, run, -m, uvicorn, services.api.main:create_app, --factory, --host, 0.0.0.0, --port, "8000", --no-access-log, --no-proxy-headers, --ws-max-size, "16384"]
+  ollama-init:
+    image: smartfan-python-qa:0.14.0
+  frontend:
+    build:
+      args: {VITE_COVERAGE: "1"}
