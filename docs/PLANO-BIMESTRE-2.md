@@ -32,6 +32,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M14 — Página Insights | [V] Implementado em `feat/pagina-insights`: [estados, versões e histórico](../services/api/INSIGHTS.md). Saúde/RUL/tendência/comparação via WS; números ocultados quando stale; histórico REST e regras versionadas separados. 238 Vitest, 12 integrações e um percurso Playwright real com parada do simulador passaram. Injeção guiada de falha e carga integrada permanecem M18 |
 
+| M15 — Cena 3D | [V] Implementado em `feat/cena-3d`: [fluxo WS, recursos e medição](../web-smart-fan-iot/frontend/src/aiot/scene/README.md). Oito IDs cadastrados, geometria procedural persistente, dois mapas térmicos, seleção por teclado, minigráfico e controle Web separado. Ensaio local: 30 FPS, 44 chamadas/2.052 triângulos; 241 Vitest. Movimento reduzido e parada real do simulador congelam animação. Carga prolongada/CI/scan permanecem M17/M18 |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.
