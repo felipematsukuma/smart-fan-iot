@@ -29,6 +29,7 @@ from smartfan_common.control import CommandIntent, RuleUpdate
 from smartfan_common.device_registry import DeviceCreate, DeviceUpdate
 from smartfan_common.influx_v2 import InfluxHTTP
 from smartfan_common.lab_config import LabConfig
+from smartfan_common.predictive import PredictiveRuleUpdate
 from smartfan_common.reliability.database import engine_for
 from smartfan_common.reliability.runtime import configure_logging
 from smartfan_common.reliability.store import DurableStore
@@ -51,6 +52,7 @@ from .commands import get_rule, update_rule
 from .devices import DeviceRegistry
 from .errors import Problem
 from .history import metrics
+from .insights import Insights
 from .lab import Lab
 from .messaging import FailureJournal, Management
 from .models import Models
@@ -268,6 +270,7 @@ def create_app(
     journal = FailureJournal(database)
     lab = Lab(events.store)
     models = Models(events.store)
+    insights = Insights(database)
     monitor = management or (
         Management(Path("/run/secrets/rabbit_api-monitor")) if enabled else None
     )
@@ -701,6 +704,41 @@ def create_app(
         from .lab import preview
 
         return preview(artifacts_root / "datasets" / str(identity), dataset, limit)
+
+    @application.get("/api/v1/insights/status")
+    def insights_status(principal: Annotated[Principal, Depends(current)]):
+        return insights.status()
+
+    @application.get("/api/v1/alerts")
+    def alerts_list(
+        principal: Annotated[Principal, Depends(current)],
+        device: str | None = Query(
+            default=None, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"
+        ),
+        status: Literal["active", "cleared"] | None = None,
+        before: UUID | None = None,
+        limit: int = Query(default=50, ge=1, le=100),
+    ):
+        if device is not None:
+            registry.get(device)
+        return insights.alerts(device, status, before, limit)
+
+    @application.get("/api/v1/devices/{identity}/predictive-rule")
+    def predictive_rule_get(
+        identity: str, principal: Annotated[Principal, Depends(current)]
+    ):
+        registry.get(identity)
+        return insights.rule(identity)
+
+    @application.patch("/api/v1/devices/{identity}/predictive-rule")
+    def predictive_rule_update(
+        identity: str,
+        body: PredictiveRuleUpdate,
+        request: Request,
+        principal: Annotated[Principal, Depends(admin)],
+    ):
+        registry.get(identity)
+        return insights.update(identity, body, principal, request.state.correlation_id)
 
     @application.post("/api/v1/training/jobs", status_code=202)
     def training_create(

@@ -17,6 +17,7 @@ from smartfan_common.reliability.store import DurableStore
 from smartfan_common.routing_v2 import routing_key_v2
 from sqlalchemy import text
 
+from .alerts import PredictiveAlerts
 from .domain import CommandService, ControlError, record_audit
 
 
@@ -26,6 +27,7 @@ class Controller:
             raise ValueError("Control account required")
         self.store = store
         self.commands = CommandService(store)
+        self.predictive = PredictiveAlerts(store)
 
     def receive(
         self, raw: bytes, route: str, user_id: str | None, message_id: str | None
@@ -61,8 +63,8 @@ class Controller:
                     self.ack(conn, event, now)
                 elif isinstance(event, TelemetrySampleV2):
                     self.sample(conn, event, now)
-                # Prediction alert hysteresis is M13. This consumer stores the event
-                # without letting a model directly actuate a compressor.
+                elif isinstance(event, InsightPredictedV2):
+                    self.predictive.handle(conn, event, raw, now)
                 conn.execute(
                     text(
                         "UPDATE transport.inbox SET state='completed',finished_at=clock_timestamp() WHERE owner='control' AND event_id=:id"
