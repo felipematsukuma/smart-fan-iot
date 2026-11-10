@@ -25,6 +25,7 @@ from smartfan_common.contracts_v2 import (
     serialize_event_v2,
 )
 from smartfan_common.lab_config import LabConfig
+from smartfan_common.local_llm import MODEL
 from smartfan_common.reliability.amqp import authenticated_publisher
 from smartfan_common.reliability.leases import ResourceLeases, ResourceToken
 from smartfan_common.reliability.store import (
@@ -236,7 +237,9 @@ class Supervisor:
 
         request = urllib.request.Request(
             "http://ollama:11434/api/generate",
-            data=b'{"model":"llama3.2:3b","keep_alive":0,"stream":false}',
+            data=json.dumps(
+                {"model": MODEL, "keep_alive": 0, "stream": False}
+            ).encode(),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(request, timeout=3) as response:
