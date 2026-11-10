@@ -14,6 +14,7 @@ export const streamStatus = ref<
   'offline' | 'connecting' | 'authenticating' | 'connected' | 'reconnecting'
 >('offline');
 export const streamNotice = ref('');
+export const alertRevision = ref(0);
 let socket: WebSocket | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let watchdog: ReturnType<typeof setInterval> | undefined;
@@ -33,6 +34,7 @@ export function stopRealtime() {
   streamStatus.value = 'offline';
   live.clear();
   jobUpdates.clear();
+  alertRevision.value = 0;
 }
 onSessionEnded(stopRealtime);
 
@@ -86,6 +88,11 @@ export function startRealtime() {
             throw new Error('Stream muito grande.');
           const packet: unknown = JSON.parse(message.data);
           if (isEventV2(packet)) {
+            if (
+              packet.tipo === 'alert.raised' ||
+              packet.tipo === 'alert.cleared'
+            )
+              alertRevision.value++;
             if (packet.tipo === 'job.progress') {
               const previous = jobUpdates.get(packet.conteudo.job_id);
               if (

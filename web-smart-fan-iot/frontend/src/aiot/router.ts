@@ -25,6 +25,11 @@ export const router = createRouter({
       meta: { title: 'Visão geral' },
     },
     {
+      path: '/insights',
+      component: () => import('./pages/InsightsPage.vue'),
+      meta: { title: 'Insights' },
+    },
+    {
       path: '/dispositivos',
       component: () => import('./pages/DevicesPage.vue'),
       meta: { title: 'Dispositivos' },
