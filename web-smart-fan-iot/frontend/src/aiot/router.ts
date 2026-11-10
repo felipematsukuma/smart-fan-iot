@@ -25,6 +25,11 @@ export const router = createRouter({
       meta: { title: 'Visão geral' },
     },
     {
+      path: '/assistente',
+      component: () => import('./pages/AssistantPage.vue'),
+      meta: { title: 'Assistente local' },
+    },
+    {
       path: '/cena-3d',
       component: () => import('./pages/ScenePage.vue'),
       meta: { title: 'Cena 3D' },

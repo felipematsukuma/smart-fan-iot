@@ -46,6 +46,8 @@ from services.control.domain import (
     public_command,
 )
 
+from .assistant import Assistant, AssistantResponse
+from .assistant_context import ChatRequest
 from .auth import AuthService, Principal
 from .bus import ApiBus
 from .commands import get_rule, update_rule
@@ -200,6 +202,7 @@ def create_app(
     influx: InfluxHTTP | None = None,
     management: Management | None = None,
     artifacts_root: Path = Path("/artifacts"),
+    assistant: Assistant | None = None,
 ) -> FastAPI:
     logger = configure_logging("api")
     database = (
@@ -234,8 +237,12 @@ def create_app(
         if bus:
             bus.thread.start()
         try:
+            if assistant_service:
+                await assistant_service.start()
             yield
         finally:
+            if assistant_service:
+                await assistant_service.close()
             if bus:
                 bus.stop.set()
                 await asyncio.to_thread(bus.thread.join, 10)
@@ -279,6 +286,12 @@ def create_app(
     application.state.influx = influx or (
         InfluxHTTP(Path("/run/influx/token"), timeout=10) if enabled else None
     )
+    assistant_service = assistant or (
+        Assistant(database, application.state.influx, Path("/runtime/assistant"))
+        if enabled
+        else None
+    )
+    application.state.assistant = assistant_service
     application.add_middleware(BodyLimit)
     application.add_middleware(
         CORSMiddleware,
@@ -704,6 +717,31 @@ def create_app(
         from .lab import preview
 
         return preview(artifacts_root / "datasets" / str(identity), dataset, limit)
+
+    @application.post("/api/v1/assistant/chat")
+    async def assistant_chat(
+        body: ChatRequest,
+        request: Request,
+        principal: Annotated[Principal, Depends(current)],
+    ):
+        await asyncio.to_thread(registry.get, body.device_id)
+        if (
+            principal.device_scope is not None
+            and body.device_id not in principal.device_scope
+        ):
+            raise Problem(
+                403, "device_forbidden", "Dispositivo fora do escopo autorizado."
+            )
+        if assistant_service is None:
+            raise Problem(
+                503, "assistant_unavailable", "Assistente local indisponível."
+            )
+        identity = await assistant_service.reserve(
+            principal, body, request.state.correlation_id
+        )
+        return AssistantResponse(
+            assistant_service, identity, principal, body, request.state.correlation_id
+        )
 
     @application.get("/api/v1/insights/status")
     def insights_status(principal: Annotated[Principal, Depends(current)]):

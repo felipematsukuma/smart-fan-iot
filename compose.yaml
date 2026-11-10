@@ -13,7 +13,7 @@ services:
   volume-init:
     image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
     user: "0:0"
-    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001),('api_credentials',10001,10001),('artifacts',10001,10001),('inference_credentials',10001,10001)]]"]
+    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001),('api_credentials',10001,10001),('artifacts',10001,10001),('inference_credentials',10001,10001),('api_runtime',10001,10001)]]"]
     network_mode: none
     volumes:
       - postgres_data:/vol/postgres
@@ -27,6 +27,7 @@ services:
       - api_credentials:/vol/api_credentials
       - artifacts:/vol/artifacts
       - inference_credentials:/vol/inference_credentials
+      - api_runtime:/vol/api_runtime
     mem_limit: 128m
 
   postgres:
@@ -322,6 +323,7 @@ services:
       - ./secrets/rabbit_api-monitor:/run/secrets/rabbit_api-monitor:ro
       - api_credentials:/run/influx:ro
       - artifacts:/artifacts:ro
+      - api_runtime:/runtime/assistant
     networks: [frontend_net, backend_net, data_net]
     read_only: true
     tmpfs: [/tmp]
@@ -410,3 +412,4 @@ volumes:
   api_credentials: {}
   artifacts: {}
   inference_credentials: {}
+  api_runtime: {}

@@ -13,6 +13,7 @@ import {
   BrainCircuit,
   Activity,
   Box,
+  MessageSquare,
 } from 'lucide-vue-next';
 import { currentUser, signOut, sessionNotice } from './auth';
 import { router } from './router';
@@ -54,6 +55,9 @@ async function logout() {
         >
         <RouterLink to="/insights"><Activity :size="18" />Insights</RouterLink>
         <RouterLink to="/cena-3d"><Box :size="18" />Cena 3D</RouterLink>
+        <RouterLink to="/assistente"
+          ><MessageSquare :size="18" />Assistente local</RouterLink
+        >
         <RouterLink to="/dispositivos"
           ><AirVent :size="18" />Dispositivos</RouterLink
         >
