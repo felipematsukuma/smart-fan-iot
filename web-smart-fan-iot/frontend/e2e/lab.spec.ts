@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('laboratório gera milhão reproduzível e cancela parcial sem rótulos no WS', async ({
   page,

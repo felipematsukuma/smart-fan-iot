@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('Web altera atuador por ACK físico e libera novamente o automático', async ({
   page,

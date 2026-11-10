@@ -11,7 +11,9 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      include: ['src/lib/**/*.ts'],
+      include: ['src/lib/**/*.ts', 'src/aiot/**/*.ts', 'src/aiot/**/*.vue'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.generated.ts'],
+      reporter: ['json', 'text-summary'],
     },
   },
 });

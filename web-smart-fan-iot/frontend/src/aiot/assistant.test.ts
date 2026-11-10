@@ -49,3 +49,49 @@ it('rejects interrupted streams and malformed delta packets', async () => {
     ),
   ).rejects.toThrow('Fragmento');
 });
+
+it('validates transport and event envelopes before rendering model output', async () => {
+  const controller = new AbortController();
+  const events: string[] = [];
+  await expect(
+    consumeSse(new Response('plain text'), controller.signal, () => undefined),
+  ).rejects.toThrow('streaming inválida');
+  const response = (value: BodyInit) =>
+    new Response(value, { headers: { 'Content-Type': 'text/event-stream' } });
+  await consumeSse(
+    response(
+      ': heartbeat\n\nevent: meta\ndata: {"state":"queued"}\n\nevent: error\ndata: {"code":"unavailable"}\n\n',
+    ),
+    controller.signal,
+    (value) => events.push(value.event),
+  );
+  expect(events).toEqual(['meta', 'error']);
+  await expect(
+    consumeSse(
+      response('event: unknown\ndata: {}\n\n'),
+      controller.signal,
+      () => undefined,
+    ),
+  ).rejects.toThrow('Evento');
+  await expect(
+    consumeSse(
+      response('event: meta\ndata: null\n\n'),
+      controller.signal,
+      () => undefined,
+    ),
+  ).rejects.toThrow('Conteúdo');
+  await expect(
+    consumeSse(
+      response(new Uint8Array(131073)),
+      controller.signal,
+      () => undefined,
+    ),
+  ).rejects.toThrow('limite');
+  controller.abort();
+  await consumeSse(response(''), controller.signal, () => {
+    throw new Error('Aborted consumer must not receive output');
+  });
+  expect(
+    safeMarkdown('[local](/admin) [mail](mailto:someone@example.com)'),
+  ).not.toContain('<a');
+});

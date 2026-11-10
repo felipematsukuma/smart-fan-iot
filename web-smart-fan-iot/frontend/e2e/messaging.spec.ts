@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 test('mensageria mostra fila real crescer e esvaziar sem consumir a DLQ', async ({

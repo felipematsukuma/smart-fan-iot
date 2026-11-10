@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('UI treina dois alvos na massa final e distingue aprovação de ativação', async ({
   page,
