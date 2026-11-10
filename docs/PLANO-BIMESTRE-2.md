@@ -30,6 +30,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M13 — Inferência e alertas | [V] Implementado em `feat/inferencia-alertas`: [origem, ativação e histerese](../services/inference/README.md). Janela causal compartilhada, recuperação passada, resultado idempotente por fonte e hot-reload cercado por aprovação/revisão/hash. Sete integrações focadas incluem revogação, commit incerto e histerese persistida; pipeline real alcança WS com regressores treinados. 221 testes Python, 153 legados e 231 Vitest passaram. UI Insights, retenção e aceite integrado permanecem posteriores |
 
+| M14 — Página Insights | [V] Implementado em `feat/pagina-insights`: [estados, versões e histórico](../services/api/INSIGHTS.md). Saúde/RUL/tendência/comparação via WS; números ocultados quando stale; histórico REST e regras versionadas separados. 238 Vitest, 12 integrações e um percurso Playwright real com parada do simulador passaram. Injeção guiada de falha e carga integrada permanecem M18 |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.
