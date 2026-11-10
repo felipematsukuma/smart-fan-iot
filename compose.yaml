@@ -13,7 +13,7 @@ services:
   volume-init:
     image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
     user: "0:0"
-    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001),('api_credentials',10001,10001),('artifacts',10001,10001)]]"]
+    command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001),('api_credentials',10001,10001),('artifacts',10001,10001),('inference_credentials',10001,10001)]]"]
     network_mode: none
     volumes:
       - postgres_data:/vol/postgres
@@ -26,6 +26,7 @@ services:
       - writer_credentials:/vol/writer_credentials
       - api_credentials:/vol/api_credentials
       - artifacts:/vol/artifacts
+      - inference_credentials:/vol/inference_credentials
     mem_limit: 128m
 
   postgres:
@@ -141,7 +142,7 @@ services:
   bootstrap:
     build: {context: ., dockerfile: infra/Dockerfile}
     pull_policy: build
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     command: [python, -m, infra.bootstrap]
     user: "10001:10001"
     depends_on:
@@ -161,6 +162,7 @@ services:
       - ./secrets/postgres_jobs-worker:/run/secrets/postgres_jobs-worker:ro
       - writer_credentials:/credentials/writer
       - api_credentials:/credentials/api
+      - inference_credentials:/credentials/inference
       - ./secrets/initial_admin_password:/run/secrets/initial_admin_password:ro
       - ./secrets/initial_operator_password:/run/secrets/initial_operator_password:ro
       - ./secrets/initial_viewer_password:/run/secrets/initial_viewer_password:ro
@@ -173,7 +175,7 @@ services:
 
   simulator:
     <<: *runtime
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [python, -m, services.simulator.main]
     user: "10001:10001"
@@ -199,7 +201,7 @@ services:
 
   gateway:
     <<: *runtime
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [python, -m, services.gateway.main]
     user: "10001:10001"
@@ -222,9 +224,40 @@ services:
     mem_limit: 192m
     cpus: 0.5
 
+  inference:
+    <<: *runtime
+    image: smartfan-python:0.14.0
+    pull_policy: never
+    command: [python, -m, services.inference.main]
+    user: "10001:10001"
+    depends_on:
+      bootstrap: {condition: service_completed_successfully}
+      postgres: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      influxdb: {condition: service_healthy}
+    volumes:
+      - ./secrets/postgres_inference:/run/secrets/postgres_inference:ro
+      - ./secrets/rabbit_inference:/run/secrets/rabbit_inference:ro
+      - inference_credentials:/run/influx:ro
+      - artifacts:/artifacts:ro
+    environment:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    networks: [backend_net, data_net]
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/ready',timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    mem_limit: 640m
+    cpus: 1
+
   control:
     <<: *runtime
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [python, -m, services.control.main]
     user: "10001:10001"
@@ -248,7 +281,7 @@ services:
 
   jobs-worker:
     <<: *runtime
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [python, -m, services.jobs.main]
     user: "10001:10001"
@@ -275,7 +308,7 @@ services:
 
   api:
     <<: *runtime
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [uvicorn, services.api.main:create_app, --factory, --host, 0.0.0.0, --port, "8000", --no-access-log, --no-proxy-headers, --ws-max-size, "16384"]
     user: "10001:10001"
@@ -303,7 +336,7 @@ services:
   frontend:
     <<: *runtime
     build: {context: ., dockerfile: infra/frontend/Dockerfile}
-    image: smartfan-frontend:0.13.0
+    image: smartfan-frontend:0.14.0
     user: "101:101"
     depends_on:
       api: {condition: service_healthy}
@@ -321,7 +354,7 @@ services:
 
   writer:
     <<: *runtime
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [python, -m, services.writer.main]
     user: "10001:10001"
@@ -345,7 +378,7 @@ services:
     cpus: 1
 
   ollama-init:
-    image: smartfan-python:0.13.0
+    image: smartfan-python:0.14.0
     pull_policy: never
     command: [python, -m, infra.model_init]
     user: "10001:10001"
@@ -376,3 +409,4 @@ volumes:
   writer_credentials: {}
   api_credentials: {}
   artifacts: {}
+  inference_credentials: {}

@@ -84,6 +84,13 @@ def main() -> None:
         Path("/credentials/api"),
         "smartfan-api-read-v1",
     )
+    provision_token(
+        influx_headers,
+        orgs[0]["id"],
+        [(live["id"], "read")],
+        Path("/credentials/inference"),
+        "smartfan-inference-read-v1",
+    )
     print(
         json.dumps(
             {

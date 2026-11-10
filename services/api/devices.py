@@ -1,9 +1,11 @@
 """Versioned administrative metadata; never edits the observed physical state."""
 
 import json
+from uuid import NAMESPACE_URL, uuid5
 
 from smartfan_common.control import RuleConfig
 from smartfan_common.device_registry import DeviceCreate, DeviceUpdate
+from smartfan_common.predictive import PredictiveRule
 from smartfan_common.ws_protocol import default_descriptor
 from sqlalchemy import Engine, text
 from sqlalchemy.exc import IntegrityError
@@ -147,6 +149,24 @@ class DeviceRegistry:
                 conn.execute(
                     text(
                         "INSERT INTO app.rule_versions(device_id,revision,configuration) SELECT device_id,revision,configuration FROM app.rules WHERE device_id=:id"
+                    ),
+                    {"id": body.id},
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO app.predictive_rules(device_id,rule_id,configuration) VALUES(:id,:rule,CAST(:config AS jsonb))"
+                    ),
+                    {
+                        "id": body.id,
+                        "rule": str(
+                            uuid5(NAMESPACE_URL, "smartfan:predictive:" + body.id)
+                        ),
+                        "config": PredictiveRule().model_dump_json(),
+                    },
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO app.predictive_rule_versions(device_id,revision,configuration) SELECT device_id,revision,configuration FROM app.predictive_rules WHERE device_id=:id"
                     ),
                     {"id": body.id},
                 )
