@@ -34,6 +34,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M15 — Cena 3D | [V] Implementado em `feat/cena-3d`: [fluxo WS, recursos e medição](../web-smart-fan-iot/frontend/src/aiot/scene/README.md). Oito IDs cadastrados, geometria procedural persistente, dois mapas térmicos, seleção por teclado, minigráfico e controle Web separado. Ensaio local: 30 FPS, 44 chamadas/2.052 triângulos; 241 Vitest. Movimento reduzido e parada real do simulador congelam animação. Carga prolongada/CI/scan permanecem M17/M18 |
 
+| M16 — Assistente local | [V] Implementado em `feat/assistente-local`: [modelo, SSE, limites e evidências](../services/api/ASSISTANT.md). 1B Q4 pinado após timeout do 3B/Q8, resumo sem séries/rótulos, Markdown sem HTML, uma geração/duas esperas e lease com prova de parada. 224 Python, 244 Vitest, 24 integrações e Playwright com Ollama real passaram. Primeiro fragmento frio 5,2–12,4 s nos ensaios; não é p95. Texto do LLM não é diagnóstico validado; carga/recovery extremo e scan/CI permanecem M17/M18 |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.

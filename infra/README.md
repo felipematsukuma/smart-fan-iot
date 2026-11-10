@@ -35,7 +35,7 @@ RabbitMQ management em http://127.0.0.1:15672 e InfluxDB em http://127.0.0.1:808
 
 ## Modelo e recursos
 
-`ollama-init` baixa llama3.2:3b na primeira execução, registra o digest no próprio volume e aquece o modelo local. Cache existente não é atualizado silenciosamente para outro digest. Não há fallback cloud. Primeiro download precisa de rede; apresentação posterior usa cache. Chat/limites de resumo/streaming e lease de memória pertencem a M16/M02.
+`ollama-init` baixa/verifica o modelo efetivo `llama3.2:1b-instruct-q4_K_M`, fixado por digest no pacote compartilhado e registrado no volume. O aquecimento ocorre no primeiro chat sob lease, evitando concorrência com jobs. Cache anterior do candidato 3B permanece preservado. Primeiro download precisa de rede; apresentação posterior usa cache, sem fallback cloud. [M16: escolha, streaming e limites](../services/api/ASSISTANT.md).
 
 Máquina observada: Docker dispõe de aproximadamente 7,6 GiB; a configuração do host não foi alterada. Limites por container não são garantias de consumo agregado. Modelo usa contexto 2048, uma requisição e no máximo um modelo carregado; concorrência com treino ainda será controlada pelos módulos correspondentes.
 
