@@ -6,17 +6,16 @@ import urllib.request
 from pathlib import Path
 
 import pytest
-from realtime_fixture import publish_latest_frame
 from websockets.sync.client import connect
 from websockets.typing import Origin
 
 pytestmark = pytest.mark.skipif(
-    not Path("/run/secrets/rabbit_inference").exists(),
-    reason="Requires running realtime API and scoped fixture credentials",
+    not Path("/run/secrets/initial_viewer_password").exists(),
+    reason="Requires the running Compose API and actual inference service",
 )
 
 
-def test_actual_amqp_frame_reaches_authorized_socket_without_prediction():
+def test_actual_inference_frame_reaches_authorized_socket():
     def request(path, body=None, token=None):
         headers = {
             "Content-Type": "application/json",
@@ -53,19 +52,26 @@ def test_actual_amqp_frame_reaches_authorized_socket_without_prediction():
             )
             assert json.loads(socket.recv(timeout=5))["type"] == "authenticated"
             assert json.loads(socket.recv(timeout=5))["type"] == "snapshot"
-            published = publish_latest_frame()
-            deadline = time.monotonic() + 5
+            deadline = time.monotonic() + 15
             while time.monotonic() < deadline:
                 event = json.loads(socket.recv(timeout=5))
                 if event.get("type") == "ping":
                     socket.send(json.dumps({"type": "pong", "id": event["id"]}))
-                elif event.get("id") == published["id"]:
+                elif event.get("tipo") == "frame.ready":
                     assert event["tipo"] == "frame.ready"
-                    assert event["conteudo"]["insight"]["health_score"] is None
+                    assert event["metadata"]["producer"] == "inference"
                     assert (
-                        event["conteudo"]["telemetry"]["readings"]["power_w"]
-                        == published["power_w"]
+                        event["conteudo"]["source_event_id"]
+                        == event["conteudo"]["telemetry"]["source_event_id"]
                     )
+                    assert set(event["conteudo"]["telemetry"]) == {
+                        "source_event_id",
+                        "readings",
+                        "actuators",
+                        "quality",
+                    }
+                    if event["conteudo"]["insight"]["status"] == "valid":
+                        assert event["conteudo"]["insight"]["model_version"]
                     break
             else:
                 raise AssertionError("No correlated live frame")

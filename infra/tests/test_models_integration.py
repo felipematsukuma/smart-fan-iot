@@ -31,7 +31,7 @@ def reset_models(database):
     with admin.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE app.activation_notifications,app.model_selection,app.models,app.training_requests,app.jobs,app.datasets"
+                "TRUNCATE app.model_activations,app.inference_results,app.drift_states,app.predictive_states,app.alerts,app.activation_notifications,app.model_selection,app.models,app.training_requests,app.jobs,app.datasets"
             )
         )
         conn.execute(text("INSERT INTO app.model_selection(singleton) VALUES(true)"))

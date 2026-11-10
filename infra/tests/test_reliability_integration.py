@@ -54,7 +54,7 @@ def database():
     migrate(admin)  # Upgrade head twice must be harmless.
     engines = {
         role: engine_for(role, SECRETS / ("postgres_" + role), database=name)
-        for role in ("writer", "gateway", "api", "control", "jobs-worker")
+        for role in ("writer", "gateway", "api", "control", "inference", "jobs-worker")
     }
     with admin.begin() as conn:
         conn.execute(
