@@ -11,6 +11,7 @@ import {
   Network,
   FlaskConical,
   BrainCircuit,
+  Activity,
 } from 'lucide-vue-next';
 import { currentUser, signOut, sessionNotice } from './auth';
 import { router } from './router';
@@ -50,6 +51,7 @@ async function logout() {
         <RouterLink to="/"
           ><LayoutDashboard :size="18" />Visão geral</RouterLink
         >
+        <RouterLink to="/insights"><Activity :size="18" />Insights</RouterLink>
         <RouterLink to="/dispositivos"
           ><AirVent :size="18" />Dispositivos</RouterLink
         >

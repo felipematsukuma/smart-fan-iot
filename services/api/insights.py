@@ -151,3 +151,32 @@ class Insights:
             "rul_unit": "calendar_hours",
             "live_source": "websocket",
         }
+
+    def history(
+        self, identity: str, hours: int, before: UUID | None, limit: int
+    ) -> dict:
+        with self.engine.connect() as conn:
+            rows = (
+                conn.execute(
+                    text(
+                        "SELECT * FROM app.insight_history WHERE device_id=:id AND sampled_at>=clock_timestamp()-make_interval(hours=>:hours) AND (:before IS NULL OR (sampled_at,source_event_id)<(SELECT sampled_at,source_event_id FROM app.insight_history WHERE source_event_id=CAST(:before AS uuid) AND device_id=:id)) ORDER BY sampled_at DESC,source_event_id DESC LIMIT :limit"
+                    ),
+                    {
+                        "id": identity,
+                        "hours": hours,
+                        "before": str(before) if before else None,
+                        "limit": limit + 1,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+        return {
+            "items": [dict(row) for row in rows[:limit]],
+            "next_cursor": str(rows[limit - 1]["source_event_id"])
+            if len(rows) > limit
+            else None,
+            "rul_unit": "calendar_hours",
+            "source": "historical_predictions",
+            "note": "Previsões registradas, sem recálculo; indisponibilidade permanece nula. Janela máxima de 24 h.",
+        }

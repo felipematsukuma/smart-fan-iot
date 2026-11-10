@@ -723,6 +723,17 @@ def create_app(
             registry.get(device)
         return insights.alerts(device, status, before, limit)
 
+    @application.get("/api/v1/devices/{identity}/insights/history")
+    def insights_history(
+        identity: str,
+        principal: Annotated[Principal, Depends(current)],
+        hours: int = Query(default=1, ge=1, le=24),
+        before: UUID | None = None,
+        limit: int = Query(default=120, ge=1, le=500),
+    ):
+        registry.get(identity)
+        return insights.history(identity, hours, before, limit)
+
     @application.get("/api/v1/devices/{identity}/predictive-rule")
     def predictive_rule_get(
         identity: str, principal: Annotated[Principal, Depends(current)]
