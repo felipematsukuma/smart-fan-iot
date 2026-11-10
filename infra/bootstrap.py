@@ -35,7 +35,7 @@ def main() -> None:
         "Authorization": "Basic "
         + base64.b64encode(("bootstrap:" + password).encode()).decode()
     }
-    for attempt in range(30):
+    for _attempt in range(30):
         try:
             queues = request(
                 "http://rabbitmq:15672/api/queues/%2Fsmartfan", rabbit_headers

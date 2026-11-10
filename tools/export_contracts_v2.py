@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages/smartfan_common/src"))
 
-from smartfan_common.contracts_v2 import EVENT_V2_ADAPTER
+from smartfan_common.contracts_v2 import EVENT_V2_ADAPTER  # noqa: E402
 
 UID = "11111111-1111-4111-8111-111111111111"
 OTHER = "22222222-2222-4222-8222-222222222222"

@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages/smartfan_common/src"))
 
-from smartfan_common.contracts import EVENT_ADAPTER
+from smartfan_common.contracts import EVENT_ADAPTER  # noqa: E402
 
 
 def export_values() -> tuple[dict, list[dict]]:

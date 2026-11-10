@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages/smartfan_common/src"))
 
-from smartfan_common.routing_v2 import DLX, EVENTS, JOBS, QUEUES_V2
+from smartfan_common.routing_v2 import DLX, EVENTS, JOBS, QUEUES_V2  # noqa: E402
 
 ROLES = ("gateway", "writer", "inference", "control", "api", "jobs-worker")
 READ_QUEUES = {

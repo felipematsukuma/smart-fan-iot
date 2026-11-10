@@ -358,11 +358,14 @@ def train(task: TrainingTask, path: Path, root: Path, cancel=lambda: False) -> d
                 )
             ]
             checkpoint(85 + target_index * 5)
-        identity = lambda group: (
-            task.dataset_sha256[:12]
-            + ":"
-            + manifest["content"]["devices"][int(group)]["id"]
-        )
+
+        def identity(group):
+            return (
+                task.dataset_sha256[:12]
+                + ":"
+                + manifest["content"]["devices"][int(group)]["id"]
+            )
+
         split = {
             name: [identity(group) for group in values]
             for name, values in groups.items()
