@@ -1,6 +1,6 @@
 # ADR 004 — Three.js direto
 
-Status: decisão proposta; cena ainda não existe.
+Status: implementada em M15; [evidência local e limites](../../web-smart-fan-iot/frontend/src/aiot/scene/README.md).
 
 Contexto: gêmeo digital procedural simples com poucos objetos e estado recebido por WebSocket.
 
