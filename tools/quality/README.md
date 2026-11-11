@@ -10,6 +10,7 @@ Os comandos partem da raiz do repositório, com Python do ambiente de desenvolvi
 | `python tools/quality/runtime.py` | Build, 79 integrações reais, navegador, cobertura combinada e scan das imagens |
 | `python tools/quality/secret_scan.py tree` | Todos os arquivos versionáveis atuais; saída redigida |
 | `python tools/quality/secret_scan.py strict-history` | Todas as referências Git; falha enquanto revogação histórica estiver pendente |
+| `python tools/quality/legacy_issuers.py --stack legacy` ou `--stack aiot` | Credenciais históricas contra cópias isoladas dos emissores locais, com controles efetivos |
 | `python tools/quality/images.py` | Todas as imagens selecionadas pelo Compose, zero vulnerabilidades críticas |
 | `python tools/quality/install_hooks.py` | Hooks locais de lint, tipos, segredo staged e Conventional Commits |
 
@@ -52,3 +53,5 @@ O workflow fixa ações por SHA, usa permissões de leitura e não persiste cred
 Antes de publicar, configurar proteção de `main`: sem force-push/deleção, check `required-gate` obrigatório, conversas resolvidas e revisão de outro integrante quando houver equipe. Preservar commits e autoria reais; não fabricar participação. Execução remota e proteção não foram verificadas, pois push/PR não foram autorizados. O fluxo atual permite branches e merges locais.
 
 Consulte [achados históricos](../../docs/security/README.md) antes de interpretar o resultado do scan. Baseline precisa não comprova revogação.
+
+A auditoria cria cópias somente quando os originais estão parados. Usa PostgreSQL/InfluxDB com imagem compatível, sem portas publicadas, e cliente não-root; apenas a cópia/inicialização de permissões usa root. Sua remoção elimina a reprodução da evidência factual de autenticação, que uma comparação de arquivos de ambiente não fornece. Nenhum valor de credencial entra no relatório versionado.
