@@ -263,6 +263,78 @@ class DurableStore:
                 row["observed_at"],
             )
 
+    def claim_publication(self, lease_seconds: int = 30) -> Delivery | None:
+        rows = self.claim_publications(limit=1, lease_seconds=lease_seconds)
+        return rows[0] if rows else None
+
+    def claim_publications(self, limit: int = 8, lease_seconds: int = 30) -> list[Delivery]:
+        """One transaction claims a bounded, ordered batch; each row keeps its fence."""
+        if not 1 <= lease_seconds <= 300 or not 1 <= limit <= 32:
+            raise ValueError("Invalid publication lease")
+        with self.transaction() as conn:
+            rows = (
+                conn.execute(
+                    text("""WITH moment AS MATERIALIZED (SELECT clock_timestamp() AS at),
+                candidate AS (
+                  SELECT event_id FROM transport.outbox,moment
+                  WHERE owner=:owner AND available_at<=moment.at
+                    AND (state='pending' OR (state='working' AND leased_until<=moment.at))
+                  ORDER BY available_at,event_id FOR UPDATE OF outbox SKIP LOCKED LIMIT :limit
+                )
+                UPDATE transport.outbox AS o SET state='working',attempts=o.attempts+1,
+                  generation=o.generation+1,leased_until=(SELECT at FROM moment)+:seconds*interval '1 second'
+                FROM candidate WHERE o.owner=:owner AND o.event_id=candidate.event_id
+                RETURNING o.*"""),
+                    {"owner": self.owner, "seconds": lease_seconds, "limit": limit},
+                )
+                .mappings()
+                .all()
+            )
+            return [
+                Delivery(
+                    self.owner,
+                    "outbox",
+                    str(row["event_id"]),
+                    bytes(row["payload"]),
+                    row["generation"],
+                    row["attempts"],
+                    row["routing_key"],
+                    row["exchange"],
+                    row["observed_at"],
+                )
+                for row in sorted(rows, key=lambda row: (row["available_at"], str(row["event_id"])))
+            ]
+
+    def finish_published(self, delivery: Delivery) -> None:
+        self.finish_publications([delivery])
+
+    def finish_publications(self, deliveries: Sequence[Delivery]) -> None:
+        """Only after broker confirm: atomic generation/state/deadline check + finish.
+
+        This path has no business callbacks. Inbox effects retain the two checks in
+        finish(); a lost/expired publication lease still rolls back and may replay.
+        """
+        if not deliveries:
+            return
+        if len(deliveries) > 32 or any(
+            delivery.owner != self.owner or delivery.table != "outbox" for delivery in deliveries
+        ):
+            raise LostLease("Publication belongs to another owner or table")
+        with self.transaction() as conn:
+            finished = conn.execute(
+                text("""UPDATE transport.outbox AS o SET state='completed',finished_at=clock_timestamp(),leased_until=NULL
+                FROM unnest(CAST(:ids AS uuid[]),CAST(:generations AS bigint[])) AS claimed(id,generation)
+                WHERE o.owner=:owner AND o.event_id=claimed.id AND o.generation=claimed.generation
+                  AND o.state='working' AND o.leased_until>clock_timestamp() RETURNING o.event_id"""),
+                {
+                    "owner": self.owner,
+                    "ids": [delivery.event_id for delivery in deliveries],
+                    "generations": [delivery.generation for delivery in deliveries],
+                },
+            ).all()
+            if len(finished) != len(deliveries):
+                raise LostLease("Publication lease was lost or expired")
+
     def _owned(self, conn: Connection, delivery: Delivery) -> datetime:
         if delivery.owner != self.owner or delivery.table not in ("inbox", "outbox"):
             raise LostLease("Delivery belongs to another owner")

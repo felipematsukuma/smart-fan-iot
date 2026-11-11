@@ -57,24 +57,26 @@ def main() -> None:
                     health.tick(postgres=True, rabbitmq=True)
 
                 channel.basic_consume("q.inference", receive, auto_ack=False)
+                idle = True
                 while not stop.is_set():
-                    broker.process_data_events(time_limit=0.05)
+                    broker.process_data_events(time_limit=0.05 if idle else 0)
+                    active = False
                     if time.monotonic() >= next_sync:
                         models.synchronize()
                         next_sync = time.monotonic() + 1
-                    for _ in range(32):
+                    for _ in range(8):
                         delivery = store.claim()
                         if delivery is None:
                             break
+                        active = True
                         try:
                             worker.process(delivery)
                         except (ValueError, TypeError, KeyError):
                             store.retry(
                                 delivery, "invalid_inference_result", permanent=True
                             )
-                    for _ in range(32):
-                        if not publisher.publish_one(store):
-                            break
+                    active = bool(publisher.publish_batch(store, limit=16)) or active
+                    idle = not active
                     health.tick(postgres=True, rabbitmq=True)
             except (
                 pika.exceptions.AMQPError,
