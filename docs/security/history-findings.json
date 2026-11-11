@@ -59,8 +59,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 21,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
@@ -68,8 +69,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 40,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
@@ -77,8 +79,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 64,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
@@ -86,8 +89,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 67,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
@@ -95,8 +99,9 @@
     "path": "web-smart-fan-iot/.env.example",
     "line": 2,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
@@ -104,8 +109,9 @@
     "path": "web-smart-fan-iot/.env.example",
     "line": 9,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
@@ -113,8 +119,9 @@
     "path": "web-smart-fan-iot/.env.example",
     "line": 2,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
@@ -122,8 +129,9 @@
     "path": "web-smart-fan-iot/.env.example",
     "line": 9,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
@@ -131,8 +139,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 21,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
@@ -140,8 +149,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 40,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
@@ -149,8 +159,9 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 64,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   },
   {
     "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
@@ -158,7 +169,77 @@
     "path": "web-smart-fan-iot/docker-compose.yml",
     "line": 67,
     "rule": "smartfan-credential-assignment",
-    "status": "issuer_revocation_unverified",
-    "note": "Exact historical finding; never suppresses a new commit or future value."
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
+  },
+  {
+    "fingerprint": "83a8314aa0433dab53ad075ba1640aaf69578629:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+    "commit": "83a8314aa0433dab53ad075ba1640aaf69578629",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 6,
+    "rule": "smartfan-credential-assignment",
+    "status": "reviewed_placeholder",
+    "note": "Exact reviewed placeholder file content."
+  },
+  {
+    "fingerprint": "bf4e54161d4cd92686cc4e451d6fa1c641b876a0:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+    "commit": "bf4e54161d4cd92686cc4e451d6fa1c641b876a0",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 6,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
+  },
+  {
+    "fingerprint": "fe6d52536185390c3ff98479a81fe01d645533d4:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+    "commit": "fe6d52536185390c3ff98479a81fe01d645533d4",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 6,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:37",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 37,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
+  },
+  {
+    "fingerprint": "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+    "commit": "d0382b009a2be39c21321ca5ae80a4bc6249d022",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 6,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/.env.example",
+    "line": 6,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
+  },
+  {
+    "fingerprint": "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:37",
+    "commit": "3786a80160043a13a2252fbcb3079a4591d16bf9",
+    "path": "web-smart-fan-iot/docker-compose.yml",
+    "line": 37,
+    "rule": "smartfan-credential-assignment",
+    "status": "issuer_revocation_verified_local",
+    "note": "All extracted historical candidates rejected on isolated copies of both known local issuer stacks, with successful positive and negative controls. Other deployments not verified.",
+    "evidence": "docs/security/legacy-local-audit.json"
   }
 ]

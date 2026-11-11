@@ -11,6 +11,7 @@ from pathlib import Path
 from tooling import ROOT, tool
 
 LEDGER = ROOT / "docs/security/history-findings.json"
+AUDIT = ROOT / "docs/security/legacy-local-audit.json"
 # Exact reviewed placeholder file; a changed byte removes this exception.
 PLACEHOLDER_SHA256 = "f417277401536587e0ef93c424cd65671c221828ca42290b9e4b542e1ac7751a"
 
@@ -106,6 +107,49 @@ def placeholder(row: dict, mode: str) -> bool:
     return hashlib.sha256(content.encode()).hexdigest() == PLACEHOLDER_SHA256
 
 
+def audited_locally(fingerprint: str, audit: dict) -> bool:
+    reports = audit.get("reports", [])
+    if (
+        audit.get("passed") is not True
+        or {report.get("stack") for report in reports} != {"legacy", "aiot"}
+        or len(reports) != 2
+    ):
+        return False
+    for report in reports:
+        if report.get("passed") is not True or fingerprint not in report.get(
+            "ledger_findings", []
+        ):
+            return False
+        if (
+            report.get("project")
+            != {"legacy": "web-smart-fan-iot", "aiot": "smartfan-aiot"}[report["stack"]]
+        ):
+            return False
+        counts = report.get("candidate_counts", {})
+        for group, key, multiplier in (
+            ("postgres", "POSTGRES_PASSWORD", "roles_checked"),
+            ("influxdb", "INFLUXDB_TOKEN", None),
+            ("influxdb_password", "INFLUXDB_PASSWORD", "users_checked"),
+        ):
+            result = report.get(group, {})
+            count = counts.get(key, 0)
+            subjects = result.get(multiplier, 0) if multiplier else 1
+            if (
+                type(count) is not int
+                or count < 1
+                or type(subjects) is not int
+                or subjects < 1
+                or result.get("positive_control") is not True
+                or result.get("negative_control") is not True
+                or result.get("historical_accepted") != 0
+                or type(result.get("historical_accepted")) is not int
+                or type(result.get("historical_rejected")) is not int
+                or result.get("historical_rejected") != count * subjects
+            ):
+                return False
+    return True
+
+
 def main(mode: str) -> int:
     rows = run_scan("history" if mode == "strict-history" else mode)
     if mode in ("history", "strict-history"):
@@ -114,11 +158,19 @@ def main(mode: str) -> int:
             for row in json.loads(LEDGER.read_text(encoding="utf-8"))
         }
         new = [row for row in rows if row["Fingerprint"] not in reviewed]
+        audit = json.loads(AUDIT.read_text(encoding="utf-8")) if AUDIT.is_file() else {}
         pending = [
             row
             for row in rows
             if row["Fingerprint"] in reviewed
-            and reviewed[row["Fingerprint"]]["status"] == "issuer_revocation_unverified"
+            and not (
+                reviewed[row["Fingerprint"]]["status"] == "reviewed_placeholder"
+                or (
+                    reviewed[row["Fingerprint"]]["status"]
+                    == "issuer_revocation_verified_local"
+                    and audited_locally(row["Fingerprint"], audit)
+                )
+            )
         ]
         print(
             json.dumps(
@@ -127,7 +179,7 @@ def main(mode: str) -> int:
                     "findings": len(rows),
                     "unreviewed": len(new),
                     "legacy_pending": len(pending),
-                    "clean_history": not new and not pending,
+                    "all_findings_resolved_in_local_scope": not new and not pending,
                 }
             )
         )

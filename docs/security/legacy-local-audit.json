@@ -1,0 +1,140 @@
+{
+  "scope": "Known local smartfan-aiot and web-smart-fan-iot Docker issuers; other deployments not verified",
+  "passed": true,
+  "reports": [
+    {
+      "audit_id": "22ac6286f397",
+      "stack": "legacy",
+      "project": "web-smart-fan-iot",
+      "measured_at": "2026-11-11T01:38:05.953932+00:00",
+      "scope": "known local Docker issuers only; original volumes mounted read-only during copying",
+      "original_images": {
+        "iot_postgres": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81",
+        "iot_influxdb": "sha256:991673dc2d237bd79b15d6627410d72de111387e7dac673dbb92cf3333ffcc8c",
+        "iot_backend": "sha256:2ec149ee553fc99c9f641c8ff399781798029a25bbefa14d3b893f0f6c0ceb36"
+      },
+      "audit_images": {
+        "postgres": "sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81",
+        "influxdb": "sha256:991673dc2d237bd79b15d6627410d72de111387e7dac673dbb92cf3333ffcc8c"
+      },
+      "candidate_counts": {
+        "POSTGRES_PASSWORD": 3,
+        "INFLUXDB_TOKEN": 3,
+        "INFLUXDB_PASSWORD": 3
+      },
+      "clone_volumes_retained": [
+        "smartfan-legacy-audit-22ac6286f397-volume-0",
+        "smartfan-legacy-audit-22ac6286f397-volume-1",
+        "smartfan-legacy-audit-22ac6286f397-volume-2"
+      ],
+      "ledger_findings": [
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:37",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
+        "bf4e54161d4cd92686cc4e451d6fa1c641b876a0:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:37",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
+        "fe6d52536185390c3ff98479a81fe01d645533d4:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6"
+      ],
+      "postgres": {
+        "roles_checked": 1,
+        "positive_control": true,
+        "negative_control": true,
+        "historical_rejected": 3,
+        "historical_accepted": 0
+      },
+      "influxdb": {
+        "positive_control": true,
+        "negative_control": true,
+        "historical_rejected": 3,
+        "historical_accepted": 0
+      },
+      "influxdb_password": {
+        "users_checked": 1,
+        "positive_control": true,
+        "negative_control": true,
+        "historical_rejected": 3,
+        "historical_accepted": 0
+      },
+      "passed": true
+    },
+    {
+      "audit_id": "8ce4e302fe43",
+      "stack": "aiot",
+      "project": "smartfan-aiot",
+      "measured_at": "2026-11-11T01:39:01.280241+00:00",
+      "scope": "known local Docker issuers only; original volumes mounted read-only during copying",
+      "original_images": {
+        "smartfan-aiot-postgres-1": "sha256:ef9c66b350d3ec53139720f42778fca08a2ec3b4e341dc5f0ac9636dc06c1898",
+        "smartfan-aiot-influxdb-1": "sha256:cc8083573dc3969c191d1bfb768954eaf7a4c615af12e661034fd4f63c7b5570",
+        "smartfan-aiot-api-1": "sha256:ec84060d7ad8df0542439f86e7f09d361bcde18963dd6fcada85f452737a00e0"
+      },
+      "audit_images": {
+        "postgres": "sha256:e04b62d4591ce67a0e01faa6691ed4db29c82560c96c4ed171173dbec57b3bee",
+        "influxdb": "sha256:cc8083573dc3969c191d1bfb768954eaf7a4c615af12e661034fd4f63c7b5570"
+      },
+      "candidate_counts": {
+        "POSTGRES_PASSWORD": 3,
+        "INFLUXDB_TOKEN": 3,
+        "INFLUXDB_PASSWORD": 3
+      },
+      "clone_volumes_retained": [
+        "smartfan-legacy-audit-8ce4e302fe43-volume-0",
+        "smartfan-legacy-audit-8ce4e302fe43-volume-1",
+        "smartfan-legacy-audit-8ce4e302fe43-volume-2"
+      ],
+      "ledger_findings": [
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:37",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
+        "3786a80160043a13a2252fbcb3079a4591d16bf9:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
+        "bf4e54161d4cd92686cc4e451d6fa1c641b876a0:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:2",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/.env.example:smartfan-credential-assignment:9",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:21",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:37",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:40",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:64",
+        "d0382b009a2be39c21321ca5ae80a4bc6249d022:web-smart-fan-iot/docker-compose.yml:smartfan-credential-assignment:67",
+        "fe6d52536185390c3ff98479a81fe01d645533d4:web-smart-fan-iot/.env.example:smartfan-credential-assignment:6"
+      ],
+      "postgres": {
+        "roles_checked": 7,
+        "positive_control": true,
+        "negative_control": true,
+        "historical_rejected": 21,
+        "historical_accepted": 0
+      },
+      "influxdb": {
+        "positive_control": true,
+        "negative_control": true,
+        "historical_rejected": 3,
+        "historical_accepted": 0
+      },
+      "influxdb_password": {
+        "users_checked": 1,
+        "positive_control": true,
+        "negative_control": true,
+        "historical_rejected": 3,
+        "historical_accepted": 0
+      },
+      "passed": true
+    }
+  ]
+}
