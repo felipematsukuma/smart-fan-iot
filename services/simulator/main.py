@@ -25,6 +25,7 @@ from smartfan_common.routing_v2 import parse_mqtt_event_v2
 
 from .device import SimulatorDevice, SpoolFull
 from .physics import PlantConfig
+from .settings import sampling_interval
 
 
 def utc_now() -> datetime:
@@ -33,6 +34,7 @@ def utc_now() -> datetime:
 
 def main() -> None:
     logger = configure_logging("simulator")
+    interval = sampling_interval(os.environ.get("SIM_INTERVAL_SECONDS", "2"))
     config = PlantConfig.model_validate(
         {
             "scenario": os.environ.get("SIM_SCENARIO", "healthy"),
@@ -44,7 +46,10 @@ def main() -> None:
     )
     device_id = os.environ.get("SIM_DEVICE_ID", "ac_01")
     device = SimulatorDevice(
-        Path(os.environ.get("SIM_SPOOL", "/data/device.sqlite3")), config, device_id
+        Path(os.environ.get("SIM_SPOOL", "/data/device.sqlite3")),
+        config,
+        device_id,
+        zone=os.environ.get("SIM_ZONE", "quarto"),
     )
     client = mqtt.Client(
         client_id="simulator_" + device_id, clean_session=False, protocol=mqtt.MQTTv311
@@ -150,7 +155,7 @@ def main() -> None:
     next_purge = previous
     spool_ready = True
     try:
-        while not stop.wait(0.2):
+        while not stop.wait(min(0.2, interval / 2)):
             now, epoch = time.monotonic(), time.time()
             if now >= next_sample:
                 try:
@@ -162,7 +167,7 @@ def main() -> None:
                         "spool_paused",
                         extra={"event": "spool_paused", "device_id": device_id},
                     )
-                previous, next_sample = now, now + 2
+                previous, next_sample = now, now + interval
             if connected.is_set():
                 for identity, topic, payload, retain in device.pending(epoch):
                     result = client.publish(topic, payload, qos=1, retain=retain)
