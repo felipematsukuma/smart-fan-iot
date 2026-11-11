@@ -26,7 +26,7 @@ def npm(*args: str):
 
 
 def lint():
-    python("-m", "ruff", "check", "packages", "services", "infra", "tools/quality")
+    python("-m", "ruff", "check", "packages", "services", "infra", "tools")
     python(
         "-m",
         "ruff",
@@ -35,7 +35,7 @@ def lint():
         "packages",
         "services",
         "infra",
-        "tools/quality",
+        "tools",
     )
     python(
         "-m",

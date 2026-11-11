@@ -1,16 +1,14 @@
 """Offline, private pre-upgrade archives plus an isolated copy, never delete volumes."""
 
-import csv
 import hashlib
 import json
-import os
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from tooling import ROOT
+from tooling import ROOT, private
 
 PYTHON = "python:3.11.18-slim-trixie@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535"
 INFLUX = "influxdb:2.9.1-alpine@sha256:cc8083573dc3969c191d1bfb768954eaf7a4c615af12e661034fd4f63c7b5570"
@@ -20,30 +18,6 @@ def docker(*args, capture=False):
     return subprocess.run(
         ["docker", *args], cwd=ROOT, check=True, text=True, capture_output=capture
     ).stdout
-
-
-def private(directory: Path):
-    directory.mkdir(parents=True, exist_ok=False, mode=0o700)
-    if os.name == "nt":
-        actor = next(
-            csv.reader(
-                subprocess.check_output(
-                    ["whoami", "/user", "/fo", "csv", "/nh"], text=True
-                ).splitlines()
-            )
-        )[1]
-        subprocess.run(
-            [
-                "icacls",
-                str(directory),
-                "/inheritance:r",
-                "/grant:r",
-                "*" + actor + ":(OI)(CI)F",
-                "*S-1-5-18:(OI)(CI)F",
-            ],
-            check=True,
-            capture_output=True,
-        )
 
 
 def prepare() -> Path:

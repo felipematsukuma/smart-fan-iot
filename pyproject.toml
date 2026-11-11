@@ -12,5 +12,5 @@ check_untyped_defs = true
 files = ["services", "infra"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/smartfan_common/tests", "services/simulator/tests", "services/api/tests", "services/jobs/tests", "services/inference/tests", "infra/tests/test_prepare.py", "tools/quality/tests"]
+testpaths = ["packages/smartfan_common/tests", "services/simulator/tests", "services/api/tests", "services/jobs/tests", "services/inference/tests", "infra/tests/test_prepare.py", "tools/quality/tests", "tools/operations/tests"]
 pythonpath = ["packages/smartfan_common/src", ".", "web-smart-fan-iot/backend"]
