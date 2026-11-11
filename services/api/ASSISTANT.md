@@ -51,6 +51,22 @@ entrega texto de template como se fosse resposta do LLM.
 
 ## Evidência e limites
 
+[V] M17 encontrou timeouts frios de 30 s repetidos na pilha completa. A versão
+fixada do Ollama desabilita mmap por padrão em CPU; o cliente agora pede
+`use_mmap: true` explicitamente. Isso mantém modelo, contexto, tokens e timeout.
+O parâmetro e a regra padrão foram conferidos no código da
+[versão 0.40.15](https://github.com/ollama/ollama/blob/v0.40.15/server/sched.go#L1091)
+e no [contrato de opções](https://github.com/ollama/ollama/blob/v0.40.15/api/types.go#L548).
+Ensaios controlados com todos os serviços ligados, modelo descarregado a cada
+pergunta e prompt fixo tiveram primeiros fragmentos de 2,48–5,13 s com mmap;
+não são p95 nem comprovam resolução do timeout após a suíte integrada.
+
+[V] Na execução completa seguinte, 241 Python, 153 regressões do legado, 245
+Vitest, 79 integrações, 15 testes de navegador, os gates de cobertura e o scan
+das oito imagens passaram. A conversa real após as integrações entregou o
+primeiro fragmento em **5,776 s** e terminou em **8,360 s**; a segunda foi
+cancelada com liberação do recurso. O p95 frio e quente continua sendo M18.
+
 [V] 224 testes Python e 244 Vitest passaram; lint/tipos/formatação/build aprovados.
 24 integrações reais de API/laboratório/assistente incluem seis casos do chat:
 permissões, rate limit persistido/global, fila limitada, cancelamento, headers
