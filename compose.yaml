@@ -11,7 +11,7 @@ x-runtime: &runtime
 
 services:
   volume-init:
-    image: python:3.11.18-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39
+    image: python:3.11.18-slim-trixie@sha256:07d4824036af339fa1b6ef769cc99d9c10a141769538b52b3b597c84f7a7b535
     user: "0:0"
     command: [python, -c, "import os; [os.chown('/vol/'+p,u,g) for p,u,g in [('postgres',70,70),('rabbitmq',100,101),('mosquitto',1883,1883),('influxdb',10001,10001),('influxconfig',10001,10001),('ollama',10001,10001),('simulator',10001,10001),('writer_credentials',10001,10001),('api_credentials',10001,10001),('artifacts',10001,10001),('inference_credentials',10001,10001),('api_runtime',10001,10001)]]"]
     network_mode: none
@@ -32,7 +32,9 @@ services:
 
   postgres:
     <<: *runtime
-    image: postgres:15.19-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81
+    image: smartfan-postgres:15.19-sec1
+    build: {context: ., dockerfile: infra/postgres/Dockerfile}
+    pull_policy: never
     user: "70:70"
     depends_on: {volume-init: {condition: service_completed_successfully}}
     environment:
@@ -53,7 +55,7 @@ services:
 
   influxdb:
     <<: *runtime
-    image: influxdb:2.7.12-alpine@sha256:991673dc2d237bd79b15d6627410d72de111387e7dac673dbb92cf3333ffcc8c
+    image: influxdb:2.9.1-alpine@sha256:cc8083573dc3969c191d1bfb768954eaf7a4c615af12e661034fd4f63c7b5570
     user: "10001:10001"
     depends_on: {volume-init: {condition: service_completed_successfully}}
     environment:
@@ -64,6 +66,7 @@ services:
       DOCKER_INFLUXDB_INIT_ORG: smartfan
       DOCKER_INFLUXDB_INIT_BUCKET: live
       DOCKER_INFLUXDB_INIT_RETENTION: 30d
+      INFLUXD_USE_HASHED_TOKENS: "false"
     volumes:
       - influxdb_data:/var/lib/influxdb2
       - influxdb_config:/etc/influxdb2
@@ -141,7 +144,7 @@ services:
     cpus: 4
 
   bootstrap:
-    build: {context: ., dockerfile: infra/Dockerfile}
+    build: {context: ., dockerfile: infra/Dockerfile, target: runtime}
     pull_policy: build
     image: smartfan-python:0.14.0
     command: [python, -m, infra.bootstrap]

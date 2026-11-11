@@ -45,6 +45,9 @@ build/
 *.bin
 *.tsbuildinfo
 secrets/
+.tools/
+evidence/
+artifacts/
 
 # Local service data
 **/influxdb/data/

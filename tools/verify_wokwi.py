@@ -63,7 +63,12 @@ def main() -> None:
         metrics = api(args.api, path + "/metrics?range_hours=1")
         if metrics["history_count"] == 0:
             raise AssertionError("Live telemetry has no persisted history")
-        print("History:", metrics["history_count"], "samples; coverage:", metrics["coverage"])
+        print(
+            "History:",
+            metrics["history_count"],
+            "samples; coverage:",
+            metrics["coverage"],
+        )
 
 
 if __name__ == "__main__":

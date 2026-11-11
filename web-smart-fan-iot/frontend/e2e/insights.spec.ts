@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('insights usa frames reais, histórico separado e oculta números ao parar simulador', async ({
   page,

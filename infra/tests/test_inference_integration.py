@@ -367,8 +367,9 @@ def test_source_results_are_idempotent_and_old_input_never_gets_new_clock(
     device.close()
 
 
+@pytest.mark.parametrize("interruption", ["unavailable", "disabled_rule"])
 def test_persistent_hysteresis_keeps_alarm_through_unavailable_and_model_change(
-    api, database, tmp_path
+    api, database, tmp_path, interruption
 ):
     admin, engines = database
     version, token = model_fixture(api, database, tmp_path, health=10, rul=10)
@@ -435,7 +436,24 @@ def test_persistent_hysteresis_keeps_alarm_through_unavailable_and_model_change(
             ).scalar_one()
             == 1
         )
-    step(3, False)
+    if interruption == "disabled_rule":
+        path = "/api/v1/devices/ac_01/predictive-rule"
+        setting = api[0].get(path, headers=headers(token)).json()
+        for enabled in (False, True):
+            changed = api[0].patch(
+                path,
+                headers=headers(token),
+                json={
+                    "expected_revision": setting["revision"],
+                    "configuration": {**setting["configuration"], "enabled": enabled},
+                },
+            )
+            assert changed.status_code == 200
+            setting = changed.json()
+            if not enabled:
+                step(3)
+    else:
+        step(3, False)
     healthy, token = model_fixture(
         api, database, tmp_path, health=90, rul=100, active=version
     )
@@ -459,3 +477,101 @@ def test_persistent_hysteresis_keeps_alarm_through_unavailable_and_model_change(
             == 1
         )
     device.close()
+
+
+def test_drift_requires_complete_windows_and_does_not_clear_on_model_change(
+    api, database, tmp_path
+):
+    admin, engines = database
+    version, token = model_fixture(api, database, tmp_path)
+    promote(api, version, token, 0)
+    runtime = ModelRuntime(DurableStore(engines["inference"], "inference"), tmp_path)
+    assert runtime.synchronize()
+    worker = Inference(runtime.store, runtime, Windows(None))
+    source = TelemetryPersistedV2.model_validate(
+        {
+            "id": str(uuid4()),
+            "schema_version": "2.1",
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "tipo": "telemetry.persisted",
+            "dispositivo": "ac_01",
+            "correlation_id": None,
+            "metadata": {
+                "producer": "writer",
+                "causation_id": str(uuid4()),
+                "boot_id": str(uuid4()),
+                "sequence": 1,
+                "zone": "quarto",
+                "equipment_type": "ac_split_onoff",
+                "clock_scale": 1,
+                "observed_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            },
+            "conteudo": {
+                "source_event_id": str(uuid4()),
+                "readings": {
+                    "current_a": 4.0,
+                    "compressor_case_temp_c": 55.0,
+                    "vibration_rms_mm_s": 1.0,
+                    "indoor_temp_c": 27.0,
+                    "outdoor_temp_c": 32.0,
+                    "power_w": 800.0,
+                },
+                "actuators": {"compressor_on": True, "condenser_fan_on": True},
+                "quality": {"missing_fields": []},
+            },
+        }
+    )
+    with engines["inference"].begin() as conn:
+        worker.drift(conn, source, version, tuple([1e10] * len(FEATURE_NAMES)))
+    with admin.begin() as conn:
+        first = conn.execute(
+            text("SELECT active,samples FROM app.drift_states WHERE device_id='ac_01'")
+        ).one()
+        assert tuple(first) == (False, 1)
+        conn.execute(
+            text(
+                "UPDATE app.drift_states SET samples=999,outside_sum=199,bad_windows=2 WHERE device_id='ac_01'"
+            )
+        )
+    with engines["inference"].begin() as conn:
+        worker.drift(conn, source, version, tuple([1e10] * len(FEATURE_NAMES)))
+    with admin.connect() as conn:
+        assert not conn.execute(
+            text("SELECT active FROM app.drift_states WHERE device_id='ac_01'")
+        ).scalar_one()
+    with admin.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE app.drift_states SET samples=999,outside_sum=999,bad_windows=2 WHERE device_id='ac_01'"
+            )
+        )
+    with engines["inference"].begin() as conn:
+        worker.drift(conn, source, version, tuple([1e10] * len(FEATURE_NAMES)))
+    with admin.connect() as conn:
+        assert conn.execute(
+            text("SELECT active FROM app.drift_states WHERE device_id='ac_01'")
+        ).scalar_one()
+    # A newly selected model resets evidence counters, never the existing block.
+    next_version, token = model_fixture(api, database, tmp_path, active=version)
+    promote(api, next_version, token, 1)
+    assert runtime.synchronize()
+    with engines["inference"].begin() as conn:
+        worker.drift(conn, source, next_version, tuple([0.0] * len(FEATURE_NAMES)))
+    with admin.begin() as conn:
+        row = conn.execute(
+            text(
+                "SELECT active,samples,bad_windows,good_windows FROM app.drift_states WHERE device_id='ac_01'"
+            )
+        ).one()
+        assert tuple(row) == (True, 1, 0, 0)
+        conn.execute(
+            text(
+                "UPDATE app.drift_states SET samples=999,outside_sum=0,good_windows=2 WHERE device_id='ac_01'"
+            )
+        )
+    with engines["inference"].begin() as conn:
+        worker.drift(conn, source, next_version, tuple([0.0] * len(FEATURE_NAMES)))
+    with admin.connect() as conn:
+        assert not conn.execute(
+            text("SELECT active FROM app.drift_states WHERE device_id='ac_01'")
+        ).scalar_one()

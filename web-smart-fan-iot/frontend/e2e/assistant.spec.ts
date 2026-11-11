@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('Ollama local envia fragmentos reais, apresenta fontes e cancela antes de liberar recurso', async ({
   page,
@@ -35,9 +35,11 @@ test('Ollama local envia fragmentos reais, apresenta fontes e cancela antes de l
   await page
     .getByRole('button', { name: 'Perguntar ao assistente', exact: true })
     .click();
-  await expect(page.locator('[data-turn-outcome="streaming"]')).toHaveCount(0, {
-    timeout: 95000,
-  });
+  await expect(page.locator('.turn').first()).toHaveAttribute(
+    'data-turn-outcome',
+    /^(completed|failed|cancelled)$/,
+    { timeout: 95000 },
+  );
   await expect(page.locator('[data-turn-outcome="completed"]')).toBeVisible();
   await expect(page.getByTestId('assistant-answer')).not.toBeEmpty();
   await expect(

@@ -1,4 +1,7 @@
 .git
+.tools
+.coverage*
+**/coverage
 **/.venv
 **/node_modules
 **/.env

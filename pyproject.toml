@@ -1,0 +1,16 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+extend-exclude = [".tools", "evidence", "artifacts", ".venv", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "RUF"]
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+files = ["services", "infra"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/smartfan_common/tests", "services/simulator/tests", "services/api/tests", "services/jobs/tests", "services/inference/tests", "infra/tests/test_prepare.py", "tools/quality/tests"]
+pythonpath = ["packages/smartfan_common/src", ".", "web-smart-fan-iot/backend"]

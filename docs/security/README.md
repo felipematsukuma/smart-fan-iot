@@ -1,0 +1,13 @@
+# Segredos históricos
+
+[V] O scan integral, incluindo aliases de inicialização do InfluxDB, encontrou 25 localizações: sete exemplos revisados e dezoito atribuições históricas verificadas nos emissores locais. O registro [history-findings.json](history-findings.json) contém somente metadados e referência à evidência; nenhum valor de segredo.
+
+[V] A [auditoria local](legacy-local-audit.json) testou cópias offline dos volumes das duas stacks conhecidas: ventilador e AIoT. Foram recusados três candidatos por categoria (senha PostgreSQL, token InfluxDB e senha InfluxDB), em todos os papéis/usuários encontrados: 36 tentativas históricas recusadas. Controles com credenciais válidas autenticaram; controles aleatórios foram recusados. Os originais permaneceram parados, com montagem somente leitura durante a cópia; nenhum segredo foi impresso. As cópias e containers de inspeção não publicaram portas.
+
+O comando `python tools/quality/secret_scan.py strict-history` passou no escopo local. Ele exige evidência completa das duas stacks, controles positivos/negativos, rejeição de todos os candidatos e fingerprint exato de cada achado marcado `issuer_revocation_verified_local`. Evidência ausente, incompleta ou falha mantém o gate bloqueado; nove testes de regressão exercitam essas condições. Novas localizações fora do registro também falham. A árvore atual permite somente o conteúdo exato do arquivo legado de exemplos revisado, por hash, caminho e regra; alterar seu conteúdo invalida essa exceção. Não existe exclusão geral de arquivos de ambiente.
+
+[N] Outros computadores ou implantações externas não foram auditados. O resultado não afirma que uma credencial nunca foi usada nem comprova revogação em servidores desconhecidos. Antes de usar outro ambiente, verificar seus emissores; não reutilizar os valores históricos. O histórico publicado foi preservado e continua contendo as atribuições antigas.
+
+Para repetir, com os containers originais parados: `python tools/quality/legacy_issuers.py --stack legacy` e `--stack aiot`. O script copia volumes para nomes novos, usa rede interna e encerra os containers de inspeção. Os volumes de cópia ficam identificados por `smartfan.audit.id` para inspeção; não são os volumes originais. O PostgreSQL AIoT exigiu usar o tag local após desaparecimento do metadata da imagem antiga no cache: o binário do banco foi comparado byte a byte por SHA-256 antes da execução da cópia.
+
+Os scanners sempre usam redação completa. Relatórios de segurança ignorados pelo Git podem ser compartilhados somente após verificar que contêm metadados redigidos. Backups privados e o diretório local de segredos nunca são artefatos de CI.

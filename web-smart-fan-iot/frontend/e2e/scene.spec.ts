@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('cena usa IDs reais, seleciona por teclado e congela sem amostra recente', async ({
   page,

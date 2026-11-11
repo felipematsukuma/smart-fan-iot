@@ -1,0 +1,11 @@
+title = "AIoT secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "smartfan-credential-assignment"
+description = "Literal credentials in project environment settings"
+regex = '''(?i)(?:POSTGRES_PASSWORD|INFLUXDB_TOKEN|INFLUXDB_PASSWORD|DOCKER_INFLUXDB_INIT_PASSWORD|DOCKER_INFLUXDB_INIT_ADMIN_TOKEN|JWT_SECRET|MQTT_PASSWORD|RABBITMQ_DEFAULT_PASS)["']?\s*[:=]\s*["']?([0-9A-Za-z_./+=@!$%:#~-]{8,})'''
+secretGroup = 1
+keywords = ["POSTGRES_PASSWORD", "INFLUXDB_TOKEN", "INFLUXDB_PASSWORD", "DOCKER_INFLUXDB_INIT_PASSWORD", "DOCKER_INFLUXDB_INIT_ADMIN_TOKEN", "JWT_SECRET", "MQTT_PASSWORD", "RABBITMQ_DEFAULT_PASS"]

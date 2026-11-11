@@ -1,0 +1,23 @@
+[run]
+branch = True
+parallel = True
+relative_files = True
+source = smartfan_common,services,infra
+omit = */tests/*
+patch = subprocess
+sigterm = True
+
+[paths]
+common =
+    packages/smartfan_common/src/smartfan_common
+    /usr/local/lib/python3.11/site-packages/smartfan_common
+services =
+    services
+    /app/services
+infra =
+    infra
+    /app/infra
+
+[report]
+show_missing = True
+precision = 2
