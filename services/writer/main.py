@@ -53,15 +53,18 @@ def main() -> None:
                     ch.basic_ack(method.delivery_tag)
 
                 channel.basic_consume("q.telemetry.writer", on_message, auto_ack=False)
+                idle = True
                 while not stop.is_set():
-                    broker.process_data_events(time_limit=0.05)
+                    broker.process_data_events(time_limit=0.05 if idle else 0)
+                    active = False
                     influx_ready = worker.influx.healthy()
-                    for _ in range(32):
+                    for _ in range(8):
                         if not influx_ready:
                             break
                         delivery = store.claim("inbox")
                         if delivery is None:
                             break
+                        active = True
                         try:
                             worker.process(delivery)
                         except urllib.error.HTTPError as error:
@@ -87,9 +90,8 @@ def main() -> None:
                             store.retry(
                                 delivery, "invalid_point_identity", permanent=True
                             )
-                    for _ in range(32):
-                        if not publisher.publish_one(store):
-                            break
+                    active = bool(publisher.publish_batch(store, limit=8)) or active
+                    idle = not active
                     health.tick(postgres=True, rabbitmq=True, influxdb=influx_ready)
             except (
                 pika.exceptions.AMQPError,

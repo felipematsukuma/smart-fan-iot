@@ -36,10 +36,13 @@ class ApiBus:
                     channel = broker.channel()
                     channel.basic_qos(prefetch_count=32)
                     publisher = ConfirmedPublisher(channel)
+                    received = False
 
                     def receive(
                         ch: Any, method: Any, properties: Any, body: bytes
                     ) -> None:
+                        nonlocal received
+                        received = True
                         event, backlog = self.events.receive(
                             body,
                             method.routing_key,
@@ -53,11 +56,16 @@ class ApiBus:
                             )
 
                     channel.basic_consume("q.events.api", receive, auto_ack=False)
+                    idle = True
                     while not self.stop.is_set():
-                        broker.process_data_events(time_limit=0.1)
-                        for _ in range(8):
-                            if not publisher.publish_one(self.events.store):
-                                break
+                        received = False
+                        broker.process_data_events(time_limit=0.1 if idle else 0)
+                        active = received
+                        active = (
+                            bool(publisher.publish_batch(self.events.store, limit=8))
+                            or active
+                        )
+                        idle = not active
                         self.connected = True
                         self.tick = time.monotonic()
                 except (

@@ -39,8 +39,11 @@ def main() -> None:
                 channel = broker.channel()
                 channel.basic_qos(prefetch_count=16)
                 publisher = ConfirmedPublisher(channel)
+                received = False
 
                 def receive(ch: Any, method: Any, properties: Any, body: bytes) -> None:
+                    nonlocal received
+                    received = True
                     worker.receive(
                         body,
                         method.routing_key,
@@ -51,13 +54,15 @@ def main() -> None:
                     health.tick(postgres=True, rabbitmq=True)
 
                 channel.basic_consume("q.control", receive, auto_ack=False)
+                idle = True
                 while not stop.is_set():
-                    broker.process_data_events(time_limit=0.1)
+                    received = False
+                    broker.process_data_events(time_limit=0.1 if idle else 0)
+                    active = received
                     with store.transaction() as conn:
                         CommandService.expire(conn, datetime.now(UTC))
-                    for _ in range(16):
-                        if not publisher.publish_one(store):
-                            break
+                    active = bool(publisher.publish_batch(store, limit=16)) or active
+                    idle = not active
                     health.tick(postgres=True, rabbitmq=True)
             except (
                 pika.exceptions.AMQPError,

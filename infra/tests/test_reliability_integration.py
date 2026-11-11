@@ -41,6 +41,156 @@ def claimed(store: DurableStore, table: Table = "inbox") -> Delivery:
     return result
 
 
+def test_atomic_publication_claims_and_finishes_are_unique_under_contention(database):
+    admin, engines = database
+    store = DurableStore(engines["writer"], "writer")
+    identities = {str(uuid4()) for _ in range(16)}
+    for identity in identities:
+        store.enqueue(
+            Outbound(
+                identity,
+                b"publication-probe",
+                "smartfan.events",
+                "persisted.quarto.hvac.ac_test",
+            )
+        )
+
+    def publish(_):
+        delivery = store.claim_publication()
+        assert delivery is not None and delivery.table == "outbox"
+        store.finish_published(delivery)
+        return delivery.event_id
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        observed = list(pool.map(publish, range(16)))
+    assert set(observed) == identities and len(observed) == len(set(observed))
+    assert store.claim_publication() is None
+    with admin.connect() as conn:
+        assert (
+            conn.execute(
+                text(
+                    "SELECT count(*) FROM transport.outbox WHERE owner='writer' AND state='completed'"
+                )
+            ).scalar_one()
+            == 16
+        )
+
+
+def test_publication_expiry_and_generation_still_fence_late_confirmations(database):
+    admin, engines = database
+    store = DurableStore(engines["writer"], "writer")
+    identity = str(uuid4())
+    store.enqueue(
+        Outbound(
+            identity, b"immutable", "smartfan.events", "persisted.quarto.hvac.ac_test"
+        )
+    )
+    first = store.claim_publication()
+    assert first is not None
+    with admin.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE transport.outbox SET leased_until=clock_timestamp()-interval '1 second' WHERE owner='writer' AND event_id=:id"
+            ),
+            {"id": identity},
+        )
+    with pytest.raises(LostLease):
+        store.finish_published(first)
+    second = store.claim_publication()
+    assert (
+        second is not None
+        and second.generation == first.generation + 1
+        and second.payload == first.payload
+    )
+    with pytest.raises(LostLease):
+        store.finish_published(first)
+    store.finish_published(second)
+
+
+def test_publication_fast_path_cannot_finish_inbox_or_claim_another_role(database):
+    _, engines = database
+    writer = DurableStore(engines["writer"], "writer")
+    identity = str(uuid4())
+    writer.enqueue(
+        Outbound(identity, b"owned", "smartfan.events", "persisted.quarto.hvac.ac_test")
+    )
+    assert DurableStore(engines["api"], "writer").claim_publication() is None
+    writer.receive(str(uuid4()), b"inbox", "telemetry.quarto.hvac.ac_test")
+    with pytest.raises(LostLease):
+        writer.finish_published(claimed(writer))
+
+
+def test_batch_confirmation_failure_completes_only_the_confirmed_prefix(database):
+    admin, engines = database
+    store = DurableStore(engines["writer"], "writer")
+    identities = [str(uuid4()) for _ in range(3)]
+    for identity in identities:
+        store.enqueue(
+            Outbound(
+                identity, b"batch", "smartfan.events", "persisted.quarto.hvac.ac_test"
+            )
+        )
+
+    class CutAfterFirstConfirmation:
+        def __init__(self):
+            self.calls = 0
+
+        def confirm_delivery(self):
+            pass
+
+        def basic_publish(self, **kwargs):
+            self.calls += 1
+            if self.calls == 2:
+                raise pika.exceptions.AMQPConnectionError("injected network cut")
+
+    publisher = ConfirmedPublisher(CutAfterFirstConfirmation())
+    with pytest.raises(pika.exceptions.AMQPConnectionError):
+        publisher.publish_batch(store, limit=3)
+    with admin.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT event_id::text,state FROM transport.outbox WHERE owner='writer' ORDER BY observed_at,event_id"
+            )
+        ).all()
+    assert rows[0][1] == "completed" and [row[1] for row in rows[1:]] == [
+        "pending",
+        "pending",
+    ]
+    assert {row[0] for row in rows} == set(identities)
+
+
+def test_batch_finish_rolls_back_every_row_if_any_confirmation_fence_expired(database):
+    admin, engines = database
+    store = DurableStore(engines["writer"], "writer")
+    for _ in range(3):
+        store.enqueue(
+            Outbound(
+                str(uuid4()),
+                b"batch-fence",
+                "smartfan.events",
+                "persisted.quarto.hvac.ac_test",
+            )
+        )
+    deliveries = store.claim_publications(limit=3)
+    assert len(deliveries) == 3
+    with admin.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE transport.outbox SET leased_until=clock_timestamp()-interval '1 second' WHERE owner='writer' AND event_id=:id"
+            ),
+            {"id": deliveries[1].event_id},
+        )
+    with pytest.raises(LostLease):
+        store.finish_publications(deliveries)
+    with admin.connect() as conn:
+        assert (
+            conn.execute(
+                text("SELECT count(*) FROM transport.outbox WHERE state='completed'")
+            ).scalar_one()
+            == 0
+        )
+
+
 @pytest.fixture(scope="module")
 def database():
     name = "test_smartfan_" + uuid4().hex
