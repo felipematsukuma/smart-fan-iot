@@ -14,7 +14,11 @@ docker compose logs simulator
 
 O serviço usa a imagem Python compartilhada, UID 10001, 128 MiB, 0,5 CPU, volume simulator_spool e somente a credencial MQTT do próprio dispositivo. Não publica porta no host. Health interno 9000 separa processo de prontidão MQTT/spool. Sem gateway M04, mensagens ficam no spool e são reenviadas; isso não representa falha de persistência silenciosa.
 
-Parâmetros opcionais no ambiente do serviço: SIM_SCENARIO (healthy, mechanical_wear, heat_transfer_loss), SIM_INITIAL_DAMAGE (0..1), SIM_DAMAGE_RATE (degradação por hora de compressor ligado), SIM_DEVICE_ID e SIM_SPOOL. Usar outro ID exige provisionar sua conta/ACL correspondente; não há fallback anônimo. Alteração de cenário exige recriar o processo nesta entrega; controle de cenário pela Web pertence aos módulos de API/controle, ainda não implementados.
+Parâmetros opcionais no ambiente do serviço: SIM_SCENARIO (healthy, mechanical_wear, heat_transfer_loss), SIM_INITIAL_DAMAGE (0..1), SIM_DAMAGE_RATE (degradação por hora de compressor ligado), SIM_DEVICE_ID, SIM_ZONE (padrão quarto), SIM_SPOOL e SIM_INTERVAL_SECONDS (0,2..2 s, padrão 2 s). Usar outro ID exige provisionar sua conta/ACL e cadastrar a mesma zona no backend; não há fallback anônimo. Alteração do cenário live exige recriar o processo; a Web configura dados sintéticos e regras/atuadores, sem trocar esse cenário.
+
+A cadência mínima de 0,2 s mantém no máximo 300 observações por janela causal de 60 s. Há uma amostra por vencimento, sem rajadas para compensar atraso; seus timestamps são UTC reais. A resolução da simulação muda, sem acelerar vida útil, proteções ou relógio. A configuração rápida serve também aos ensaios de carga com vários dispositivos reais do simulador Python.
+
+[V] Ensaio em container Python 3.11.18 com `SIM_INTERVAL_SECONDS=0.2`: um assinante MQTT autenticado recebeu 47 amostras únicas em 9,870 s, taxa observada 4,660/s e `clock_scale=1`, em um único boot. A taxa inclui o custo de persistência/transporte, sem promessa de frequência exata. 18 testes do simulador e mypy passaram. Isso não substitui o ensaio sustentado de capacidade agregada do M18.
 
 O relógio live é UTC real e clock_scale=1. Cenário demonstrativo pode acelerar a taxa de degradação, nunca timestamps, expiry ou proteção de partida. Temperatura externa tem ciclo diário/sazonal; carga elevada não rotula automaticamente defeito. Configurações e fórmulas são hipóteses didáticas: tensão 220 V, fator 0,93, modelo de corrente e inércia térmica; potência é derivada, não sexto sensor.
 
