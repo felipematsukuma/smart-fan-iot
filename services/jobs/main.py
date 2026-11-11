@@ -54,13 +54,14 @@ def main() -> None:
 
                 channel.basic_consume("q.jobs.generate", receive, auto_ack=False)
                 channel.basic_consume("q.jobs.train", receive, auto_ack=False)
+                idle = True
                 while not stop.is_set():
-                    broker.process_data_events(time_limit=0.1)
+                    broker.process_data_events(time_limit=0.1 if idle else 0)
+                    active = False
                     supervisor.tick()
                     supervisor.enqueue_activation()
-                    for _ in range(8):
-                        if not publisher.publish_one(store):
-                            break
+                    active = bool(publisher.publish_batch(store, limit=8)) or active
+                    idle = not active
                     health.tick(postgres=True, rabbitmq=True, supervisor=True)
             except (
                 pika.exceptions.AMQPError,

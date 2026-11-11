@@ -83,13 +83,16 @@ def main() -> None:
                     ch.basic_ack(method.delivery_tag)
 
                 channel.basic_consume("q.commands.gateway", on_command, auto_ack=False)
+                idle = True
                 while not stop.is_set():
-                    connection.process_data_events(time_limit=0.1)
+                    connection.process_data_events(time_limit=0.1 if idle else 0)
+                    active = False
                     for _ in range(32):
                         delivery = store.claim("inbox")
                         if delivery is None:
                             break
                         if delivery is not None:
+                            active = True
                             event = parse_event_v2(delivery.payload)
                             if not isinstance(
                                 event, CommandRequestedV2
@@ -121,9 +124,8 @@ def main() -> None:
                                     if result.rc == mqtt.MQTT_ERR_SUCCESS
                                     else "mqtt_unavailable",
                                 )
-                    for _ in range(8):
-                        if not publisher.publish_one(store):
-                            break
+                    active = bool(publisher.publish_batch(store, limit=8)) or active
+                    idle = not active
                     health.tick(
                         mqtt=connected.is_set(),
                         postgres=database_ready.is_set(),

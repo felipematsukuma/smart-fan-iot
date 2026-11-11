@@ -6,7 +6,7 @@ import pika
 
 from ..contracts_v2 import EventV2
 from .database import ROLES
-from .store import DurableStore
+from .store import Delivery, DurableStore
 
 
 def authenticated_publisher(event: EventV2, user_id: str | None) -> bool:
@@ -52,25 +52,31 @@ class ConfirmedPublisher:
         self.channel.confirm_delivery()
 
     def publish_one(self, store: DurableStore) -> bool:
-        delivery = store.claim("outbox", lease_seconds=30)
-        if delivery is None:
-            return False
+        return bool(self.publish_batch(store, limit=1))
+
+    def publish_batch(self, store: DurableStore, limit: int = 8) -> int:
+        deliveries = store.claim_publications(limit=limit, lease_seconds=30)
+        confirmed: list[Delivery] = []
         try:
-            self.channel.basic_publish(
-                exchange=delivery.exchange,
-                routing_key=delivery.route,
-                body=delivery.payload,
-                properties=pika.BasicProperties(
-                    content_type="application/json",
-                    delivery_mode=2,
-                    message_id=delivery.event_id,
-                    user_id=store.owner,
-                ),
-                mandatory=True,
-            )
+            for delivery in deliveries:
+                self.channel.basic_publish(
+                    exchange=delivery.exchange,
+                    routing_key=delivery.route,
+                    body=delivery.payload,
+                    properties=pika.BasicProperties(
+                        content_type="application/json",
+                        delivery_mode=2,
+                        message_id=delivery.event_id,
+                        user_id=store.owner,
+                    ),
+                    mandatory=True,
+                )
+                confirmed.append(delivery)
         except (pika.exceptions.AMQPError, OSError):
-            store.retry(delivery, "broker_unavailable")
+            store.finish_publications(confirmed)
+            for pending in deliveries[len(confirmed) :]:
+                store.retry(pending, "broker_unavailable", dependency_failure=True)
             raise
         # A crash after confirm leaves the same bytes for re-publication.
-        store.finish(delivery)
-        return True
+        store.finish_publications(confirmed)
+        return len(confirmed)
