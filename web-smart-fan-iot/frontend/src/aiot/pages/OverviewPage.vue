@@ -83,7 +83,14 @@ onBeforeUnmount(() => clearInterval(clock));
     {{ Math.max(0, Math.floor((now - Date.parse(frame.timestamp)) / 1000)) }} s
     atrás{{ fresh ? '' : ' — sem dados recentes' }}
   </p>
-  <div class="metric-grid" :class="{ 'stale-readings': !fresh }">
+  <div
+    class="metric-grid"
+    :class="{ 'stale-readings': !fresh }"
+    data-testid="live-metrics"
+    :data-source-id="frame?.conteudo.source_event_id"
+    :data-sampled-at="frame?.timestamp"
+    :data-observed-at="frame?.metadata.observed_at"
+  >
     <article class="card metric">
       <Thermometer :size="20" /><span>Temperatura interna</span
       ><strong>{{ format(readings?.indoor_temp_c) }}<small> °C</small></strong>

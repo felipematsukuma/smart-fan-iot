@@ -1,0 +1,27 @@
+{
+  "accepted": 14782,
+  "pending_by_owner": [
+    {
+      "owner": "gateway",
+      "state": "pending",
+      "count": 2876
+    }
+  ],
+  "passed": false,
+  "run_id": "e69651c0bc9e440e8fe9cb15cda3c50b",
+  "reason": "No fresh WebSocket frames; browser test failed; durable journals did not drain within 120 seconds.",
+  "quota_query_ms": 2.828,
+  "harness_commit": "3d94758",
+  "configured_seconds": 600,
+  "devices": 10,
+  "interval_seconds": 0.4,
+  "drain_limit_seconds": 120,
+  "fresh_ws_frames": 0,
+  "browser_passed": false,
+  "publisher_profile": {
+    "real_pending_messages": 40,
+    "mean_claim_ms": 5.506,
+    "mean_confirm_ms": 9.69,
+    "mean_finish_ms": 5.297
+  }
+}

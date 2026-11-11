@@ -1,15 +1,44 @@
 """Fetch only pinned release binaries and verify their published SHA-256."""
 
+import csv
 import hashlib
 import io
 import os
 import platform
+import subprocess
 import tarfile
 import urllib.request
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def private(directory: Path):
+    """A new operator-owned directory, without inherited Windows group access."""
+    directory.mkdir(parents=True, exist_ok=False, mode=0o700)
+    if os.name == "nt":
+        actor = next(
+            csv.reader(
+                subprocess.check_output(
+                    ["whoami", "/user", "/fo", "csv", "/nh"], text=True
+                ).splitlines()
+            )
+        )[1]
+        subprocess.run(
+            [
+                "icacls",
+                str(directory),
+                "/inheritance:r",
+                "/grant:r",
+                "*" + actor + ":(OI)(CI)F",
+                "*S-1-5-18:(OI)(CI)F",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+
 RELEASES = {
     "gitleaks": {
         "version": "8.30.1",

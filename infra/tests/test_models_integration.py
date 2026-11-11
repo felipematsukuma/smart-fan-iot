@@ -362,11 +362,16 @@ def test_cancelled_training_keeps_source_dataset_complete(api, database, tmp_pat
         supervisor.close()
 
 
-def test_real_training_child_registers_artifacts_without_approving_them(
+def test_real_training_bundle_hot_loads_only_after_api_approval(
     api, database, tmp_path, monkeypatch
 ):
     client, _, _, _ = api
     _, engines = database
+    from services.inference.models import ModelRuntime
+
+    runtime = ModelRuntime(DurableStore(engines["inference"], "inference"), tmp_path)
+    runtime.synchronize()
+    assert runtime.current is None
     dataset = source_dataset(database, tmp_path)
     model, token = request_training(api, dataset)
     supervisor = Supervisor(
@@ -397,6 +402,8 @@ def test_real_training_child_registers_artifacts_without_approving_them(
         else:
             raise AssertionError("Training child did not finish")
         assert result["status"] == "completed" and result["approved"] is False
+        runtime.synchronize()
+        assert runtime.current is None, "Training alone must never activate a model"
         assert set(result["report"]["targets"]) == {
             "health_score",
             "rul_calendar_hours",
@@ -408,5 +415,27 @@ def test_real_training_child_registers_artifacts_without_approving_them(
             ]
             == "completed"
         )
+        # The same live inference object sees a genuine trained bundle only after
+        # normal API promotion. No fabricated metrics or SQL approval shortcuts.
+        assert result["promotion_reasons"] == []
+        selection = client.get("/api/v1/models", headers=headers(token)).json()[
+            "selection"
+        ]
+        promoted = client.post(
+            "/api/v1/models/" + model["version"] + "/promote",
+            headers=headers(token),
+            json={
+                "request_id": str(uuid4()),
+                "expected_revision": selection["activation_revision"],
+            },
+        )
+        assert promoted.status_code == 202
+        runtime.synchronize()
+        assert runtime.current is not None
+        assert runtime.current.version == model["version"]
+        active = client.get("/api/v1/models", headers=headers(token)).json()[
+            "selection"
+        ]
+        assert active["active_version"] == model["version"]
     finally:
         supervisor.close()
