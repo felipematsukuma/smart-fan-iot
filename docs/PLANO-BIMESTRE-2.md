@@ -38,6 +38,8 @@ Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a 
 
 | M17 — CI e qualidade | [V] Gates, hooks, cobertura e scans implementados em `ci/qualidade-aiot`; [registro das execuções e pendências](./quality/2026-11-10-m17.md). Python, Vitest, 79 integrações e 15 testes de navegador passaram; cobertura atingiu as metas. Timeout frio recebeu correção em branch própria; 25 achados históricos foram tratados com exemplos precisos e testes nos emissores locais. CI/proteção remotos e autoria da equipe continuam [N]; p95 e aceite integrado seguem M18 |
 
+| M18 — Aceite integrado | Em execução em `feat/aceite-integrado`. [V] [Backup e restauração reais](./quality/2026-11-11-m18-backup.md): 12 volumes novos, 39 tabelas e dois buckets conferidos, modelo aprovado e sessão antiga recusada; restauração em 5 min 58 s. [N] Carga sustentada, demais falhas, p95, acessibilidade e README final ainda pendentes |
+
 ## Decisões desta consolidação
 
 - Domínio-alvo: ar-condicionado split residencial convencional liga/desliga, mantendo redução de desperdício e acompanhamento de consumo.
