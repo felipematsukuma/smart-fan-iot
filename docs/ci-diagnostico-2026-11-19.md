@@ -29,3 +29,13 @@ O [workflow](../.github/workflows/quality.yml) separa instalação Python, npm e
 Cobertura combinada (70% global e 80% nos escopos específicos), integrações reais, build, navegador, scan de imagens e auditoria de dependências ainda dependem da nova execução. Não se reduzem limiares, removem testes ou alteram políticas para obter aprovação. HTTP 503 pode voltar; mudanças de retry/mirror só devem ser consideradas mediante recorrência confirmada. O aviso de depreciação do Lucide não impediu a instalação e não é tratado como causa da falha.
 
 Não executar o runtime completo localmente sobre os serviços/volumes de demonstração: sua validação deve ocorrer no runner isolado. O assistente continua parcial por fidelidade semântica, fora deste reparo de CI.
+
+## Reanálise após a primeira correção
+
+O commit `c30af9a` passou em instalações, lint/contratos e testes unitários/legados no remoto. A [execução seguinte](https://github.com/felipematsukuma/smart-fan-iot/actions/runs/44564744598/job/135703406901) encontrou saída 1 do bootstrap no ambiente de cobertura, antes de executar integrações. O log original não incluía o traceback interno desse container.
+
+Foi comprovada uma incompatibilidade de permissões no arranjo de QA: a pasta de cobertura criada pelo runner Linux não permite escrita ao UID 10001 dos containers. Reprodução isolada, sem volumes do projeto: diretório UID 1001/modo 0755 produziu `SQLITE_CANTOPEN` e saída 1 no coverage; diretório com dono 10001 produziu saída 0. Isso demonstra o defeito de permissões; o novo CI ainda deve confirmar que não há outra causa no bootstrap.
+
+Correção restrita ao QA: helper descartável sem rede ajusta somente o bind de cobertura para dono 10001 e grupo do runner, modo 2770. Serviços permanecem sem root; nenhum volume ou segredo da aplicação é montado no helper. O grupo permite ao runner ler e remover artefatos antigos sem escrita global.
+
+A subida entrou no bloco de cleanup: erro de inicialização agora captura log limitado do bootstrap, remove valores dos arquivos de segredos da saída e mantém a falha original. O workflow preserva também a cobertura unitária quando a integração falha. Um teste verificou a redação e a parada mesmo diante de falha de subida (aprovado); Ruff/formatação passaram. Limiares, testes e políticas continuam preservados.

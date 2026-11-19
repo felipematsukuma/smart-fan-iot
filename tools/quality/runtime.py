@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import subprocess
 import sys
 
 from check import FRONTEND, ROOT, run
@@ -24,6 +25,51 @@ TESTS = (
 )
 
 
+def prepare_coverage_directory(directory):
+    if os.name == "nt":
+        return  # Docker Desktop supplies the bind-mount permissions.
+    if (
+        directory.is_symlink()
+        or directory.resolve().parent != (ROOT / "evidence/coverage").resolve()
+    ):
+        raise RuntimeError("Unexpected coverage directory")
+    # Only this test artifact directory: app UID writes; runner GID reads and
+    # removes old files. No world-write and no production volume is mounted.
+    run(
+        "docker",
+        "run",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--mount",
+        f"type=bind,source={directory.resolve()},target=/coverage",
+        "--entrypoint",
+        "python",
+        "smartfan-python-qa:0.14.0",
+        "-c",
+        f"import os; os.chown('/coverage',10001,{os.getgid()}); os.chmod('/coverage',0o2770)",
+    )
+
+
+def bootstrap_diagnostic():
+    result = subprocess.run(
+        [*QA, "logs", "--no-color", "--tail", "100", "bootstrap"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    output = result.stdout + result.stderr
+    for path in (ROOT / "secrets").iterdir():
+        if path.is_file():
+            value = path.read_text(encoding="utf-8").strip()
+            if value:
+                output = output.replace(value, "[REDACTED]")
+    print(output, flush=True)
+
+
 def main():
     unit_data = ROOT / "evidence/coverage/python-unit/.coverage"
     if not unit_data.is_file():
@@ -31,15 +77,20 @@ def main():
     for name in ("python", "python-runtime"):
         (ROOT / "evidence/coverage" / name).mkdir(parents=True, exist_ok=True)
     runtime_data = ROOT / "evidence/coverage/python-runtime"
+    run(sys.executable, "-m", "infra.prepare")
+    run("docker", "compose", "build")
+    run(*QA, "build", "bootstrap", "frontend")
+    prepare_coverage_directory(runtime_data)
     for previous in runtime_data.glob(".coverage*"):
         if not previous.is_file() or previous.is_symlink():
             raise RuntimeError("Unexpected runtime coverage entry")
         previous.unlink()
-    run(sys.executable, "-m", "infra.prepare")
-    run("docker", "compose", "build")
-    run(*QA, "build", "bootstrap", "frontend")
-    run(*QA, "up", "-d", "--no-build")
     try:
+        try:
+            run(*QA, "up", "-d", "--no-build")
+        except subprocess.CalledProcessError:
+            bootstrap_diagnostic()
+            raise
         run(
             *QA,
             "run",
