@@ -64,3 +64,9 @@ No commit `dda9767`, a cena passou no remoto. Restaram duas falhas entre os 48 c
 Correção funcional de acessibilidade: retirada somente a transição de cores do botão compartilhado, preservando cores finais, fonte, layout e permissões. Não se relaxou o mínimo 4,5:1 nem se excluiu o controle da medição. Build AIoT aprovado; consulta real de Dispositivos/Insights em desktop/celular aprovada em 14,3 s. Contrastes mínimos medidos: Dispositivos 5,36:1, Insights 5,03:1. Duração de transição computada: 0 s.
 
 O teste de navegação agora aguarda o título da rota correta, em vez de aceitar um h1 ainda pertencente à rota anterior; verifica o cartão compartilhado `.pv-card` e seu raio atual de 10,5 px, conferido no navegador. Nenhum raio ou layout foi alterado na aplicação. Os demais gates continuam obrigatórios e dependem da próxima execução completa.
+
+## Gate de cobertura
+
+O commit `170dd25` passou nas 85 integrações e nos 45 casos de navegador habilitados; os três ensaios opt-in permaneceram desabilitados. O merge mediu Python global 86,94%, contratos 90%, domínio 80,98%, ML 82,85% e frontend global 90,67%, todos aprovados. Branches de negócio do frontend atingiram 79,58%, abaixo do mínimo 80%; o gate reprovou corretamente e impediu o scan de imagens e a auditoria posterior.
+
+Foram acrescentados, sem substituir testes anteriores, 12 testes isolados de segurança/erros do cliente de autenticação: rejeição de rotas externas, falha de rede mantendo sessão válida, corpo de erro não JSON ou título inválido, 401 revogando o bearer, falha após login sem reter credencial, expiração, remoção de listeners e logout sem rede/204/sem sessão. Não há mudança na autenticação de produção. A suíte local completa passou com 272 testes em 20 arquivos; tipos aprovados. Não se alterou limiar, escopo ou merge da cobertura. A aprovação combinada depende da nova execução remota.
