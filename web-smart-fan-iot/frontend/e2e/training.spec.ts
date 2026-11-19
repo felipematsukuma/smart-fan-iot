@@ -21,6 +21,18 @@ test('UI treina dois alvos na massa final e distingue aprovação de ativação'
   }
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByRole('link', { name: 'Treinamento', exact: true }).click();
+  if (process.env.AIOT_COVERAGE === '1') {
+    // Instrumented QA checks the complete flow on a million-vector dataset,
+    // using the supported bounded window sample, not a default-size benchmark.
+    await page.getByText('Opções avançadas do treino', { exact: true }).click();
+    await page
+      .getByLabel('Máximo de janelas candidatas', { exact: true })
+      .fill('12000');
+    await page.getByLabel('Janelas do benchmark', { exact: true }).fill('4000');
+    await page
+      .getByLabel('Amostra para importância', { exact: true })
+      .fill('200');
+  }
   const train = page.getByRole('button', {
     name: 'Treinar modelos',
     exact: true,

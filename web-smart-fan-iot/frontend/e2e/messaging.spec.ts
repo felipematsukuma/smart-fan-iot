@@ -27,8 +27,10 @@ test('mensageria mostra fila real crescer e esvaziar sem consumir a DLQ', async 
   await expect(queue).toHaveAttribute('data-consumers', '1', {
     timeout: 15000,
   });
-  const dlq = page.locator('[data-queue="q.dlq"]');
-  const previous = Number(await dlq.getAttribute('data-ready'));
+  const dlq = page.getByText(/^\d+ mensagens pendentes na DLQ$/);
+  await expect(dlq).toBeVisible();
+  const ready = async () => Number((await dlq.innerText()).match(/^\d+/)![0]);
+  const previous = await ready();
   try {
     execFileSync('docker', ['compose', 'stop', 'writer'], {
       cwd: root,
@@ -55,9 +57,7 @@ test('mensageria mostra fila real crescer e esvaziar sem consumir a DLQ', async 
   await page
     .getByRole('button', { name: 'Atualizar mensageria', exact: true })
     .click();
-  await expect
-    .poll(async () => Number(await dlq.getAttribute('data-ready')))
-    .toBeGreaterThanOrEqual(previous);
+  await expect.poll(ready).toBeGreaterThanOrEqual(previous);
   expect(errors).toBe(0);
   await page.getByRole('button', { name: 'Sair', exact: true }).click();
 });

@@ -60,7 +60,7 @@ test('visualizador entra, tem rota administrativa negada e sai', async ({
   ).toEqual([]);
   await page.getByRole('button', { name: 'Sair', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: 'Bem-vindo de volta' }),
+    page.getByRole('heading', { name: 'Entrar', exact: true }),
   ).toBeVisible();
 });
 
@@ -73,9 +73,27 @@ test('administrador consulta usuários e auditoria e recarregar exige novo login
     page.getByRole('heading', { name: 'Visão geral' }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Usuários', exact: true }).click();
-  await expect(
-    page.getByRole('cell', { name: 'admin', exact: true }),
-  ).toBeVisible();
+  const adminRow = page.locator('[data-account-id]').filter({
+    has: page.getByText('admin', { exact: true }),
+  });
+  await expect(page.locator('[data-account-id]').first()).toBeVisible();
+  const next = page.getByRole('button', { name: 'Próxima', exact: true });
+  while (!(await adminRow.count()) && (await next.isEnabled())) {
+    const first = await page
+      .locator('[data-account-id]')
+      .first()
+      .getAttribute('data-account-id');
+    await next.click();
+    await expect
+      .poll(() =>
+        page
+          .locator('[data-account-id]')
+          .first()
+          .getAttribute('data-account-id'),
+      )
+      .not.toBe(first);
+  }
+  await expect(adminRow).toBeVisible();
   await page.getByRole('link', { name: 'Auditoria', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Auditoria', exact: true }),
@@ -83,7 +101,7 @@ test('administrador consulta usuários e auditoria e recarregar exige novo login
   await expect(page.locator('tbody tr').first()).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Bem-vindo de volta' }),
+    page.getByRole('heading', { name: 'Entrar', exact: true }),
   ).toBeVisible();
 });
 
@@ -105,5 +123,8 @@ test('login funciona em tela pequena e respeita teclado', async ({ page }) => {
     () => document.documentElement.scrollWidth > innerWidth,
   );
   expect(overflow).toBe(false);
+  await page
+    .getByRole('button', { name: 'Abrir navegação', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Sair', exact: true }).click();
 });

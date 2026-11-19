@@ -45,7 +45,7 @@ test('indisponibilidade HTTP mantém sessão, informa erro em cada tela e permit
     'Usuários',
     'Auditoria',
     'Mensageria',
-    'Laboratório',
+    'Dados sintéticos',
     'Treinamento',
     'Insights',
     'Dispositivos',
@@ -76,9 +76,7 @@ test('indisponibilidade HTTP mantém sessão, informa erro em cada tela e permit
   await expect(page.locator('[data-turn-outcome="failed"]')).toBeVisible();
   await page.unroute('**/api/v1/**');
   await page.getByRole('link', { name: 'Usuários', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: 'Editar admin', exact: true }),
-  ).toBeVisible();
+  await expect(page.locator('[data-account-id]').first()).toBeVisible();
   expect(exceptions).toBe(0);
   await page.getByRole('button', { name: 'Sair', exact: true }).click();
 });
@@ -125,10 +123,12 @@ test('fixture de contas verifica formulário, edição e limpeza da sessão ao a
     return route.fulfill({ status: 204 });
   });
   await page.getByRole('link', { name: 'Usuários', exact: true }).click();
-  await page.getByLabel('Usuário', { exact: true }).fill('review_created');
+  await page
+    .getByLabel('Nome de usuário', { exact: true })
+    .fill('review_created');
   await page.getByLabel('Senha inicial', { exact: true }).fill('界'.repeat(30));
   await page.getByRole('button', { name: 'Salvar conta', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('senha é muito longa');
+  await expect(page.locator('#password-error')).toContainText('72 bytes');
   expect(writes).toBe(0);
   await page
     .getByLabel('Senha inicial', { exact: true })
@@ -141,12 +141,16 @@ test('fixture de contas verifica formulário, edição e limpeza da sessão ao a
   await page
     .getByRole('button', { name: 'Editar review_demo', exact: true })
     .click();
-  await expect(page.getByLabel('Usuário', { exact: true })).toHaveAttribute(
-    'readonly',
-  );
+  await expect(
+    page.getByLabel('Nome de usuário', { exact: true }),
+  ).toHaveAttribute('readonly');
   await page.getByLabel('Papel', { exact: true }).selectOption('operador');
-  await page.getByLabel('Conta ativa', { exact: true }).uncheck();
+  await page.getByLabel('Conta habilitada', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Salvar conta', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('review_demo');
+  await page
+    .getByRole('button', { name: 'Confirmar desativação', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Nova conta', exact: true }),
   ).toBeVisible();
@@ -161,7 +165,7 @@ test('fixture de contas verifica formulário, edição e limpeza da sessão ao a
   await page.getByRole('button', { name: 'Salvar conta', exact: true }).click();
   await expect(page).toHaveURL(/\/entrar/);
   await expect(
-    page.getByRole('heading', { name: 'Bem-vindo de volta', exact: true }),
+    page.getByRole('heading', { name: 'Entrar', exact: true }),
   ).toBeVisible();
 });
 

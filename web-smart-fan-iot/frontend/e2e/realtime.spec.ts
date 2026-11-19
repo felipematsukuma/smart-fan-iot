@@ -55,12 +55,15 @@ test('AMQP atualiza painel; silêncio expira e reconexão preserva histórico', 
       throw new Error('Falha ao preencher credencial local.');
     }
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-    await expect(
-      page.getByRole('status').filter({ hasText: 'Conectado' }),
-    ).toBeVisible();
+    await expect(page.locator('.pv-live-connection')).toHaveText(
+      'Conexão ao vivo: Conectada',
+    );
     await expect(
       page.getByRole('heading', { name: 'Histórico e consumo' }),
     ).toBeVisible();
+    await page
+      .getByText('Ver últimos 20 pontos agregados', { exact: true })
+      .click();
     await expect(
       page.locator('.historical-panel tbody tr').first(),
     ).toBeVisible({
@@ -85,9 +88,10 @@ test('AMQP atualiza painel; silêncio expira e reconexão preserva histórico', 
         stdio: 'pipe',
       });
     }
-    await expect(
-      page.getByRole('status').filter({ hasText: 'Conectado' }),
-    ).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('.pv-live-connection')).toHaveText(
+      'Conexão ao vivo: Conectada',
+      { timeout: 20000 },
+    );
     await expect(
       page.locator('.historical-panel tbody tr').first(),
     ).toBeVisible();

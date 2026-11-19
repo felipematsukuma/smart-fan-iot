@@ -374,6 +374,9 @@ test('cena com telemetria real, preferência reduzida e interrupção somente no
   expect(await scene.getAttribute('data-fan-angle')).toBe(reducedAngle);
   await expect(page.getByTestId('scene-status')).toHaveText('Dados recentes');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+  // A frozen renderer also means reduced motion; wait for that state to clear
+  // before testing a separate freeze caused by withholding telemetry.
+  await expect(scene).toHaveAttribute('data-scene-frozen', 'false');
   drop = true;
   await expect(scene).toHaveAttribute('data-scene-frozen', 'true', {
     timeout: 12000,

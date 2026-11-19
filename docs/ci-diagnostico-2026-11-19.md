@@ -39,3 +39,13 @@ Foi comprovada uma incompatibilidade de permissões no arranjo de QA: a pasta de
 Correção restrita ao QA: helper descartável sem rede ajusta somente o bind de cobertura para dono 10001 e grupo do runner, modo 2770. Serviços permanecem sem root; nenhum volume ou segredo da aplicação é montado no helper. O grupo permite ao runner ler e remover artefatos antigos sem escrita global.
 
 A subida entrou no bloco de cleanup: erro de inicialização agora captura log limitado do bootstrap, remove valores dos arquivos de segredos da saída e mantém a falha original. O workflow preserva também a cobertura unitária quando a integração falha. Um teste verificou a redação e a parada mesmo diante de falha de subida (aprovado); Ruff/formatação passaram. Limiares, testes e políticas continuam preservados.
+
+## Integração e navegador
+
+O commit `d16d5be` superou o bootstrap; 85 integrações reais passaram. No navegador, 35 testes passaram, dez falharam e três ensaios opt-in permaneceram desabilitados como antes. As falhas revelaram seletores anteriores à UI aprovada, pressuposição de `admin` na primeira página, logout móvel sem abrir o menu e leitura visual de artefatos antes de sua geração. A cena também confundia congelamento por movimento reduzido com congelamento por ausência de telemetria; o teste agora aguarda sair do primeiro estado antes de verificar o segundo.
+
+Correções somente de automação: rótulos/expansíveis/confirmadores atuais, paginação real, DLQ na seção separada, conexão WS distinta de frescor. Em `AIOT_COVERAGE=1`, os testes existentes de laboratório e treinamento são dependências explícitas das consultas, executados uma vez cada. Fora desse modo, não se introduz geração/treino implícito nas verificações visuais dirigidas. A descoberta continua incluindo os 48 casos, sem excluir falhas.
+
+O treino instrumentado permaneceu `running` ao atingir a espera de 120 s. Para validar o fluxo no runner compartilhado, o modo cobertura usa os campos já suportados na UI: 12.000 janelas candidatas, 4.000 de benchmark e 200 para importância, mantendo o dataset de 1.036.800 vetores e os critérios de aprovação. Não se aumenta timeout, recurso ou limite de aprovação; esse ensaio não certifica o tempo do treino com a configuração padrão. O treino padrão real permanece documentado no aceite integrado.
+
+Verificações locais dirigidas: três casos de autenticação/paginação/mobile, dois de recuperação HTTP/gestão com fixtures, consulta real de dados/treinamento e cena real passaram. Nenhuma conta, dispositivo ou configuração foi alterada; nenhum dataset ou modelo foi criado. Logins mantêm a auditoria normal. Os testes que interrompem serviços e os jobs novos ficam para o runner isolado.
