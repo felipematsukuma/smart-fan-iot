@@ -374,14 +374,17 @@ test('cena com telemetria real, preferência reduzida e interrupção somente no
   expect(await scene.getAttribute('data-fan-angle')).toBe(reducedAngle);
   await expect(page.getByTestId('scene-status')).toHaveText('Dados recentes');
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  // A frozen renderer also means reduced motion; wait for that state to clear
-  // before testing a separate freeze caused by withholding telemetry.
+  // Begin withholding telemetry only while the scene has a recent frame.
   await expect(scene).toHaveAttribute('data-scene-frozen', 'false');
   drop = true;
   await expect(scene).toHaveAttribute('data-scene-frozen', 'true', {
     timeout: 12000,
   });
   await expect(scene).toHaveAttribute('data-equipment-color', '#8b9aab');
+  // UI freshness ticks every 500 ms; renderer statistics publish every second.
+  // Gray also means unavailable prediction, so it cannot synchronize that tick.
+  // Read the settled renderer angle, then strictly verify a further full tick.
+  await page.waitForTimeout(1100);
   const angle = await scene.getAttribute('data-fan-angle');
   await page.waitForTimeout(1100);
   expect(await scene.getAttribute('data-fan-angle')).toBe(angle);
