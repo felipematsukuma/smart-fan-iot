@@ -56,3 +56,11 @@ Verificações locais dirigidas: três casos de autenticação/paginação/mobil
 No commit `cda34f8`, as 85 integrações passaram e o navegador teve 44 aprovados, três opt-in desabilitados como antes e uma falha: a comparação do ângulo da cena antes da atualização das estatísticas. Autenticação, paginação, menu móvel, DLQ, reconexão, recuperação, preparação dos artefatos e treino com amostra delimitada passaram no remoto.
 
 A instrumentação da página informa frescor a cada 500 ms, enquanto o renderizador publica o ângulo a cada segundo. Cinza pode significar previsão indisponível mesmo com telemetria recente: não é relógio de sincronização. A asserção agora aguarda um ciclo de estatísticas depois da indicação sem dados e exige igualdade estrita do ângulo em outro ciclo completo. Frescor, animação, cores e timeouts de produção permanecem inalterados. O caso dirigido passou localmente em 18,7 s; sua confirmação remota continua necessária.
+
+## Contraste e composição atual
+
+No commit `dda9767`, a cena passou no remoto. Restaram duas falhas entre os 48 casos: contraste de 4,16:1 no botão “Liberar automático” durante a interpolação das cores ao habilitar o controle, e a asserção do piloto que ainda procurava `.card` com raio 13 px, anterior à expansão visual aprovada.
+
+Correção funcional de acessibilidade: retirada somente a transição de cores do botão compartilhado, preservando cores finais, fonte, layout e permissões. Não se relaxou o mínimo 4,5:1 nem se excluiu o controle da medição. Build AIoT aprovado; consulta real de Dispositivos/Insights em desktop/celular aprovada em 14,3 s. Contrastes mínimos medidos: Dispositivos 5,36:1, Insights 5,03:1. Duração de transição computada: 0 s.
+
+O teste de navegação agora aguarda o título da rota correta, em vez de aceitar um h1 ainda pertencente à rota anterior; verifica o cartão compartilhado `.pv-card` e seu raio atual de 10,5 px, conferido no navegador. Nenhum raio ou layout foi alterado na aplicação. Os demais gates continuam obrigatórios e dependem da próxima execução completa.

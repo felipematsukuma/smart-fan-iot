@@ -251,11 +251,11 @@ test('piloto real: comando aceito não é execução, navegação responsiva e p
     'Interfaces locais',
   ]) {
     await page.getByRole('link', { name, exact: true }).click();
-    await expect(page.locator('main h1').first()).toBeVisible();
+    await expect(page.locator('main h1').first()).toHaveText(name);
     if (name === 'Mensageria')
-      await expect(page.locator('.card').first()).toHaveCSS(
+      await expect(page.locator('.pv-card').first()).toHaveCSS(
         'border-radius',
-        '13px',
+        '10.5px',
       );
     if (name === 'Cena 3D')
       await expect(page.locator('canvas[aria-label^="Cena 3D"]')).toBeVisible();

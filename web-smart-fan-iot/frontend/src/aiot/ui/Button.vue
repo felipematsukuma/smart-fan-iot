@@ -6,7 +6,7 @@ interface Props extends PrimitiveProps {
 }
 withDefaults(defineProps<Props>(), { as: 'button', variant: 'outline' });
 const variants = cva(
-  'pv-button ui:inline-flex ui:items-center ui:justify-center ui:gap-2 ui:rounded-lg ui:border ui:border-solid ui:px-3 ui:py-2 ui:text-sm ui:font-semibold ui:transition-colors ui:disabled:cursor-not-allowed ui:disabled:bg-slate-100 ui:disabled:text-slate-600 ui:disabled:border-slate-400 ui:focus-visible:outline-2 ui:focus-visible:outline-offset-2 ui:focus-visible:outline-teal-700',
+  'pv-button ui:inline-flex ui:items-center ui:justify-center ui:gap-2 ui:rounded-lg ui:border ui:border-solid ui:px-3 ui:py-2 ui:text-sm ui:font-semibold ui:disabled:cursor-not-allowed ui:disabled:bg-slate-100 ui:disabled:text-slate-600 ui:disabled:border-slate-400 ui:focus-visible:outline-2 ui:focus-visible:outline-offset-2 ui:focus-visible:outline-teal-700',
   {
     variants: {
       variant: {
