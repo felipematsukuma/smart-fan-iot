@@ -8,7 +8,9 @@ ARG VITE_COVERAGE=0
 ENV VITE_COVERAGE=$VITE_COVERAGE
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+# Patched official base; the explicit USER, config and entrypoint below keep
+# the same unprivileged runtime without relying on image startup scripts.
+FROM nginx:1.30.7-alpine@sha256:bef154735288bc38d99fac41ae63730684bcc661503673a04a0f9bc526ba8598
 USER 0:0
 RUN apk add --no-cache --upgrade brotli-libs=1.2.1-r0
 COPY --from=builder --chown=101:101 /build/dist /usr/share/nginx/html
