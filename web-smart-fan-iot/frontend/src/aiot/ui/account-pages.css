@@ -1,0 +1,184 @@
+/* Limited to Users and Local Interfaces. */
+.account-page .tp-card {
+  overflow-wrap: anywhere;
+}
+.account-page .button {
+  font-size: 1rem;
+  min-height: 3.14286rem;
+}
+.account-page .accounts-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(22rem, 1fr);
+  gap: 1.28571rem;
+  align-items: start;
+}
+.account-page .account-form {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+.account-page .account-field {
+  display: grid;
+  gap: 0.4rem;
+}
+.account-page .account-field input {
+  margin: 0;
+}
+.account-page .account-field .tp-muted {
+  margin: 0;
+}
+.account-page .account-enabled {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.14286rem;
+}
+.account-page .own-account {
+  display: block;
+  margin-top: 0.25rem;
+}
+.account-page .account-pagination {
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+.account-page .accounts-table table {
+  min-width: 32rem;
+  table-layout: auto;
+}
+.account-page .accounts-table :is(td, th) {
+  padding-block: 0.42857rem;
+  overflow-wrap: normal;
+}
+.account-page .accounts-table .button {
+  white-space: nowrap;
+}
+.account-page details p {
+  font-size: 1rem;
+}
+.account-page .local-services {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.account-page .local-link {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 3.14286rem;
+  color: #0f766e;
+  font-size: 1.14286rem;
+  line-height: 1.5;
+}
+.account-page .local-address {
+  font-size: 1rem;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+.account-page pre {
+  font-size: 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.account-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 0.5);
+  z-index: 100;
+}
+.account-confirm {
+  position: fixed;
+  z-index: 101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.85rem;
+  padding: 1.5rem;
+  color: #1e293b;
+  font-size: 1.14286rem;
+  line-height: 1.5;
+}
+.account-confirm h2 {
+  font-size: 1.28571rem;
+}
+.account-confirm .tp-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.account-confirm .button {
+  font-size: 1rem;
+  min-height: 3.14286rem;
+}
+.account-confirm :focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 3px;
+}
+@media (max-width: 1100px) {
+  .account-page .accounts-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .account-page .local-services {
+    grid-template-columns: 1fr;
+  }
+  .task-page.account-page .accounts-table table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+  .task-page.account-page .accounts-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .task-page.account-page .accounts-table tbody {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .task-page.account-page .accounts-table tr {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+  }
+  .task-page.account-page .accounts-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+    width: auto;
+    max-width: none;
+    background: transparent;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .task-page.account-page .accounts-table td[data-label] {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .task-page.account-page .accounts-table td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #334155;
+  }
+  .task-page.account-page .accounts-table .own-account {
+    width: 100%;
+    margin-top: 0;
+  }
+  .task-page.account-page .accounts-table .button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,285 @@
+/* Only Assistant, Scene page chrome, and Entry. Renderer/materials untouched. */
+.assistant-page .button,
+.scene-page .button,
+.entry-page .button {
+  font-size: 1rem;
+  min-height: 3.14286rem;
+}
+.assistant-page .assistant-device,
+.scene-page .scene-device {
+  display: grid;
+  gap: 0.4rem;
+  width: min(100%, 28rem);
+}
+.assistant-page .assistant-warning {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 1rem;
+}
+.assistant-page .assistant-workbench {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+.assistant-page .conversation {
+  min-height: 0;
+  height: auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem;
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+}
+.assistant-page .conversation > * {
+  flex: none;
+}
+.assistant-page .turn h2 {
+  font-size: 1rem;
+  color: #475569;
+}
+.assistant-page .turn h3 {
+  font-size: 1.14286rem;
+}
+.assistant-page .question {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-page .markdown {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  font-size: 1.14286rem;
+}
+.assistant-page .markdown :is(p, li) {
+  font-size: 1.14286rem;
+}
+.assistant-page :is(pre, code) {
+  font-size: 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-page pre {
+  background: #f1f5f9;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+.assistant-page .question-form {
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+  position: static;
+  background: white;
+  scroll-margin-bottom: 1rem;
+}
+.assistant-page textarea {
+  width: 100%;
+  min-height: 4rem;
+  max-height: 10rem;
+  resize: vertical;
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+  padding: 0.6rem;
+  font: inherit;
+  color: #1e293b;
+  background: white;
+  line-height: 1.5;
+}
+.assistant-page .chat-status {
+  margin: 0;
+  font-size: 1rem;
+  color: #475569;
+}
+.assistant-page details p {
+  font-size: 1rem;
+}
+.assistant-page .question-form .tp-actions {
+  margin: 0;
+}
+.assistant-page .chat-end {
+  justify-self: center;
+}
+.assistant-page .assistant-data {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}
+.scene-page .scene-card {
+  overflow: hidden;
+}
+.scene-page .scene-caption {
+  display: flex;
+  gap: 0.5rem 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1rem 1rem;
+  font-size: 1rem;
+  color: #475569;
+}
+.scene-page .scene-legend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.scene-page .scene-legend span {
+  font-size: 1rem;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.5rem;
+}
+.scene-page .scene-help p,
+.scene-page .scene-performance p {
+  font-size: 1rem;
+  color: #475569;
+}
+.scene-page .scene-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  align-items: start;
+}
+.scene-page .component-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+.scene-page .component-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  gap: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: white;
+  color: #1e293b;
+  margin: 0.4rem 0;
+  min-height: 3.14286rem;
+  font-size: 1rem;
+}
+.scene-page .component-button[aria-pressed='true'] {
+  background: #f0fdfa;
+  border-color: #0f766e;
+}
+.scene-page .component-button strong {
+  font-size: 1rem;
+}
+.scene-page .detail-value {
+  display: block;
+  font-size: 1.71429rem;
+  margin: 1rem 0;
+}
+.scene-page .component-detail p {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.scene-page .scene-prediction {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.scene-page .scene-prediction dt {
+  font-size: 1rem;
+  color: #475569;
+}
+.scene-page .scene-prediction dd {
+  font-size: 1.14286rem;
+  margin: 0.4rem 0;
+}
+.task-page.scene-page
+  .control-panel
+  :is(p, small, summary, label, dt, dd, button) {
+  font-size: 1rem;
+}
+.task-page.scene-page .control-panel {
+  padding: 1rem;
+  margin: 1rem 0 0;
+}
+.scene-page canvas:focus-visible {
+  outline-offset: -4px;
+}
+.entry-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background: #f1f5f9;
+  padding: 1.5rem;
+}
+.entry-page .entry-wrap {
+  width: min(100%, 30rem);
+}
+.entry-page .entry-brand {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  color: #1e293b;
+  font-size: 1.71429rem;
+  margin-bottom: 1.5rem;
+}
+.entry-page .entry-form {
+  display: grid;
+  gap: 1.25rem;
+}
+.entry-page .entry-field {
+  display: grid;
+  gap: 0.5rem;
+}
+.entry-page .entry-field input {
+  margin: 0;
+  width: 100%;
+  color: #1e293b;
+  background: white;
+}
+.entry-page .entry-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+.entry-page .entry-notice {
+  font-size: 1rem;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin: 0;
+}
+@media (max-width: 850px) {
+  .scene-page .scene-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .assistant-page .question-form {
+    padding: 0.85rem;
+  }
+  .assistant-page .question-form .button {
+    flex: 1;
+  }
+  .assistant-page .assistant-device {
+    width: 100%;
+  }
+  .scene-page .scene-prediction {
+    grid-template-columns: 1fr;
+  }
+  .entry-page {
+    padding: 1rem;
+  }
+}
+
+.assistant-page .assistant-device label,
+.scene-page .scene-device label,
+.entry-page .entry-field label,
+.assistant-page .question-form > label {
+  margin: 0;
+}

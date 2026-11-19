@@ -1,0 +1,11 @@
+/* No Preflight. Prefixed utilities cannot restyle existing page classes. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme) prefix(ui);
+@import 'tailwindcss/utilities.css' layer(utilities) prefix(ui)
+  source('../../..');
+
+/* The application root is 14px; one rem keeps supporting text at 14px. */
+.pv-badge,
+.pv-alert {
+  font-size: 1rem;
+}

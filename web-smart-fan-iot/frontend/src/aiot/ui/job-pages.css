@@ -1,0 +1,183 @@
+.job-page fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.job-page .button {
+  min-height: 3.14286rem;
+}
+.job-page progress {
+  width: 100%;
+  height: 1.14286rem;
+  accent-color: #0f766e;
+}
+.job-page pre,
+.job-page code {
+  font-size: 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.job-page .tp-card {
+  overflow-wrap: anywhere;
+}
+.job-page .estimate {
+  padding: 1rem;
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+  font-weight: 650;
+}
+.job-page details {
+  margin: 0.5rem 0;
+}
+.job-page .target-selector {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 22rem;
+  margin: 1rem 0;
+}
+.job-page .metric-target {
+  margin: 1rem 0;
+}
+.job-page .error-box {
+  font-size: 1rem;
+  color: #991b1b;
+}
+.job-page .actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.job-page .selection p {
+  margin: 0.75rem 0;
+}
+.job-page .tp-table table {
+  min-width: 32rem;
+}
+.job-page .training-plots {
+  margin-top: 1rem;
+}
+
+.job-page .registry .tp-table,
+.job-page .jobs .tp-table {
+  max-height: 30rem;
+  overflow: auto;
+}
+.job-page .tp-table table {
+  table-layout: auto;
+}
+.job-page .registry table,
+.job-page .jobs table {
+  min-width: 48rem;
+}
+.job-page .train-form,
+.job-page .lab-form {
+  margin: 0;
+}
+.job-page .training-plots p {
+  color: #475569;
+}
+.job-page .registry td:first-child,
+.job-page .jobs td:first-child {
+  overflow-wrap: anywhere;
+}
+
+.job-page .record-date {
+  display: block;
+  white-space: nowrap;
+  margin-top: 0.25rem;
+}
+@media (max-width: 600px) {
+  .job-page .jobs .tp-table,
+  .job-page .registry .tp-table {
+    max-height: 32rem;
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) table {
+    min-width: 0;
+    width: 100%;
+    display: block;
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) tr {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) :is(td, th) {
+    display: block;
+    padding: 0;
+    border: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+    background: transparent;
+    text-align: left;
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) td[data-label] {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .job-page :is(.jobs, .registry, .responsive-metrics) td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #334155;
+  }
+  .job-page .record-date {
+    width: 100%;
+  }
+  .job-page .tp-table.responsive-metrics {
+    overflow: visible;
+  }
+  .job-page .responsive-metrics th {
+    text-transform: none;
+    font-weight: 700;
+  }
+  .job-page :is(.jobs, .registry) .button {
+    width: 100%;
+  }
+  .job-page :is(.jobs, .registry) caption {
+    display: block;
+    padding: 0.5rem 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .task-page.job-page :is(.jobs, .registry) .tp-table table,
+  .task-page.job-page .tp-table.responsive-metrics table {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    display: block;
+  }
+  .task-page.job-page :is(.jobs, .registry, .responsive-metrics) :is(td, th) {
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .task-page.job-page .responsive-metrics caption {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0;
+    text-align: left;
+    white-space: normal;
+  }
+  .task-page.job-page :is(.jobs, .registry, .responsive-metrics) :is(td, th) {
+    padding: 0;
+    white-space: normal;
+  }
+}

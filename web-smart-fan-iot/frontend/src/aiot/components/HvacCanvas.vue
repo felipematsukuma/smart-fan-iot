@@ -9,6 +9,7 @@ const props = defineProps<{
   frame?: FrameReadyV2;
   ranges?: Ranges;
   selected: string;
+  alert?: { tipo: string; conteudo: { severity: string } };
 }>();
 const emit = defineEmits<{
   select: [id: string];
@@ -29,7 +30,7 @@ onMounted(() => {
       (id) => emit('select', id),
       (value) => emit('stats', value),
     );
-    scene.update(props.frame, props.ranges, props.device);
+    scene.update(props.frame, props.ranges, props.device, props.alert);
     scene.focus(props.selected);
     media = matchMedia('(prefers-reduced-motion: reduce)');
     reduced();
@@ -40,8 +41,8 @@ onMounted(() => {
   }
 });
 watch(
-  () => [props.frame, props.ranges, props.device] as const,
-  () => scene?.update(props.frame, props.ranges, props.device),
+  () => [props.frame, props.ranges, props.device, props.alert] as const,
+  () => scene?.update(props.frame, props.ranges, props.device, props.alert),
 );
 watch(
   () => props.selected,
@@ -62,13 +63,11 @@ onBeforeUnmount(() => {
       @webglcontextlost="
         failure = 'Contexto 3D perdido. Use a lista textual ou reabra a página.'
       "
-    /><button
-      class="button secondary camera-reset"
-      @click="scene?.resetCamera()"
-    >
-      Recentrar câmera
-    </button>
+    />
   </div>
+  <button class="button secondary camera-reset" @click="scene?.resetCamera()">
+    Recentrar câmera
+  </button>
 </template>
 <style scoped>
 .canvas-shell {
@@ -85,9 +84,8 @@ canvas {
   touch-action: none;
 }
 .camera-reset {
-  position: absolute;
-  right: 1rem;
-  bottom: 1rem;
+  position: static;
+  margin: 0.75rem 1rem;
 }
 @media (max-width: 600px) {
   .canvas-shell {

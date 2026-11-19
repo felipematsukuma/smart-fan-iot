@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import {
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  nextTick,
+  ref,
+  watch,
+} from 'vue';
+import { Card, Badge } from '../ui/primitives';
+import AssistantData from '../components/AssistantData.vue';
+import '../ui/task-page.css';
+import '../ui/final-pages.css';
 import { apiResponse, onSessionEnded } from '../auth';
 import { live } from '../realtime';
 import { safeMarkdown } from '../assistant-markdown';
@@ -20,12 +31,63 @@ const turns = ref<Turn[]>([]);
 const busy = ref(false);
 const error = ref('');
 const state = ref('');
+const phase = ref('idle');
+const phaseLabels: Record<string, string> = {
+  waiting: 'Aguardando',
+  loading: 'Carregando modelo',
+  streaming: 'Recebendo resposta',
+  completed: 'Concluída',
+  cancelled: 'Cancelamento solicitado',
+  failed: 'Erro',
+};
+const conversation = ref<HTMLElement>();
+const composer = ref<HTMLElement>();
+const workbench = ref<HTMLElement>();
+const following = ref(true);
+function trackScroll() {
+  const el = conversation.value;
+  if (el)
+    following.value = el.scrollHeight - el.scrollTop - el.clientHeight <= 32;
+}
+async function follow() {
+  await nextTick();
+  if (following.value && conversation.value)
+    conversation.value.scrollTop = conversation.value.scrollHeight;
+}
+function goToEnd() {
+  following.value = true;
+  void follow();
+}
+watch(
+  () => turns.value.map((turn) => [turn.answer, turn.outcome, turn.summary]),
+  () => void follow(),
+  { deep: true, flush: 'post' },
+);
+function sizeWorkbench() {
+  const el = workbench.value;
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + scrollY;
+  el.style.height = `${Math.max(340, (visualViewport?.height ?? innerHeight) - top - 16)}px`;
+}
+function viewportChanged() {
+  sizeWorkbench();
+  if (document.activeElement?.id === 'assistant-question')
+    requestAnimationFrame(() =>
+      composer.value?.scrollIntoView({ block: 'end', behavior: 'instant' }),
+    );
+}
+onMounted(async () => {
+  await nextTick();
+  sizeWorkbench();
+  visualViewport?.addEventListener('resize', viewportChanged);
+});
 let controller: AbortController | undefined;
 let epoch = 0;
 function cancel() {
   epoch++;
   controller?.abort();
   busy.value = false;
+  phase.value = 'cancelled';
   state.value =
     'Cancelamento solicitado. A geração local é interrompida antes de liberar os recursos.';
   const last = turns.value.at(-1);
@@ -43,11 +105,14 @@ watch(selected, () => {
   cancel();
   turns.value = [];
   state.value = error.value = '';
+  phase.value = 'idle';
+  following.value = true;
 });
 const remove = onSessionEnded(cancel);
 onBeforeUnmount(() => {
   cancel();
   remove();
+  visualViewport?.removeEventListener('resize', viewportChanged);
 });
 async function send() {
   if (busy.value || !question.value.trim() || !selected.value) return;
@@ -74,6 +139,8 @@ async function send() {
   busy.value = true;
   error.value = '';
   state.value = 'Solicitando conversa local…';
+  phase.value = 'waiting';
+  void follow();
   const request = new AbortController();
   controller = request;
   try {
@@ -89,6 +156,7 @@ async function send() {
     await consumeSse(response, request.signal, ({ event, data }) => {
       if (generation !== epoch) return;
       if (event === 'meta') {
+        phase.value = data.state === 'queued' ? 'waiting' : 'loading';
         state.value =
           data.state === 'queued'
             ? 'Aguardando o recurso local…'
@@ -98,6 +166,7 @@ async function send() {
         if (typeof data.model === 'string') current.model = data.model;
       } else if (event === 'delta') {
         state.value = 'Recebendo resposta…';
+        phase.value = 'streaming';
         current.answer += data.text as string;
         if (current.answer.length > 32768) {
           request.abort();
@@ -105,12 +174,14 @@ async function send() {
         }
       } else if (event === 'done') {
         current.outcome = 'completed';
+        phase.value = 'completed';
         current.firstToken =
           typeof data.first_token_ms === 'number' ? data.first_token_ms : null;
         state.value = 'Resposta concluída e auditada.';
         question.value = '';
       } else {
         current.outcome = 'failed';
+        phase.value = 'failed';
         error.value = `${typeof data.message === 'string' ? data.message : 'Resposta interrompida.'} (${String(data.code ?? 'local_model_error')})`;
         state.value = '';
       }
@@ -118,6 +189,7 @@ async function send() {
   } catch (failure) {
     if (generation === epoch && !request.signal.aborted) {
       current.outcome = 'failed';
+      phase.value = 'failed';
       error.value =
         failure instanceof Error
           ? failure.message
@@ -130,178 +202,138 @@ async function send() {
 }
 </script>
 <template>
-  <div class="page-heading">
-    <div>
-      <span class="eyebrow">CONTEXTO DO SEU EQUIPAMENTO</span>
+  <div class="task-page assistant-page">
+    <header class="tp-heading">
       <h1>Assistente local</h1>
-      <p class="muted">
-        Converse sobre as observações e estimativas do ar-condicionado.
-      </p>
-    </div>
-    <span class="environment-badge">OLLAMA · CPU · SEM NUVEM</span>
-  </div>
-  <p class="notice">
-    O assistente recebe um resumo agregado, não séries brutas. As respostas
-    podem conter erros. Nenhuma resposta executa comandos no equipamento.
-    Durante treino ou geração de dados, o recurso fica temporariamente
-    indisponível.
-  </p>
-  <label for="assistant-device">Equipamento da conversa</label
-  ><select id="assistant-device" v-model="selected" :disabled="busy">
-    <option v-for="device in devices" :key="device.id" :value="device.id">
-      {{ device.name }} · {{ device.zone }}
-    </option>
-  </select>
-  <p v-if="!devices.length" role="status">
-    Aguardando dispositivos autorizados.
-  </p>
-  <section class="conversation" aria-label="Conversa com assistente local">
-    <p v-if="!turns.length" class="card assistant-empty">
-      Pergunte, por exemplo: “O que os dados atuais dizem sobre o compressor?”
+      <div class="assistant-device">
+        <label for="assistant-device">Equipamento da conversa</label
+        ><select id="assistant-device" v-model="selected" :disabled="busy">
+          <option v-for="device in devices" :key="device.id" :value="device.id">
+            {{ device.name }} · {{ device.zone }}
+          </option>
+        </select>
+      </div>
+    </header>
+    <p class="assistant-warning">
+      Atendimento parcial: o assistente pode cometer erros de significado.
+      Confira os dados estruturados; o texto não executa comandos nem encerra
+      alertas.
     </p>
-    <article
-      v-for="turn in turns"
-      :key="turn.id"
-      class="card turn"
-      :data-turn-outcome="turn.outcome"
-    >
-      <h2>Sua pergunta</h2>
-      <p class="question">{{ turn.question }}</p>
-      <h3>Assistente · {{ turn.model }}</h3>
-      <!-- Only safeMarkdown generates markup: HTML and images are disabled, links restricted. -->
-      <div
-        class="markdown"
-        data-testid="assistant-answer"
-        v-html="safeMarkdown(turn.answer)"
-      />
-      <p v-if="!turn.answer" class="muted">
-        {{
-          turn.outcome === 'streaming'
-            ? 'Aguardando o primeiro fragmento…'
-            : 'Nenhuma resposta foi concluída.'
-        }}
-      </p>
-      <p
-        v-if="turn.outcome === 'cancelled' || turn.outcome === 'failed'"
-        class="notice"
+    <p v-if="!devices.length" role="status">
+      Aguardando dispositivos autorizados.
+    </p>
+    <div ref="workbench" class="assistant-workbench">
+      <section
+        ref="conversation"
+        class="conversation"
+        tabindex="0"
+        aria-label="Conversa com assistente local"
+        @scroll.passive="trackScroll"
       >
-        Resposta parcial ou indisponível; não foi concluída.
-      </p>
-      <p v-if="turn.firstToken != null" class="muted">
-        Primeiro fragmento: {{ (turn.firstToken / 1000).toFixed(2) }} s.
-      </p>
-      <details v-if="turn.summary">
-        <summary>Dados usados nesta resposta</summary>
-        <p>
-          Resumo montado pelo backend no momento da geração. A idade permanece
-          referenciada ao horário UTC registrado.
-        </p>
-        <pre>{{ JSON.stringify(turn.summary, null, 2) }}</pre>
-      </details>
-    </article>
-  </section>
-  <form class="card question-form" @submit.prevent="send">
-    <label for="assistant-question">Pergunta sobre o equipamento</label
-    ><textarea
-      id="assistant-question"
-      v-model="question"
-      rows="3"
-      maxlength="2000"
-      :disabled="busy"
-      required
-      aria-describedby="assistant-limits"
-    />
-    <p id="assistant-limits" class="muted">
-      Até 2.000 caracteres, sujeito ao orçamento do contexto local. Até dois
-      turnos recentes, limitados, podem ser usados. Limite de cinco perguntas
-      por minuto por usuário.
-    </p>
-    <div class="chat-actions">
+        <Card v-if="!turns.length" class="tp-card assistant-empty"
+          ><p>O que você quer saber sobre o equipamento?</p></Card
+        >
+        <Card
+          v-for="turn in turns"
+          :key="turn.id"
+          class="tp-card turn"
+          :data-turn-outcome="turn.outcome"
+          ><h2>Sua pergunta</h2>
+          <p class="question">{{ turn.question }}</p>
+          <div class="tp-section-heading">
+            <h3>Resposta gerada</h3>
+            <Badge :tone="turn.outcome === 'failed' ? 'danger' : 'neutral'">{{
+              turn.outcome === 'streaming'
+                ? 'Em andamento'
+                : turn.outcome === 'completed'
+                  ? 'Concluída'
+                  : turn.outcome === 'cancelled'
+                    ? 'Interrompida nesta interface'
+                    : 'Não concluída'
+            }}</Badge>
+          </div>
+          <!-- safeMarkdown alone emits HTML; raw HTML and remote images remain disabled. -->
+          <div
+            class="markdown"
+            data-testid="assistant-answer"
+            v-html="safeMarkdown(turn.answer)"
+          />
+          <p v-if="!turn.answer" class="tp-muted">
+            {{
+              turn.outcome === 'streaming'
+                ? 'Aguardando o primeiro fragmento…'
+                : 'Nenhuma resposta disponível.'
+            }}
+          </p>
+          <AssistantData v-if="turn.summary" :summary="turn.summary" />
+          <details>
+            <summary>Detalhes da geração</summary>
+            <p>Modelo: {{ turn.model }}</p>
+            <p v-if="turn.firstToken != null">
+              Primeiro fragmento: {{ (turn.firstToken / 1000).toFixed(2) }} s.
+            </p>
+            <p v-if="turn.outcome === 'cancelled'">
+              Cancelamento solicitado; esta interface não confirma a liberação
+              dos recursos no servidor.
+            </p>
+          </details>
+        </Card>
+      </section>
       <button
-        class="button primary"
-        :disabled="busy || !selected || !question.trim()"
-      >
-        Perguntar ao assistente</button
-      ><button
-        v-if="busy"
+        v-if="!following && turns.length"
+        class="button secondary chat-end"
         type="button"
-        class="button secondary"
-        @click="cancel"
+        @click="goToEnd"
       >
-        Cancelar resposta
+        Ir para o fim da conversa
       </button>
+      <form
+        ref="composer"
+        class="card tp-card question-form"
+        @submit.prevent="send"
+      >
+        <label for="assistant-question">Pergunta sobre o equipamento</label
+        ><textarea
+          id="assistant-question"
+          v-model="question"
+          rows="2"
+          maxlength="2000"
+          :disabled="busy"
+          required
+          aria-describedby="assistant-limits"
+        />
+        <div class="tp-actions">
+          <button
+            class="button primary"
+            :disabled="busy || !selected || !question.trim()"
+          >
+            Perguntar ao assistente</button
+          ><button
+            v-if="busy"
+            type="button"
+            class="button secondary"
+            @click="cancel"
+          >
+            Cancelar resposta</button
+          ><Badge
+            v-if="phase !== 'idle'"
+            :tone="phase === 'failed' ? 'danger' : 'neutral'"
+            >{{ phaseLabels[phase] }}</Badge
+          >
+        </div>
+        <p v-if="state" role="status" class="chat-status">{{ state }}</p>
+        <p v-if="error" role="alert" class="tp-field-error">{{ error }}</p>
+        <details>
+          <summary>Limites e funcionamento</summary>
+          <p id="assistant-limits">
+            Até 2.000 caracteres e cinco perguntas por minuto. Até dois turnos
+            recentes podem integrar o contexto, dentro do orçamento existente. O
+            modelo local recebe um resumo agregado; não acessa os bancos nem
+            executa comandos. Durante geração de dados ou treinamento o recurso
+            pode estar indisponível.
+          </p>
+        </details>
+      </form>
     </div>
-    <p v-if="state" role="status">{{ state }}</p>
-    <p v-if="error" role="alert">{{ error }}</p>
-  </form>
+  </div>
 </template>
-<style scoped>
-select {
-  max-width: 420px;
-  margin-bottom: 1rem;
-}
-.conversation {
-  display: grid;
-  gap: 1rem;
-  margin: 1rem 0;
-}
-.turn,
-.assistant-empty,
-.question-form {
-  padding: 1.4rem;
-}
-.turn h2 {
-  font-size: 0.85rem;
-  color: #5e727c;
-}
-.turn h3 {
-  font-size: 0.9rem;
-  margin: 1.4rem 0 0.8rem;
-}
-.question {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.markdown {
-  line-height: 1.7;
-  overflow-wrap: anywhere;
-}
-.markdown :deep(pre),
-details pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: #f0f5f5;
-  padding: 0.8rem;
-  border-radius: 8px;
-}
-details {
-  margin-top: 1rem;
-  font-size: 0.85rem;
-}
-summary {
-  cursor: pointer;
-}
-textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 100px;
-  border: 1px solid #cad7dc;
-  border-radius: 9px;
-  padding: 0.9rem;
-  font: inherit;
-}
-textarea:focus-visible {
-  outline: 3px solid #1e8e80;
-  outline-offset: 3px;
-}
-.question-form .muted {
-  font-size: 0.8rem;
-  line-height: 1.6;
-}
-.chat-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-  margin: 1rem 0;
-}
-</style>

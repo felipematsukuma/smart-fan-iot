@@ -38,7 +38,9 @@ test('insights usa frames reais, histórico separado e oculta números ao parar 
     page.getByRole('heading', { name: 'Insights', exact: true }),
   ).toBeVisible();
   await expect.poll(() => frames, { timeout: 15000 }).toBeGreaterThan(0);
-  await expect(page.getByText('Última fonte:', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('Última leitura às', { exact: false }),
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Editar regra preditiva', exact: true }),
   ).toHaveCount(0);
@@ -48,6 +50,7 @@ test('insights usa frames reais, histórico separado e oculta números ao parar 
       exact: true,
     })
     .click();
+  await page.getByText('Registros e versões', { exact: true }).click();
   await expect(page.locator('.history-table tbody tr').first()).toBeVisible();
   const count = await page.locator('.history-table tbody tr').count();
   await page.screenshot({

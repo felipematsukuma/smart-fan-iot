@@ -100,4 +100,19 @@ export interface AlertRecord {
   cleared_at: string | null;
   model_version: string | null;
   rule_revision: number;
+  reason_code?: string | null;
+}
+
+/** Only the recorded reason is translated; live predictions/rules are not inputs. */
+export function alertReason(reason: string | null | undefined): string {
+  switch (reason) {
+    case 'health_low':
+      return 'Saúde estimada abaixo do limite.';
+    case 'predictive_health_or_rul':
+      return 'Saúde ou vida útil estimada abaixo do limite; condição específica não registrada.';
+    case 'predictive_threshold':
+      return 'Limite preditivo atingido; motivo específico não disponível.';
+    default:
+      return 'Motivo não disponível no registro do alerta.';
+  }
 }

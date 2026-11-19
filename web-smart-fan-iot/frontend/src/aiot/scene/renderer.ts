@@ -11,6 +11,7 @@ export interface SceneStats {
   geometries: number;
   frozen: boolean;
   fanAngle: number;
+  equipmentColor: string;
 }
 const markerPositions: Record<SensorField, [number, number, number]> = {
   current_a: [0.65, 1.2, -0.75],
@@ -39,6 +40,7 @@ export class HvacScene {
   private buffer: {
     frame: FrameReadyV2 | undefined;
     ranges: Ranges | undefined;
+    alert?: { tipo: string; conteudo: { severity: string } };
   } = { frame: undefined, ranges: undefined };
   private observer: ResizeObserver;
   private ray = new THREE.Raycaster();
@@ -131,6 +133,46 @@ export class HvacScene {
     this.resources.add(material);
     return material;
   }
+  private repeated(
+    size: [number, number, number],
+    positions: [number, number, number][],
+    color: string,
+  ) {
+    const mesh = new THREE.InstancedMesh(
+      this.geometry(new THREE.BoxGeometry(...size)),
+      this.material(color),
+      positions.length,
+    );
+    const matrix = new THREE.Matrix4();
+    positions.forEach((position, index) =>
+      mesh.setMatrixAt(index, matrix.makeTranslation(...position)),
+    );
+    mesh.instanceMatrix.needsUpdate = true;
+    this.scene.add(mesh);
+  }
+  private pipe(points: THREE.Vector3[]) {
+    // Endpoints are the exact equipment ports, also used by the visible connectors.
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    points
+      .slice(1)
+      .forEach((point, index) =>
+        path.add(new THREE.LineCurve3(points[index]!, point)),
+      );
+    this.scene.add(
+      new THREE.Mesh(
+        this.geometry(new THREE.TubeGeometry(path, 32, 0.04, 6, false)),
+        this.material('#c8a76a'),
+      ),
+    );
+    for (const point of [points[0]!, points[points.length - 1]!]) {
+      const connector = new THREE.Mesh(
+        this.geometry(new THREE.SphereGeometry(0.07, 8, 6)),
+        this.material('#516775'),
+      );
+      connector.position.copy(point);
+      this.scene.add(connector);
+    }
+  }
   private floor(x: number, material: THREE.ShaderMaterial) {
     const mesh = new THREE.Mesh(
       this.geometry(new THREE.PlaneGeometry(3.7, 4)),
@@ -160,24 +202,30 @@ export class HvacScene {
     this.box([0.12, 2.65, 2.7], [0, 1.32, -1], '#f2f5f2');
     this.box([1.45, 0.7, 0.05], [-2.2, 1.65, -1.91], '#92bdc6');
     this.box([2.1, 0.45, 0.42], [-1.4, 2.15, -1.67], '#fffdf7');
-    for (let index = 0; index < 5; index++)
-      this.box(
-        [1.85, 0.025, 0.03],
-        [-1.4, 2.03 + index * 0.04, -1.445],
-        '#a6baba',
-      );
+    this.repeated(
+      [1.85, 0.025, 0.03],
+      Array.from(
+        { length: 5 },
+        (_, index) =>
+          [-1.4, 2.03 + index * 0.04, -1.445] as [number, number, number],
+      ),
+      '#a6baba',
+    );
     this.box([1.5, 0.38, 0.65], [-2.5, 0.25, 0.75], '#799b98');
     this.box([1.5, 0.6, 0.15], [-2.5, 0.6, 0.45], '#8caaa6');
     this.box([0.75, 0.08, 0.55], [-1, 0.35, 1.1], '#d2b187');
     // Exposed condenser and compressor make the monitored parts selectable.
     this.box([2.7, 0.14, 1.3], [2, 0.18, -0.15], '#f6faf9');
     this.box([2.7, 1.5, 0.12], [2, 0.93, -0.83], '#c8d7d9');
-    for (let index = 0; index < 9; index++)
-      this.box(
-        [0.04, 1.2, 0.08],
-        [0.85 + index * 0.27, 0.95, -0.73],
-        '#829d9f',
-      );
+    this.repeated(
+      [0.04, 1.2, 0.08],
+      Array.from(
+        { length: 9 },
+        (_, index) =>
+          [0.85 + index * 0.27, 0.95, -0.73] as [number, number, number],
+      ),
+      '#829d9f',
+    );
     this.compressor.position.set(1.25, 0.7, -0.1);
     const body = new THREE.Mesh(
       this.geometry(new THREE.CylinderGeometry(0.3, 0.34, 0.85, 20)),
@@ -221,8 +269,13 @@ export class HvacScene {
     ring.position.copy(this.fan.position);
     ring.position.z = 0.15;
     this.scene.add(ring);
-    this.box([0.1, 1.1, 0.1], [0.15, 1.35, -0.5], '#c8a76a');
-    this.box([1.1, 0.1, 0.1], [0.7, 0.8, -0.5], '#c8a76a');
+    for (const offset of [-0.08, 0.08])
+      this.pipe([
+        new THREE.Vector3(-0.35, 2.15 + offset, -1.67),
+        new THREE.Vector3(0.2, 2.15 + offset, -1.67),
+        new THREE.Vector3(0.2, 0.7 + offset, -0.1),
+        new THREE.Vector3(1.25, 0.7 + offset, -0.1),
+      ]);
     for (const [field, id] of Object.entries(this.device.sensor_ids))
       this.marker(id, markerPositions[field as SensorField]);
     this.marker(
@@ -240,9 +293,10 @@ export class HvacScene {
     frame: FrameReadyV2 | undefined,
     ranges?: Ranges,
     device = this.device,
+    alert?: { tipo: string; conteudo: { severity: string } },
   ) {
     this.device = device;
-    this.buffer = { frame, ranges };
+    this.buffer = { frame, ranges, alert };
   }
   focus(id: string) {
     for (const [key, mesh] of this.meshes) {
@@ -304,6 +358,7 @@ export class HvacScene {
       this.device,
       Date.now(),
       this.buffer.ranges,
+      this.buffer.alert,
     );
     if (data) {
       if (!this.reducedMotion) {
@@ -341,6 +396,12 @@ export class HvacScene {
         if (temperature != null)
           material.uniforms.temperature!.value = temperature;
       }
+    } else {
+      this.meshes.forEach((mesh) =>
+        (mesh.material as THREE.MeshStandardMaterial).color.set('#8b9aab'),
+      );
+      this.indoor.uniforms.available!.value = 0;
+      this.outdoor.uniforms.available!.value = 0;
     }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
@@ -354,6 +415,7 @@ export class HvacScene {
         geometries: info.memory.geometries,
         frozen: data == null || this.reducedMotion,
         fanAngle: this.fan.rotation.z,
+        equipmentColor: data?.equipmentColor ?? '#8b9aab',
       });
       this.statsStart = time;
       this.renders = 0;

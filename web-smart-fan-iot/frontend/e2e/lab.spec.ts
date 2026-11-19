@@ -37,9 +37,11 @@ test('laboratório gera milhão reproduzível e cancela parcial sem rótulos no 
     throw new Error('Falha ao preencher credencial local.');
   }
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await page.getByRole('link', { name: 'Laboratório', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Dados sintéticos', exact: true })
+    .click();
   await expect(page.getByTestId('dataset-estimate')).toContainText(
-    '1.036.800 vetores completos',
+    '1.036.800 vetores',
   );
   const job = page.locator('.job-detail');
   const generate = page.getByRole('button', {
@@ -52,9 +54,11 @@ test('laboratório gera milhão reproduzível e cancela parcial sem rótulos no 
       timeout: 30000,
     });
     const first = await job.getAttribute('data-job-id');
-    const hash = job.locator('code');
+    await job.getByText('Detalhes do artefato', { exact: true }).click();
+    const hash = job.locator('code').filter({ hasText: /^[a-f0-9]{64}$/ });
     await expect(hash).toHaveText(/^[a-f0-9]{64}$/, { timeout: 10000 });
     const original = await hash.textContent();
+    await page.getByText('Amostra com rótulos', { exact: true }).click();
     await expect(
       page.getByRole('heading', {
         name: 'Amostra do laboratório com rótulos',
@@ -72,6 +76,7 @@ test('laboratório gera milhão reproduzível e cancela parcial sem rótulos no 
     await page
       .getByLabel('Equipamentos sintéticos', { exact: true })
       .fill('100');
+    await page.getByText('Opções avançadas', { exact: true }).click();
     await page.getByLabel('Vetores por bloco', { exact: true }).fill('100');
     await generate.click();
     await expect.poll(() => job.getAttribute('data-job-id')).not.toBe(second);

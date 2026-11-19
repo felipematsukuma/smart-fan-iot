@@ -21,14 +21,15 @@ test('Web altera atuador por ACK físico e libera novamente o automático', asyn
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByRole('link', { name: 'Dispositivos', exact: true }).click();
   await page
-    .getByRole('button', { name: 'Detalhes de ac_01', exact: true })
+    .locator('[data-device-id="ac_01"]')
+    .getByRole('button', { name: /^Detalhes/ })
     .click();
   const off = page.getByRole('button', {
-    name: 'Desligar ventilador do condensador',
+    name: 'Desligar ventilador',
     exact: true,
   });
   const release = page.getByRole('button', {
-    name: 'Liberar controle automático',
+    name: 'Liberar automático',
     exact: true,
   });
   await expect(off).toBeEnabled({ timeout: 15000 });
@@ -37,12 +38,13 @@ test('Web altera atuador por ACK físico e libera novamente o automático', asyn
     await expect(page.locator('[data-command-status="confirmed"]')).toBeVisible(
       { timeout: 15000 },
     );
-    await expect(page.getByTestId('physical-state')).toContainText(
-      'compressor desligado · ventilador do condensador desligado',
-      { timeout: 10000 },
-    );
+    await expect(
+      page
+        .getByTestId('physical-state')
+        .getByText('Desligado', { exact: true }),
+    ).toHaveCount(2, { timeout: 10000 });
     const on = page.getByRole('button', {
-      name: 'Ligar ventilador do condensador',
+      name: 'Ligar ventilador',
       exact: true,
     });
     await expect(on).toBeEnabled();
@@ -50,10 +52,13 @@ test('Web altera atuador por ACK físico e libera novamente o automático', asyn
     await expect(page.locator('[data-command-status="confirmed"]')).toBeVisible(
       { timeout: 15000 },
     );
-    await expect(page.getByTestId('physical-state')).toContainText(
-      'ventilador do condensador ligado',
-      { timeout: 10000 },
-    );
+    await expect(
+      page
+        .getByTestId('physical-state')
+        .locator('div')
+        .filter({ hasText: 'Ventilador' })
+        .getByText('Ligado', { exact: true }),
+    ).toBeVisible({ timeout: 10000 });
     expect(errors).toBe(0);
   } finally {
     await expect(release).toBeEnabled({ timeout: 15000 });

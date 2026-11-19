@@ -1,6 +1,6 @@
 # ADR 002 — Preservar ESP32/Wokwi como legado
 
-Status: decisão proposta na arquitetura documental; nenhum arquivo movido.
+Status: implementada; legado preservado e separado do Compose AIoT. [Operação atual](../../README.md).
 
 Contexto: [V] O firmware é Arduino/ESP32, configurado em [platformio.ini:1](../../esp32-simulador/platformio.ini#L1); o novo escopo exige simulador Python.
 

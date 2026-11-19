@@ -1,5 +1,7 @@
 # M16 — Assistente local com streaming
 
+**Estado atual: atendimento parcial, com pendência de fidelidade semântica.** Avaliação de modelos encerrada nesta etapa por decisão do usuário; 1B mantido provisoriamente. [Comparação e distinção entre erros e cortes por tokens](../../docs/avaliacao-llm-2026-11-14.md). Texto gerado não substitui dados estruturados, não comanda atuadores nem encerra alertas.
+
 [V] Modelo efetivo: **llama3.2:1b-instruct-q4_K_M**, digest fixado em
 [local_llm.py](../../packages/smartfan_common/src/smartfan_common/local_llm.py).
 O candidato 3B excedeu 30 s em duas tentativas; o 1B padrão Q8 também excedeu
@@ -8,6 +10,10 @@ após ensaio real. Modelos anteriores permanecem no cache, sem uso pelo chat.
 Imagem Ollama CPU continua fixada no Compose; nunca há fallback em nuvem.
 
 ## Contexto e fronteira HTTP
+
+Fechamento funcional: resumo inclui arquitetura estática confiável e MAE/RMSE/R² do teste sintético, identificados pela **mesma versão da previsão**. Não usa automaticamente o último candidato. Métrica ausente/não finita ou versão incompatível aparece `unavailable`. Não quantifica acurácia em hardware real. Mantidos orçamento de 1.700 bytes de mensagens, ausência de ferramentas e auditoria por hash/fontes. [Registro](../../docs/implementacao-2026-11-14.md).
+
+O contexto enviado é selecionado por termos fixos da pergunta: métricas/treino, arquitetura/transporte e/ou estado/alertas/RUL. Agregados de sensores só entram quando solicitados. As fontes permanecem no resumo auditado. Definições confiáveis separam condição do compressor de avaliação dos regressores: RUL = Remaining Useful Life; MAE = média de erros absolutos; RMSE = raiz da média de erros quadráticos. A seleção não executa ferramenta escolhida pelo LLM. A resposta continua gerada pelo Ollama, sem resposta substituta de template. Essa redução foi necessária após observar confusão semântica no ensaio real; não garante correção de toda resposta futura.
 
 [V] `POST /api/v1/assistant/chat` exige JWT e dispositivo autorizado. Aceita pergunta
 até 2.000 caracteres e até dois turnos limitados; o orçamento de contexto pode

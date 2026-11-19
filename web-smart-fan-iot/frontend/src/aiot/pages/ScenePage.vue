@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { Card, Badge } from '../ui/primitives';
+import '../ui/task-page.css';
+import '../ui/final-pages.css';
 import { api } from '../auth';
 import { live, streamNotice, streamStatus } from '../realtime';
 import {
@@ -10,7 +13,8 @@ import {
   type SensorField,
 } from '../scene/model';
 import type { SceneStats } from '../scene/renderer';
-import { numberText, presentation } from '../insights';
+import { numberText, presentation, pointsFromFrames } from '../insights';
+import InsightTrend from '../components/InsightTrend.vue';
 import HvacCanvas from '../components/HvacCanvas.vue';
 import SensorTrend from '../components/SensorTrend.vue';
 import ControlPanel from '../components/ControlPanel.vue';
@@ -109,234 +113,210 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <div class="page-heading">
-    <div>
-      <span class="eyebrow">EQUIPAMENTO EM PERSPECTIVA</span>
+  <div class="task-page scene-page">
+    <header class="tp-heading">
       <h1>Cena 3D</h1>
-      <p class="muted">
-        Ambiente interno, condensadora e compressor monitorado.
-      </p>
+      <Badge
+        :tone="fresh ? 'good' : 'warning'"
+        role="status"
+        data-testid="scene-status"
+        >{{ fresh ? 'Dados recentes' : 'Sem dados — cena congelada' }}</Badge
+      >
+    </header>
+    <div class="scene-device">
+      <label for="scene-device">Equipamento na cena</label
+      ><select id="scene-device" v-model="identity">
+        <option v-for="item in devices" :key="item.id" :value="item.id">
+          {{ item.name }} · {{ item.zone }}
+        </option>
+      </select>
     </div>
-    <span
-      class="status-pill"
-      :class="fresh ? 'positive' : 'neutral'"
-      role="status"
-      data-testid="scene-status"
-      >{{ fresh ? 'Dados recentes' : 'Sem dados — cena congelada' }}</span
-    >
-  </div>
-  <label for="scene-device">Equipamento na cena</label
-  ><select id="scene-device" v-model="identity">
-    <option v-for="item in devices" :key="item.id" :value="item.id">
-      {{ item.name }} · {{ item.zone }}
-    </option>
-  </select>
-  <p v-if="!device" class="notice" role="status">
-    {{
-      streamStatus === 'connected'
-        ? 'Nenhum dispositivo autorizado.'
-        : 'Conectando aos dispositivos…'
-    }}
-  </p>
-  <p v-if="streamNotice" role="status">{{ streamNotice }}</p>
-  <p v-if="metadataError" role="alert">
-    {{ metadataError }}
-    <button class="button secondary" @click="profile">
-      Tentar consultar faixas novamente
-    </button>
-  </p>
-  <p v-if="loading" role="status">Consultando faixas cadastradas…</p>
-  <template v-if="device">
-    <section
-      class="card scene-card"
-      :data-fan-angle="stats?.fanAngle.toFixed(6)"
-      :data-scene-frozen="!fresh"
-      :data-draw-calls="stats?.calls"
-      :data-triangles="stats?.triangles"
-      :data-geometries="stats?.geometries"
-    >
-      <HvacCanvas
-        :key="device.id"
-        :device="device"
-        :frame="frame"
-        :ranges="ranges"
-        :selected="selected"
-        @select="selected = $event"
-        @stats="stats = $event"
-      />
-      <div class="scene-caption">
-        <span
-          >Interior ·
-          {{ fresh ? numberText(readings?.indoor_temp_c) : '—' }} °C</span
-        ><span
-          >Exterior ·
-          {{ fresh ? numberText(readings?.outdoor_temp_c) : '—' }} °C</span
-        ><span>Azul → laranja: 18–42 °C; cinza: indisponível</span>
+    <p v-if="!device" role="status">
+      {{
+        streamStatus === 'connected'
+          ? 'Nenhum dispositivo autorizado.'
+          : 'Conectando aos dispositivos…'
+      }}
+    </p>
+    <p v-if="streamNotice" role="status">{{ streamNotice }}</p>
+    <p v-if="metadataError" role="alert" class="tp-field-error">
+      {{ metadataError
+      }}<button class="button secondary" @click="profile">
+        Tentar consultar faixas novamente
+      </button>
+    </p>
+    <p v-if="loading" role="status">Consultando faixas cadastradas…</p>
+    <template v-if="device">
+      <Card
+        class="scene-card"
+        :data-fan-angle="stats?.fanAngle.toFixed(6)"
+        :data-scene-frozen="!fresh"
+        :data-equipment-color="stats?.equipmentColor"
+        :data-draw-calls="stats?.calls"
+        :data-triangles="stats?.triangles"
+        :data-geometries="stats?.geometries"
+      >
+        <HvacCanvas
+          :key="device.id"
+          :device="device"
+          :frame="frame"
+          :ranges="ranges"
+          :selected="selected"
+          :alert="live.alerts.get(device.id)"
+          @select="selected = $event"
+          @stats="stats = $event"
+        />
+        <div class="scene-caption">
+          <span
+            >Interior ·
+            {{ fresh ? numberText(readings?.indoor_temp_c) : '—' }} °C</span
+          ><span
+            >Exterior ·
+            {{ fresh ? numberText(readings?.outdoor_temp_c) : '—' }} °C</span
+          ><span v-if="frame"
+            >Última leitura às
+            {{ new Date(frame.timestamp).toLocaleTimeString('pt-BR') }}</span
+          >
+        </div>
+      </Card>
+      <div class="scene-legend" aria-label="Legenda da cena">
+        <span>Verde · normal</span><span>Âmbar · atenção</span
+        ><span>Vermelho · crítico</span><span>Cinza · indisponível</span
+        ><span>Azul · atuador ligado</span>
       </div>
-    </section>
-    <p class="muted scene-help">
-      Arraste para girar; use a roda para aproximar. Selecione um marcador ou
-      use os botões abaixo pelo teclado. Cores: verde na faixa cadastrada, âmbar
-      fora da faixa, cinza indisponível; atuadores azuis quando ligados.
-      Movimento reduzido respeita a preferência do sistema.
-    </p>
-    <p v-if="frame" class="muted">
-      Fonte {{ new Date(frame.timestamp).toLocaleString('pt-BR') }} ·
-      {{ Math.max(0, Math.floor((now - Date.parse(frame.timestamp)) / 1000)) }}
-      s atrás · escala 1×. Movimento é ilustrativo, condicionado à telemetria;
-      não representa RPM medido.
-    </p>
-    <div class="scene-detail-grid">
-      <section class="card component-list">
-        <h2>Componentes cadastrados</h2>
-        <ul>
-          <li v-for="item in items" :key="item.id">
-            <button
-              class="component-button"
-              :aria-pressed="selected === item.id"
-              :aria-label="`Selecionar ${item.label}`"
-              @click="selected = item.id"
-            >
-              <span
-                >{{ item.label }}<small>{{ item.id }}</small></span
-              ><strong>{{ value(item.id) }}</strong>
-            </button>
-          </li>
-        </ul>
-      </section>
-      <section class="card component-detail" aria-live="polite">
-        <h2>{{ entity?.label ?? 'Selecione um componente' }}</h2>
-        <p v-if="entity" class="muted">
-          {{ entity.id }} ·
-          {{
-            entity.kind === 'sensor'
-              ? 'Sensor simulado'
-              : entity.kind === 'actuator'
-                ? 'Atuador observado'
-                : 'Equipamento monitorado'
-          }}
+      <details class="scene-help">
+        <summary>Navegação e cores da cena</summary>
+        <p>
+          Arraste para girar e use a roda para aproximar. A lista abaixo permite
+          selecionar pelo teclado ou toque. Cores dos sensores seguem a faixa
+          cadastrada; alertas da IA se aplicam ao equipamento. Ambiente interno
+          e externo: azul a laranja entre 18 e 42 °C. A preferência de movimento
+          reduzido do sistema é respeitada.
         </p>
-        <strong class="detail-value">{{ value(selected) }}</strong
-        ><template v-if="entity?.kind === 'sensor'"
-          ><p>
-            {{ sensorLabels[entity.field as SensorField] }} · unidade
-            {{ units[entity.field as SensorField] }}
-          </p>
-          <p v-if="ranges">
-            Faixa cadastrada:
-            {{ ranges[entity.field as SensorField].minimum }}–{{
-              ranges[entity.field as SensorField].maximum
-            }}
-            {{ units[entity.field as SensorField] }}
-          </p>
-          <SensorTrend :frames="history" :field="entity.field as SensorField"
-        /></template>
-        <p v-else>
-          Saúde: {{ numberText(forecast.health) }}% · RUL:
-          {{ numberText(forecast.rul) }} h de calendário.<br />Versão nesta
-          amostra: {{ forecast.version ?? 'Sem modelo' }}.
+        <p>
+          Movimento ilustrativo condicionado à telemetria; não representa RPM
+          medido. Sem amostra recente, geometria e movimento ficam congelados.
         </p>
-        <p class="muted">
-          Sem amostra recente, geometria e movimento físico ficam congelados;
-          valores atuais são ocultados.
+      </details>
+      <div class="scene-detail-grid">
+        <Card class="tp-card component-list"
+          ><h2>Componentes cadastrados</h2>
+          <ul>
+            <li v-for="item in items" :key="item.id">
+              <button
+                class="component-button"
+                :aria-pressed="selected === item.id"
+                :aria-label="`Selecionar ${item.label}`"
+                @click="selected = item.id"
+              >
+                <span>{{ item.label }}</span
+                ><strong>{{ value(item.id) }}</strong>
+              </button>
+            </li>
+          </ul></Card
+        >
+        <Card class="tp-card component-detail"
+          ><h2>{{ entity?.label ?? 'Selecione um componente' }}</h2>
+          <strong v-if="entity?.kind !== 'equipment'" class="detail-value">{{
+            value(selected)
+          }}</strong>
+          <template v-if="entity?.kind === 'sensor'"
+            ><SensorTrend
+              :frames="history"
+              :field="entity.field as SensorField"
+          /></template>
+          <template v-if="entity?.kind === 'equipment'"
+            ><p>{{ forecast.label }}</p>
+            <dl class="scene-prediction">
+              <div>
+                <dt>Saúde</dt>
+                <dd>
+                  {{
+                    forecast.health == null
+                      ? 'Indisponível'
+                      : `${numberText(forecast.health)} %`
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>RUL</dt>
+                <dd>
+                  {{
+                    forecast.rul == null
+                      ? 'Indisponível'
+                      : `${numberText(forecast.rul)} h de calendário`
+                  }}
+                </dd>
+              </div>
+            </dl>
+            <InsightTrend
+              :points="pointsFromFrames(history)"
+              target="health_score"
+              pilot
+          /></template>
+          <template v-if="entity?.kind === 'actuator'"
+            ><SensorTrend
+              :frames="history"
+              :field="
+                entity.field === 'compressor_on'
+                  ? 'compressor_on'
+                  : 'condenser_fan_on'
+              " />
+            <p>
+              {{
+                entity.field === 'compressor_on'
+                  ? 'Compressor sob termostato e proteções.'
+                  : 'Ventilador com controle manual disponível conforme seu papel.'
+              }}
+            </p>
+            <ControlPanel
+              :key="entity.id"
+              :device-id="device.id"
+              :enabled="device.enabled"
+              :target="entity.field === 'compressor_on' ? 'compressor' : 'fan'"
+          /></template>
+          <details v-if="entity">
+            <summary>Detalhes do item</summary>
+            <dl class="tp-definition">
+              <dt>Identificador</dt>
+              <dd>{{ entity.id }}</dd>
+              <dt>Equipamento</dt>
+              <dd>{{ device.id }}</dd>
+            </dl>
+            <p v-if="entity.kind === 'sensor' && ranges">
+              {{ sensorLabels[entity.field as SensorField] }} · faixa
+              {{ ranges[entity.field as SensorField].minimum }}–{{
+                ranges[entity.field as SensorField].maximum
+              }}
+              {{ units[entity.field as SensorField] }}
+            </p>
+            <p v-if="entity.kind === 'equipment'">
+              Versão na amostra: {{ forecast.version ?? 'Sem modelo' }}. Saúde e
+              RUL pertencem a este equipamento, não aos sensores individuais.
+            </p>
+            <p v-if="frame">
+              Amostra: {{ new Date(frame.timestamp).toLocaleString('pt-BR') }}
+            </p>
+          </details>
+        </Card>
+      </div>
+      <Card class="tp-card"
+        ><details class="scene-controls">
+          <summary>Controles do equipamento</summary>
+          <ControlPanel
+            :device-id="device.id"
+            :enabled="device.enabled"
+          /></details
+      ></Card>
+      <details v-if="stats" class="scene-performance">
+        <summary>Renderização e desempenho</summary>
+        <p>
+          {{ stats.fps.toFixed(1) }} FPS · {{ stats.calls }} chamadas ·
+          {{ stats.triangles }} triângulos · {{ stats.geometries }} geometrias.
+          Limites existentes: 30 FPS, 100 chamadas e 50 mil triângulos. Não mede
+          latência da telemetria.
         </p>
-      </section>
-    </div>
-    <details class="card scene-controls">
-      <summary>Controles do equipamento</summary>
-      <ControlPanel :device-id="device.id" :enabled="device.enabled" />
-    </details>
-    <p v-if="stats" class="muted scene-performance">
-      Renderização local: {{ stats.fps.toFixed(1) }} FPS ·
-      {{ stats.calls }} chamadas · {{ stats.triangles }} triângulos ·
-      {{ stats.geometries }} geometrias. Limite: 30 FPS / 100 chamadas / 50 mil
-      triângulos. Não é uma medição de latência da telemetria.
-    </p>
-  </template>
+      </details>
+    </template>
+  </div>
 </template>
-<style scoped>
-select {
-  max-width: 420px;
-  margin-bottom: 1rem;
-}
-.scene-card {
-  overflow: hidden;
-}
-.scene-caption {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding: 1rem 1.3rem;
-  font-size: 0.8rem;
-}
-.scene-help,
-.scene-performance {
-  font-size: 0.8rem;
-  line-height: 1.6;
-  margin-top: 1rem;
-}
-.scene-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin: 1.4rem 0;
-}
-.component-list,
-.component-detail,
-.scene-controls {
-  padding: 1.3rem;
-  min-width: 0;
-}
-.component-list ul {
-  padding: 0;
-  list-style: none;
-  margin: 0;
-}
-.component-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  gap: 1rem;
-  width: 100%;
-  border: 1px solid #e0e8e9;
-  border-radius: 8px;
-  padding: 0.7rem;
-  margin: 0.4rem 0;
-  background: white;
-  color: #173640;
-}
-.component-button[aria-pressed='true'] {
-  background: #e6f2ef;
-  border-color: #238574;
-}
-.component-button small {
-  display: block;
-  font-size: 0.7rem;
-  color: #5e727c;
-  overflow-wrap: anywhere;
-}
-.component-button strong {
-  font-size: 0.8rem;
-}
-.detail-value {
-  display: block;
-  font-size: 1.8rem;
-  margin: 1.2rem 0;
-}
-.component-detail p {
-  overflow-wrap: anywhere;
-  font-size: 0.85rem;
-  line-height: 1.6;
-}
-summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-@media (max-width: 850px) {
-  .scene-detail-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

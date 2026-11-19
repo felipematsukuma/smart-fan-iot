@@ -1,6 +1,6 @@
 # Infraestrutura AIoT — M01
 
-O Compose da raiz executa a infraestrutura nova em projeto/volumes `smartfan-aiot`, separado do legado em [web-smart-fan-iot](../web-smart-fan-iot/README.md). API, frontend e consumidores HVAC serão acrescentados nos módulos seguintes; esta entrega não satisfaz sozinha o aceite integrado do requisito 19.
+O Compose da raiz executa o AIoT em projeto/volumes `smartfan-aiot`, separado do legado em [web-smart-fan-iot](../web-smart-fan-iot/README.md). API, frontend e consumidores HVAC estão implementados. Este documento preserva evidências históricas M01/M02; operação atual e limites consolidados no [README principal](../README.md) e [fechamento funcional](../docs/implementacao-2026-11-14.md).
 
 M02 amplia o bootstrap com contas PostgreSQL por serviço e migrações Alembic do schema transport. Os segredos administrativos continuam somente no processo privilegiado de instalação. Testes reais de durabilidade: `tools/bootstrap/test-reliability.ps1`; esse teste usa banco descartável e não remove dados da aplicação.
 
@@ -18,7 +18,7 @@ O script protege a pasta local de segredos com ACL do usuário no Windows, gera 
 
 Runtimes PostgreSQL, InfluxDB, RabbitMQ, Mosquitto e Ollama executam sem root. `volume-init` é um processo único com root que atribui o dono somente às raízes dos volumes nomeados deste projeto; não percorre diretórios do host. O bootstrap Python verifica filas quorum e ausência de guest e cria o bucket lab de 7 dias; live começa com 30 dias. Alterar ambiente não rotaciona automaticamente credenciais em volumes já inicializados.
 
-Sem portas publicadas por padrão nesta etapa. UIs administrativas opcionais, apenas em loopback:
+No Compose atual somente frontend em `127.0.0.1:8080` por padrão. UIs administrativas opcionais, apenas em loopback, com links na página Interfaces locais:
 
 ```powershell
 docker compose -f compose.yaml -f compose.dev.yaml up -d

@@ -6,6 +6,7 @@ import math
 import threading
 import time
 import urllib.request
+from collections import deque
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -15,6 +16,40 @@ from smartfan_common.routing_v2 import QUEUES_V2
 from sqlalchemy import Engine, text
 
 from .errors import Problem
+
+
+class RecentMessages:
+    """Ephemeral metadata only: 100 entries, five minutes, no broker reads."""
+
+    def __init__(self):
+        self._items: deque = deque(maxlen=100)
+        self._lock = threading.Lock()
+
+    def record(self, event):
+        # Called only after the existing API consumer validates and commits.
+        item = {
+            "id": event.id,
+            "type": event.tipo,
+            "producer": event.metadata.producer,
+            "device_id": event.dispositivo,
+            "timestamp": event.timestamp,
+            "received_at": datetime.now(UTC).isoformat(),
+            "queue": "q.events.api",
+        }
+        with self._lock:
+            self._items.append((time.monotonic(), item))
+
+    def snapshot(self):
+        with self._lock:
+            cutoff = time.monotonic() - 300
+            while self._items and self._items[0][0] < cutoff:
+                self._items.popleft()
+            return {
+                "items": [dict(item) for _, item in reversed(self._items)],
+                "limit": 100,
+                "retention_seconds": 300,
+                "note": "Metadados aceitos pelo consumidor API; não lê filas. Memória reiniciada com a API.",
+            }
 
 
 def bounded_number(value, integer: bool = False):

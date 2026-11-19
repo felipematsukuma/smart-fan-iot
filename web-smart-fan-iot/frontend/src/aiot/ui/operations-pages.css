@@ -1,0 +1,223 @@
+/* Scoped to Messaging and Audit. No reset or changes to other pages. */
+.operations-page .tp-card {
+  overflow-wrap: anywhere;
+}
+.operations-page .button {
+  font-size: 1rem;
+  min-height: 3.14286rem;
+}
+.operations-page .ops-table table {
+  min-width: 48rem;
+  table-layout: auto;
+}
+.operations-page .ops-table :is(td, th) {
+  vertical-align: top;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+.operations-page .ops-table :is(td, th) p {
+  margin: 0.25rem 0;
+}
+.operations-page code {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.operations-page .ops-resource {
+  display: block;
+  margin-top: 0.4rem;
+}
+.operations-page .queue-state {
+  margin-top: 0.5rem;
+}
+.operations-page .bounded-records {
+  max-height: 34rem;
+  overflow: auto;
+}
+.operations-page .ops-pagination {
+  margin-top: 1rem;
+  justify-content: space-between;
+}
+.operations-page details {
+  margin: 0.25rem 0;
+}
+.operations-page details p {
+  font-size: 1rem;
+}
+.operations-page .tp-actions {
+  margin-top: 1rem;
+}
+.ops-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 0.5);
+  z-index: 100;
+}
+.ops-confirm {
+  position: fixed;
+  z-index: 101;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(36rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.85rem;
+  padding: 1.5rem;
+  color: #1e293b;
+  font-size: 1.14286rem;
+  line-height: 1.5;
+}
+.ops-confirm h2 {
+  font-size: 1.28571rem;
+}
+.ops-confirm .tp-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.ops-confirm .button {
+  font-size: 1rem;
+  min-height: 3.14286rem;
+}
+.ops-confirm :focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .task-page.operations-page .ops-table table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+  .task-page.operations-page .ops-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .task-page.operations-page .ops-table tbody {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .task-page.operations-page .ops-table tr {
+    display: grid;
+    gap: 0.4rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+  .task-page.operations-page .ops-table :is(td, th) {
+    display: block;
+    padding: 0;
+    border: 0;
+    width: auto;
+    max-width: none;
+    text-transform: none;
+    background: transparent;
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+  .task-page.operations-page .ops-table td[data-label] {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.75rem;
+  }
+  .task-page.operations-page .ops-table td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #334155;
+  }
+  .task-page.operations-page
+    .ops-table
+    td[data-label]
+    :is(details, .queue-state) {
+    width: 100%;
+  }
+  .task-page.operations-page .ops-table details {
+    overflow-wrap: anywhere;
+  }
+  .task-page.operations-page .ops-table .ops-resource {
+    width: 100%;
+    margin-top: 0;
+  }
+  .task-page.operations-page .ops-table .button {
+    width: 100%;
+  }
+}
+
+/* Density refinement; keep 44px interactive summaries and controls. */
+.task-page.operations-page .ops-table :is(td, th) {
+  padding-block: 0.42857rem;
+}
+.task-page.operations-page .ops-table details {
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .task-page.operations-page .ops-table :is(td, th) {
+    padding: 0;
+  }
+  .task-page.messaging-page [data-queue] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 0.75rem;
+  }
+  .task-page.messaging-page [data-queue] td[data-label='Fila'],
+  .task-page.messaging-page [data-queue] .queue-details {
+    grid-column: 1/-1;
+  }
+  .task-page.messaging-page [data-queue] td[data-label='Fila'] {
+    display: block;
+  }
+  .task-page.messaging-page [data-queue] td[data-label='Fila']::before {
+    content: none;
+  }
+  .task-page.messaging-page
+    [data-queue]
+    td[data-label]:not([data-label='Fila']) {
+    display: grid;
+    gap: 0.15rem;
+    align-content: start;
+  }
+  .task-page.messaging-page [data-queue] .queue-state {
+    margin-top: 0.25rem;
+  }
+  .task-page.audit-page [data-audit-id] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.4rem 0.75rem;
+  }
+  .task-page.audit-page [data-audit-id] td {
+    grid-column: 1/-1;
+  }
+  .task-page.audit-page [data-audit-id] td[data-label='Ação'] {
+    order: 0;
+    grid-column: 1;
+    display: block;
+  }
+  .task-page.audit-page [data-audit-id] td[data-label='Resultado'] {
+    order: 1;
+    grid-column: 2;
+    display: block;
+  }
+  .task-page.audit-page
+    [data-audit-id]
+    td:is([data-label='Ação'], [data-label='Resultado'])::before {
+    content: none;
+  }
+  .task-page.audit-page [data-audit-id] td[data-label='Usuário'] {
+    order: 2;
+  }
+  .task-page.audit-page [data-audit-id] td[data-label='Data / hora'] {
+    order: 3;
+  }
+  .task-page.audit-page [data-audit-id] td[data-label='Recurso'] {
+    order: 4;
+  }
+  .task-page.audit-page [data-audit-id] td:last-child {
+    order: 5;
+  }
+}

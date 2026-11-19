@@ -2,7 +2,23 @@ import { expect, it } from 'vitest';
 import controls from '../lib/ws.fixtures.json';
 import type { FrameReadyV2 } from '../lib/contracts-v2.generated';
 import { isServerControl } from '../lib/ws-control';
-import { pointsFromFrames, presentation, trend } from './insights';
+import { alertReason, pointsFromFrames, presentation, trend } from './insights';
+
+it('describes only recorded reasons and preserves combined-rule ambiguity', () => {
+  expect(alertReason('health_low')).toBe('Saúde estimada abaixo do limite.');
+  expect(alertReason('predictive_health_or_rul')).toContain(
+    'condição específica não registrada',
+  );
+  expect(alertReason('predictive_threshold')).toContain(
+    'motivo específico não disponível',
+  );
+});
+it('does not invent a reason for missing or unsupported codes', () => {
+  for (const reason of [null, undefined, '', 'unknown', 'rul_low'])
+    expect(alertReason(reason)).toBe(
+      'Motivo não disponível no registro do alerta.',
+    );
+});
 
 function fixture() {
   const value = structuredClone(

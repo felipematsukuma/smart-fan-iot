@@ -1,43 +1,19 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { api, currentUser } from '../auth';
-interface Command {
-  id: string;
-  revision: number;
-  producer: string;
-  status: 'pending' | 'confirmed' | 'failed';
-  result: string | null;
-  reason_code: string;
-  execution_unknown: boolean;
-  created_at: string;
-}
-interface Observation {
-  fresh: boolean;
-  observation: null | {
-    sampled_at: string;
-    mode: string;
-    manual_cooling_block: boolean;
-    telemetry: {
-      actuators: { compressor_on: boolean; condenser_fan_on: boolean };
-    };
-  };
-}
-interface Rule {
-  revision: number;
-  timezone: string;
-  configuration: {
-    enabled: boolean;
-    setpoint_c: number;
-    hysteresis_c: number;
-    minimum_off_seconds: number;
-    minimum_on_seconds: number;
-    schedule_enabled: boolean;
-    start_hour: number;
-    end_hour: number;
-    weekdays: number[];
-  };
-}
-const props = defineProps<{ deviceId: string; enabled?: boolean }>();
+import Button from '../ui/Button.vue';
+import { Card, Badge, Alert } from '../ui/primitives';
+import { commandPresentation } from '../command-presentation';
+import type { Command, Observation, Rule } from '../control-types';
+import ControlSettings from './ControlSettings.vue';
+const props = defineProps<{
+  deviceId: string;
+  enabled?: boolean;
+  target?: 'compressor' | 'fan';
+  pilot?: boolean;
+  pilotFresh?: boolean;
+  management?: boolean;
+}>();
 const state = ref<Observation | null>(null);
 const commands = ref<Command[]>([]);
 const rule = ref<Rule | null>(null);
@@ -57,6 +33,25 @@ const pending = computed(() =>
 );
 const latest = computed(() =>
   commands.value.find((item) => item.id === submitted.value),
+);
+const shownCommand = computed(() =>
+  busy.value
+    ? undefined
+    : (latest.value ??
+      commands.value.find((item) => item.status === 'pending') ??
+      commands.value[0]),
+);
+const progress = computed(() =>
+  commandPresentation(shownCommand.value, busy.value),
+);
+const controlsUnavailable = computed(
+  () =>
+    busy.value ||
+    pending.value ||
+    !!loadingError.value ||
+    !state.value?.fresh ||
+    props.enabled === false ||
+    (props.pilot && !props.pilotFresh),
 );
 let timer: ReturnType<typeof setTimeout> | undefined;
 let generation = 0;
@@ -185,7 +180,143 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <section class="card control-panel">
+  <Card v-if="pilot" class="pv-control" aria-labelledby="pilot-control-heading">
+    <div class="pv-control-title">
+      <div>
+        <span class="pv-overline">OPERAÇÃO</span>
+        <h2 id="pilot-control-heading">Estado e comandos</h2>
+      </div>
+      <Badge>{{
+        state?.fresh && state.observation
+          ? state.observation.mode === 'manual'
+            ? 'Manual'
+            : 'Automático'
+          : 'Sem observação atual'
+      }}</Badge>
+    </div>
+    <Alert v-if="loadingError || error" tone="danger" role="alert">{{
+      loadingError || error
+    }}</Alert>
+    <p v-if="!state && !loadingError" role="status">
+      Consultando estado observado…
+    </p>
+    <div
+      v-if="state?.fresh && state.observation && pilotFresh"
+      data-testid="physical-state"
+      class="pv-physical"
+    >
+      <div>
+        <span>Compressor</span
+        ><strong>{{
+          state.observation.telemetry.actuators.compressor_on
+            ? 'Ligado'
+            : 'Desligado'
+        }}</strong>
+      </div>
+      <div>
+        <span>Ventilador</span
+        ><strong>{{
+          state.observation.telemetry.actuators.condenser_fan_on
+            ? 'Ligado'
+            : 'Desligado'
+        }}</strong>
+      </div>
+      <small
+        >Estado observado às
+        {{
+          new Date(state.observation.sampled_at).toLocaleTimeString('pt-BR')
+        }}</small
+      >
+    </div>
+    <p v-else-if="state" class="pv-control-help">
+      Sem observação recente. Comandos indisponíveis.
+    </p>
+    <p v-if="state?.observation?.manual_cooling_block" class="pv-control-help">
+      Bloqueio manual ativo. Libere o automático para permitir a avaliação do
+      termostato.
+    </p>
+    <div v-if="operator" class="pv-command-actions">
+      <Button :disabled="controlsUnavailable" @click="send('fan_on')"
+        >Ligar ventilador</Button
+      ><Button :disabled="controlsUnavailable" @click="send('fan_off')"
+        >Desligar ventilador</Button
+      ><Button
+        variant="primary"
+        :disabled="controlsUnavailable"
+        @click="send('release_auto')"
+        >Liberar automático</Button
+      >
+    </div>
+    <p v-else class="pv-control-help">
+      Seu acesso é de visualização. Operador e administrador podem enviar
+      comandos.
+    </p>
+    <p class="pv-control-help">
+      Desligar o ventilador também para o compressor. Proteções e espera mínima
+      permanecem ativas.
+    </p>
+    <div
+      v-if="shownCommand || busy"
+      class="pv-command-progress"
+      role="status"
+      :data-command-id="shownCommand?.id"
+      :data-command-status="busy ? 'sending' : shownCommand?.status"
+    >
+      <span class="pv-overline">ÚLTIMA INTENÇÃO</span
+      ><Badge :tone="progress.tone">{{ progress.label }}</Badge>
+      <p>{{ progress.detail }}</p>
+      <small v-if="shownCommand"
+        >Solicitação de
+        {{ new Date(shownCommand.created_at).toLocaleString('pt-BR') }}</small
+      >
+    </div>
+    <details class="pv-control-details">
+      <summary>Detalhes do comando e da regra</summary>
+      <dl v-if="shownCommand">
+        <dt>Comando</dt>
+        <dd>{{ shownCommand.id }}</dd>
+        <dt>Revisão</dt>
+        <dd>{{ shownCommand.revision }}</dd>
+        <dt>Retorno</dt>
+        <dd>
+          {{ shownCommand.result ?? 'Aguardando confirmação do dispositivo' }}
+        </dd>
+        <dt>Referência de confirmação</dt>
+        <dd>{{ shownCommand.ack_event_id ?? 'Nenhuma' }}</dd>
+      </dl>
+      <p v-if="rule">
+        Regra {{ rule.revision }} · setpoint
+        {{ rule.configuration.setpoint_c }} °C · faixa ±{{
+          rule.configuration.hysteresis_c
+        }}
+        °C · mínimo desligado {{ rule.configuration.minimum_off_seconds }} s.
+      </p>
+      <p>
+        Recebimento intermediário não é confirmação física. A execução é
+        confirmada somente por retorno validado do dispositivo.
+      </p>
+      <RouterLink :to="{ path: '/dispositivos', query: { device: deviceId } }"
+        >Abrir detalhes do equipamento →</RouterLink
+      >
+    </details>
+    <ControlSettings
+      v-if="management"
+      v-model:rule="rule"
+      :commands="commands"
+      :administrator="administrator"
+      :busy="busy"
+      pilot
+      @save="saveRule"
+    />
+    <p
+      v-if="management && notice.startsWith('Regra')"
+      role="status"
+      class="pv-control-help"
+    >
+      {{ notice }}
+    </p>
+  </Card>
+  <section v-else class="card control-panel">
     <h2>Controle do ar-condicionado</h2>
     <p>
       Consulta operacional por API. Os valores deste painel não alimentam
@@ -219,12 +350,14 @@ onBeforeUnmount(() => {
     </p>
     <div v-if="operator" class="actions">
       <button
+        v-if="target !== 'compressor'"
         class="button secondary"
         :disabled="busy || pending || !state?.fresh || enabled === false"
         @click="send('fan_on')"
       >
         Ligar ventilador do condensador</button
       ><button
+        v-if="target !== 'compressor'"
         class="button secondary"
         :disabled="busy || pending || !state?.fresh || enabled === false"
         @click="send('fan_off')"
@@ -267,115 +400,115 @@ onBeforeUnmount(() => {
         repetir como nova intenção.</span
       >
     </p>
-    <details v-if="rule">
-      <summary>Termostato e agenda · revisão {{ rule.revision }}</summary>
-      <p>
-        Fuso America/Sao_Paulo. Liga acima do setpoint + faixa; desliga abaixo
-        do setpoint − faixa, respeitando ciclos mínimos. Manual tem prioridade.
-        Faixas térmicas de proteção: parar a 80 °C na carcaça, permitir nova
-        partida até 75 °C.
-      </p>
-      <form class="rule-form" @submit.prevent="saveRule">
-        <fieldset :disabled="!administrator || busy">
-          <legend>Regra automática</legend>
-          <label
-            ><input v-model="rule.configuration.enabled" type="checkbox" />Regra
-            habilitada</label
-          >
-          <div class="fields">
-            <label
-              >Setpoint (°C)<input
-                v-model.number="rule.configuration.setpoint_c"
-                type="number"
-                min="18"
-                max="30"
-                step="0.5"
-                required /></label
-            ><label
-              >Faixa de histerese (°C)<input
-                v-model.number="rule.configuration.hysteresis_c"
-                type="number"
-                min="0.5"
-                max="3"
-                step="0.5"
-                required /></label
-            ><label
-              >Mínimo desligado (s)<input
-                v-model.number="rule.configuration.minimum_off_seconds"
-                type="number"
-                min="180"
-                max="1800"
-                step="1"
-                required /></label
-            ><label
-              >Mínimo ligado (s)<input
-                v-model.number="rule.configuration.minimum_on_seconds"
-                type="number"
-                min="60"
-                max="600"
-                step="1"
-                required
-            /></label>
-          </div>
-          <label
-            ><input
-              v-model="rule.configuration.schedule_enabled"
-              type="checkbox"
-            />Usar agenda</label
-          >
-          <div class="fields">
-            <label
-              >Hora inicial<input
-                v-model.number="rule.configuration.start_hour"
-                type="number"
-                min="0"
-                max="23"
-                required /></label
-            ><label
-              >Hora final<input
-                v-model.number="rule.configuration.end_hour"
-                type="number"
-                min="0"
-                max="23"
-                required
-            /></label>
-          </div>
-          <p>
-            Dias: 1 segunda-feira a 7 domingo; no período que cruza meia-noite,
-            a madrugada pertence ao dia inicial.
-          </p>
-          <div class="actions">
-            <label v-for="day in [1, 2, 3, 4, 5, 6, 7]" :key="day"
-              ><input
-                v-model="rule.configuration.weekdays"
-                type="checkbox"
-                :value="day"
-              />{{ day }}</label
-            >
-          </div>
-          <button v-if="administrator" class="button primary" type="submit">
-            Salvar regra
-          </button>
-        </fieldset>
-      </form>
-    </details>
-    <details>
-      <summary>Últimas intenções e confirmações</summary>
-      <p v-if="!commands.length">Nenhum comando registrado.</p>
-      <ul>
-        <li v-for="command in commands" :key="command.id">
-          {{ command.id }} · {{ command.producer }} · revisão
-          {{ command.revision }} · {{ command.status }} ·
-          {{ command.result ?? command.reason_code
-          }}<span v-if="command.execution_unknown">
-            · resultado físico desconhecido</span
-          >
-        </li>
-      </ul>
-    </details>
+    <ControlSettings
+      v-model:rule="rule"
+      :commands="commands"
+      :administrator="administrator"
+      :busy="busy"
+      @save="saveRule"
+    />
   </section>
 </template>
 <style scoped>
+.pv-control {
+  padding: 22px;
+  min-width: 0;
+}
+.pv-control-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.pv-control-title h2 {
+  margin: 4px 0 0;
+  font-size: 1.21429rem;
+  letter-spacing: -0.3px;
+}
+.pv-overline {
+  display: block;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: 1px;
+  color: #475569;
+  margin-bottom: 6px;
+}
+.pv-physical {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid #edf1f4;
+}
+.pv-physical span {
+  display: block;
+  color: #475569;
+  font-size: 1rem;
+}
+.pv-physical strong {
+  font-size: 1.14286rem;
+  font-weight: 650;
+  color: #1e293b;
+}
+.pv-physical small {
+  grid-column: 1/-1;
+  color: #475569;
+  font-size: 1rem;
+}
+.pv-command-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+.pv-command-actions > :last-child {
+  grid-column: 1/-1;
+}
+.pv-control-help {
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 14px 0;
+}
+.pv-command-progress {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.pv-command-progress p {
+  font-size: 1rem;
+  color: #475569;
+  margin: 9px 0;
+}
+.pv-command-progress small {
+  font-size: 1rem;
+  color: #475569;
+}
+.pv-control-details {
+  font-size: 1rem;
+  color: #475569;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+.pv-control-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.pv-control-details dl {
+  display: grid;
+  gap: 5px;
+}
+.pv-control-details dd {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.pv-control-details a {
+  color: #0f766e;
+  text-decoration: underline;
+}
 .control-panel {
   padding: 1.4rem;
   margin-top: 1.5rem;

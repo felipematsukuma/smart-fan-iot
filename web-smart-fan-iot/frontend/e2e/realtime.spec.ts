@@ -72,7 +72,7 @@ test('AMQP atualiza painel; silêncio expira e reconexão preserva histórico', 
       page.getByRole('status').filter({ hasText: 'Dados recentes' }),
     ).toBeVisible();
     await expect(
-      page.getByRole('status').filter({ hasText: 'Sem dados em tempo real' }),
+      page.getByRole('status').filter({ hasText: 'Dados desatualizados' }),
     ).toBeVisible({ timeout: 10000 });
     try {
       execFileSync('docker', ['compose', 'stop', 'api'], {

@@ -1,5 +1,13 @@
 # Segredos históricos
 
+## Consolidação de 15/11/2026
+
+A aprovação do `strict-history` descrita abaixo é evidência anterior. Na consolidação atual ele falhou: 17 achados alcançáveis, três fingerprints não cadastrados e zero `legacy_pending`. Os três apontam para `.env.example` no commit `2f66c71055a7ffe4e15c65389dfd90c00640125f`, linhas 2/6/9. O SHA-256 normalizado do arquivo coincide com o placeholder exato já revisado. Nenhum valor foi impresso.
+
+Ledger, política e histórico não foram alterados para obter aprovação. Trata-se de pendência de revisão de metadados históricos, fora das regressões de UI. O scan da árvore atual passou com zero novos segredos. Isso não aprova o CI completo nem emissores externos; veja a [consolidação final](../consolidacao-final-2026-11-15.md).
+
+## Evidência anterior
+
 [V] O scan integral, incluindo aliases de inicialização do InfluxDB, encontrou 25 localizações: sete exemplos revisados e dezoito atribuições históricas verificadas nos emissores locais. O registro [history-findings.json](history-findings.json) contém somente metadados e referência à evidência; nenhum valor de segredo.
 
 [V] A [auditoria local](legacy-local-audit.json) testou cópias offline dos volumes das duas stacks conhecidas: ventilador e AIoT. Foram recusados três candidatos por categoria (senha PostgreSQL, token InfluxDB e senha InfluxDB), em todos os papéis/usuários encontrados: 36 tentativas históricas recusadas. Controles com credenciais válidas autenticaram; controles aleatórios foram recusados. Os originais permaneceram parados, com montagem somente leitura durante a cópia; nenhum segredo foi impresso. As cópias e containers de inspeção não publicaram portas.

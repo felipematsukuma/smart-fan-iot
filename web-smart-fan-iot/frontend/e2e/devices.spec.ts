@@ -24,13 +24,13 @@ test('cadastro administrativo preserva IDs e permite histórico desativado', asy
     page.getByRole('button', { name: 'Novo dispositivo' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Detalhes de ac_01', exact: true }),
+    page
+      .locator('[data-device-id="ac_01"]')
+      .getByRole('button', { name: /^Detalhes/ }),
   ).toBeVisible();
   const identity = 'ac_e2e_registry';
-  const details = page.getByRole('button', {
-    name: `Detalhes de ${identity}`,
-    exact: true,
-  });
+  const row = page.locator(`[data-device-id="${identity}"]`);
+  const details = row.getByRole('button', { name: /^Detalhes/ });
   if ((await details.count()) === 0) {
     await page.getByRole('button', { name: 'Novo dispositivo' }).click();
     await page.getByLabel('ID do dispositivo', { exact: true }).fill(identity);
@@ -48,9 +48,7 @@ test('cadastro administrativo preserva IDs e permite histórico desativado', asy
   await page.getByRole('button', { name: 'Salvar cadastro' }).click();
   await expect(page.getByRole('alert')).toContainText('já cadastrado');
   await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
-  await page
-    .getByRole('button', { name: `Editar ${identity}`, exact: true })
-    .click();
+  await row.getByRole('button', { name: /^Editar/ }).click();
   await expect(
     page.getByLabel('ID do dispositivo', { exact: true }),
   ).toBeDisabled();
@@ -58,27 +56,24 @@ test('cadastro administrativo preserva IDs e permite histórico desativado', asy
     .getByLabel('Nome', { exact: true })
     .fill('Split de teste revisado');
   await page
+    .getByText('Perfil e faixas de referência', { exact: true })
+    .click();
+  await page
     .getByLabel('Vida útil de referência (horas)', { exact: true })
     .fill('35000');
   await page.getByRole('button', { name: 'Salvar cadastro' }).click();
   await expect(
     page.getByText('Cadastro salvo.', { exact: false }),
   ).toBeVisible();
-  const deactivate = page.getByRole('button', {
-    name: `Desativar ${identity}`,
-    exact: true,
-  });
+  const deactivate = row.getByRole('button', { name: /^Desabilitar/ });
   if ((await deactivate.count()) === 0) {
-    await page
-      .getByRole('button', { name: `Ativar ${identity}`, exact: true })
-      .click();
+    await row.getByRole('button', { name: /^Habilitar/ }).click();
     await expect(deactivate).toBeVisible();
   }
   await deactivate.click();
-  await expect(
-    page.getByRole('button', { name: `Ativar ${identity}`, exact: true }),
-  ).toBeVisible();
+  await expect(row.getByRole('button', { name: /^Habilitar/ })).toBeVisible();
   await details.click();
+  await page.getByText('Detalhes do cadastro', { exact: true }).click();
   await expect(
     page.getByText(`${identity}_current`, { exact: false }),
   ).toBeVisible();

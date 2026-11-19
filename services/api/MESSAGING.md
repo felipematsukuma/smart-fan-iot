@@ -13,6 +13,8 @@
 
 ## Rotas
 
+Atualização de fechamento: o snapshot também inclui `recent_messages`, até 100 prévias dos eventos validados/commitados pelo consumidor `q.events.api`, acessíveis por até cinco minutos. Somente ID, tipo, produtor, dispositivo e horários; sem conteúdo bruto. Buffer em memória reiniciado com a API, sem nova fila, `get` de fila ou persistência de prévias. Eventos inválidos não entram. A lista não representa mensagens de todas as filas; a DLQ permanece no journal separado. [Registro](../../docs/implementacao-2026-11-14.md).
+
 - `GET /api/v1/messaging`: snapshot da API de gerenciamento.
 - `GET /api/v1/messaging/failures?before={uuid}&limit=50`: prévias do journal.
 - `POST /api/v1/messaging/failures/{uuid}/replay`, corpo `{"request_id":"UUID"}`:

@@ -32,6 +32,7 @@ test('UI treina dois alvos na massa final e distingue aprovação de ativação'
     await expect(model).toHaveAttribute('data-model-status', 'completed', {
       timeout: 120000,
     });
+    await model.getByText('Dataset e artefato', { exact: true }).click();
     await expect(
       model.getByText('1.036.800 vetores de origem', { exact: false }),
     ).toBeVisible();
@@ -40,7 +41,7 @@ test('UI treina dois alvos na massa final e distingue aprovação de ativação'
     ).toBeVisible();
     await expect(
       page.getByRole('img', {
-        name: 'Importância por permutação dos 18 atributos observados',
+        name: 'Importância por permutação: 18 de 18 atributos; lista completa em tabela',
         exact: true,
       }),
     ).toBeVisible();

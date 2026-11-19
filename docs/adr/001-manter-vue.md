@@ -1,6 +1,6 @@
 # ADR 001 — Manter Vue 3
 
-Status: decisão proposta na arquitetura documental; não implementa mudanças.
+Status: implementada na evolução AIoT; Vue Router, store reativo nativo e rotas lazy em uso. [Evidência e limites](../implementacao-2026-11-14.md).
 
 Contexto: [V] Vue, TypeScript e Vite estão declarados em [package.json:20](../../web-smart-fan-iot/frontend/package.json#L20); há componentes e testes do dashboard.
 

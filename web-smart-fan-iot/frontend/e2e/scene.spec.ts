@@ -12,9 +12,12 @@ test('cena usa IDs reais, seleciona por teclado e congela sem amostra recente', 
     if (message.type() === 'error') errors++;
   });
   await page.goto('/entrar');
-  await page.getByLabel('Usuário', { exact: true }).fill('operador');
+  await page
+    .getByLabel('Usuário', { exact: true })
+    .fill(process.env.AIOT_TEST_USER ?? 'operador');
   const password = readFileSync(
-    new URL('../../../secrets/initial_operator_password', import.meta.url),
+    process.env.AIOT_TEST_PASSWORD_FILE ??
+      new URL('../../../secrets/initial_operator_password', import.meta.url),
     'utf8',
   ).trim();
   try {
@@ -24,6 +27,9 @@ test('cena usa IDs reais, seleciona por teclado e congela sem amostra recente', 
   }
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByRole('link', { name: 'Cena 3D', exact: true }).click();
+  await page
+    .getByLabel('Equipamento na cena', { exact: true })
+    .selectOption('ac_01');
   await expect(page.getByTestId('scene-status')).toHaveText('Dados recentes', {
     timeout: 15000,
   });
@@ -48,12 +54,36 @@ test('cena usa IDs reais, seleciona por teclado e congela sem amostra recente', 
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByText('Controles do equipamento', { exact: true }).click();
-  const fan = page.getByRole('button', {
+  await page
+    .getByRole('button', {
+      name: 'Selecionar Acionamento do compressor',
+      exact: true,
+    })
+    .click();
+  const detail = page.locator('.component-detail');
+  await expect(
+    detail.getByRole('button', {
+      name: 'Ligar ventilador do condensador',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole('button', {
+      name: 'Selecionar Ventilador da condensadora',
+      exact: true,
+    })
+    .click();
+  await expect(
+    detail.getByRole('img', {
+      name: 'Histórico WS de Ventilador (0 desligado / 1 ligado)',
+      exact: true,
+    }),
+  ).toBeVisible();
+  const fan = detail.getByRole('button', {
     name: 'Ligar ventilador do condensador',
     exact: true,
   });
-  const release = page.getByRole('button', {
+  const release = detail.getByRole('button', {
     name: 'Liberar controle automático',
     exact: true,
   });
@@ -118,7 +148,15 @@ test('cena usa IDs reais, seleciona por teclado e congela sem amostra recente', 
     );
   }
   expect(errors).toBe(0);
-  await page.getByRole('link', { name: 'Insights', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir navegação' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: 'Insights', exact: true })
+    .click();
   await expect(page.locator('canvas[aria-label^="Cena 3D"]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Sair', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir navegação' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Sair', exact: true })
+    .click();
 });

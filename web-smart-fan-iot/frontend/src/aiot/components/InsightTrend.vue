@@ -20,6 +20,7 @@ ChartJS.register(
 const props = defineProps<{
   points: PredictionPoint[];
   target: 'health_score' | 'rul_calendar_hours';
+  pilot?: boolean;
 }>();
 const label = computed(() =>
   props.target === 'health_score' ? 'Saúde (%)' : 'RUL (h de calendário)',
@@ -32,7 +33,7 @@ const data = computed(() => {
       {
         label: label.value,
         data: series.values,
-        borderColor: '#238574',
+        borderColor: props.pilot ? '#0f766e' : '#238574',
         pointRadius: props.points.length === 1 ? 3 : 0,
         borderWidth: 2,
         spanGaps: false,
@@ -40,13 +41,42 @@ const data = computed(() => {
     ],
   };
 });
-const options = {
+const options = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   animation: false as const,
-  plugins: { legend: { display: false } },
-  scales: { x: { ticks: { maxTicksLimit: 6 } }, y: { beginAtZero: true } },
-};
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      intersect: props.pilot ? false : true,
+      titleFont: { size: props.pilot ? 14 : 12 },
+      bodyFont: { size: props.pilot ? 14 : 12 },
+    },
+  },
+  scales: {
+    x: {
+      ticks: {
+        maxTicksLimit: props.pilot ? 3 : 6,
+        maxRotation: props.pilot ? 0 : 50,
+        color: props.pilot ? '#475569' : '#666',
+        font: { size: props.pilot ? 14 : 12 },
+      },
+    },
+    y: {
+      beginAtZero: true,
+      title: {
+        display: !!props.pilot,
+        text: label.value,
+        color: '#475569',
+        font: { size: 14 },
+      },
+      ticks: {
+        color: props.pilot ? '#475569' : '#666',
+        font: { size: props.pilot ? 14 : 12 },
+      },
+    },
+  },
+}));
 </script>
 <template>
   <p
@@ -55,7 +85,11 @@ const options = {
     "
     class="muted"
   >
-    Nenhuma previsão válida nesta janela; lacunas não recebem valores estimados.
+    {{
+      pilot
+        ? 'Nenhuma previsão válida nesta janela.'
+        : 'Nenhuma previsão válida nesta janela; lacunas não recebem valores estimados.'
+    }}
   </p>
   <div v-else class="insight-chart">
     <Line

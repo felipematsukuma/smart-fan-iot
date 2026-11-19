@@ -1,0 +1,193 @@
+/* Shared composition for the approved Devices/Insights scope only. Root is 14px. */
+.task-page {
+  font-size: 1.14286rem;
+  line-height: 1.5;
+  color: #1e293b;
+  display: grid;
+  gap: 1.28571rem;
+}
+.task-page * {
+  min-width: 0;
+}
+.task-page h1 {
+  font-size: 1.92857rem;
+  margin: 0;
+  letter-spacing: -0.04rem;
+}
+.task-page h2 {
+  font-size: 1.28571rem;
+  margin: 0;
+}
+.task-page h3 {
+  font-size: 1.14286rem;
+  margin: 0.75rem 0;
+}
+.task-page .tp-heading,
+.task-page .tp-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.task-page .tp-overline {
+  font-size: 1rem;
+  color: #475569;
+  margin: 0 0 0.4rem;
+  letter-spacing: 0.06rem;
+  font-weight: 650;
+}
+.task-page .tp-card {
+  padding: 1.42857rem;
+}
+.task-page .tp-muted,
+.task-page small,
+.task-page label,
+.task-page legend {
+  font-size: 1rem;
+  color: #475569;
+}
+.task-page .tp-muted {
+  margin: 0.5rem 0 0;
+}
+.task-page .tp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.57143rem;
+}
+.task-page .tp-stack {
+  display: grid;
+  gap: 1rem;
+}
+.task-page .tp-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.task-page .tp-form-grid label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+}
+.task-page :is(input, select) {
+  font-size: 1.14286rem;
+  border-color: #64748b;
+  min-height: 3.14286rem;
+  border-radius: 0.5rem;
+}
+.task-page input[type='checkbox'] {
+  min-height: 1.25rem;
+  width: 1.25rem;
+}
+.task-page :is(button, summary) {
+  min-height: 3.14286rem;
+}
+.task-page summary {
+  cursor: pointer;
+  align-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.task-page details > :not(summary) {
+  margin-top: 0.75rem;
+}
+.task-page :focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 3px;
+}
+.task-page [aria-invalid='true'] {
+  border-color: #b91c1c;
+}
+.task-page .tp-field-error {
+  color: #991b1b;
+  font-size: 1rem;
+  margin: 0.25rem 0 0;
+}
+.task-page .tp-details {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.5rem;
+}
+.task-page dl.tp-definition {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.6fr) minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+  font-size: 1rem;
+}
+.task-page dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.task-page .tp-table {
+  overflow-x: auto;
+}
+.task-page .tp-table :is(td, th, caption) {
+  font-size: 1rem;
+  color: #475569;
+  padding: 0.75rem;
+}
+.task-page .tp-table th {
+  color: #334155;
+}
+.task-page .tp-table caption {
+  text-align: left;
+}
+.task-page .tp-table table {
+  min-width: 36rem;
+}
+.task-page .tp-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.task-page .tp-kpi strong {
+  display: block;
+  font-size: 2.21429rem;
+  line-height: 1.3;
+  margin-top: 0.5rem;
+  color: #142c32;
+}
+.task-page .tp-kpi strong small {
+  margin-left: 0.4rem;
+  font-weight: 400;
+}
+.task-page .tp-notice {
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .task-page .tp-card {
+    padding: 1.14286rem;
+  }
+  .task-page .tp-kpis {
+    grid-template-columns: 1fr;
+  }
+  .task-page .tp-kpi {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .task-page .tp-kpi strong {
+    margin: 0;
+    white-space: nowrap;
+  }
+  .task-page dl.tp-definition {
+    grid-template-columns: 1fr;
+  }
+  .task-page .tp-heading > .tp-actions {
+    width: 100%;
+  }
+}
+
+.task-page .button {
+  font-size: 1rem;
+}
+
+.task-page label:has(> input[type='checkbox']) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.14286rem;
+  margin: 0.5rem 0;
+}

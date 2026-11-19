@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue';
 import { api } from '../auth';
+import HistoryPowerChart from './HistoryPowerChart.vue';
 interface Metrics {
   period_start: string;
   period_end: string;
@@ -16,7 +17,7 @@ interface Metrics {
     missing_samples: number;
   };
 }
-const props = defineProps<{ deviceId: string }>();
+const props = defineProps<{ deviceId: string; pilot?: boolean }>();
 const hours = ref(24);
 const result = ref<Metrics | null>(null);
 const busy = ref(false);
@@ -60,7 +61,11 @@ watch(
 onBeforeUnmount(() => controller?.abort());
 </script>
 <template>
-  <section class="card historical-panel" :aria-busy="busy">
+  <section
+    class="card historical-panel"
+    :class="{ 'pv-history-panel': pilot }"
+    :aria-busy="busy"
+  >
     <div class="section-heading">
       <h2>Histórico e consumo</h2>
       <div class="history-controls">
@@ -74,14 +79,36 @@ onBeforeUnmount(() => controller?.abort());
         </button>
       </div>
     </div>
+    <div
+      v-if="pilot"
+      class="pv-history-shortcuts"
+      aria-label="Consultas rápidas do histórico"
+    >
+      <button type="button" :aria-pressed="hours === 1" @click="hours = 1">
+        Última hora
+      </button>
+      <button type="button" :aria-pressed="hours === 24" @click="hours = 24">
+        24 horas
+      </button>
+    </div>
     <p v-if="busy" class="table-message" role="status">
       Consultando histórico…
     </p>
     <p v-if="error" class="error-box" role="alert">{{ error }}</p>
+    <p v-if="pilot && error && result" class="pv-history-period">
+      Histórico anterior preservado. A consulta atual falhou; os valores abaixo
+      não foram atualizados.
+    </p>
     <template v-if="result && !busy"
-      ><div class="energy-summary">
+      ><p v-if="pilot" class="pv-history-period">
+        Consulta: {{ new Date(result.period_start).toLocaleString('pt-BR') }} —
+        {{ new Date(result.period_end).toLocaleString('pt-BR') }}
+      </p>
+      <div class="energy-summary">
         <div>
-          <small>Energia no período com cobertura</small
+          <small>{{
+            pilot ? 'Energia na consulta' : 'Energia no período com cobertura'
+          }}</small
           ><strong
             >{{
               number(
@@ -103,16 +130,42 @@ onBeforeUnmount(() => controller?.abort());
           Cobertura observada:
           <strong
             >{{ number(result.energy.coverage_fraction * 100, 1) }}%</strong
-          ><br />{{
-            result.energy.total_samples.toLocaleString('pt-BR')
-          }}
-          amostras brutas · {{ result.energy.missing_samples }} sem potência
+          ><br v-if="!pilot" /><span v-if="!pilot"
+            >{{ result.energy.total_samples.toLocaleString('pt-BR') }} amostras
+            brutas · {{ result.energy.missing_samples }} sem potência</span
+          >
         </p>
       </div>
+      <p
+        v-if="pilot && result.energy.coverage_fraction < 1"
+        class="pv-history-period"
+      >
+        Cobertura parcial: energia calculada apenas sobre as leituras
+        disponíveis.
+      </p>
+      <details v-if="pilot" class="pv-history-details">
+        <summary>Detalhes da consulta</summary>
+        <p>
+          {{ result.energy.total_samples.toLocaleString('pt-BR') }} amostras ·
+          {{ result.energy.missing_samples }} sem potência. Energia e cobertura
+          referem-se à consulta completa, independentemente do recorte do
+          gráfico.
+        </p>
+      </details>
       <p v-if="!result.chart.length" class="table-message">
         Nenhuma leitura no período selecionado.
       </p>
-      <div v-else class="table-scroll">
+      <HistoryPowerChart
+        v-if="pilot && result.chart.length"
+        :points="result.chart"
+        :period-end="result.period_end"
+      />
+      <component
+        :is="pilot ? 'details' : 'div'"
+        v-if="result.chart.length"
+        class="table-scroll"
+      >
+        <summary v-if="pilot">Ver últimos 20 pontos agregados</summary>
         <table>
           <caption>
             Últimos 20 pontos agregados do período. Energia calculada sobre
@@ -133,11 +186,95 @@ onBeforeUnmount(() => controller?.abort());
             </tr>
           </tbody>
         </table>
-      </div>
+      </component>
     </template>
   </section>
 </template>
 <style scoped>
+.pv-history-details {
+  padding: 0.5rem 1.71429rem;
+  font-size: 1rem;
+  color: #475569;
+}
+.pv-history-details p {
+  margin: 0.5rem 0;
+}
+.pv-history-panel {
+  font-size: 1.14286rem;
+}
+.pv-history-panel :is(small, p, caption, th, td, select, button) {
+  font-size: 1rem;
+  color: #475569;
+}
+.pv-history-panel :is(select, button) {
+  min-height: 3.14286rem;
+}
+.pv-history-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.57143rem;
+  padding: 0 1.71429rem 0.85714rem;
+}
+.pv-history-shortcuts button {
+  border: 1px solid #64748b;
+  border-radius: 0.57143rem;
+  background: white;
+  padding: 0.57143rem 0.85714rem;
+}
+.pv-history-shortcuts button[aria-pressed='true'] {
+  color: #fff;
+  background: #0f766e;
+}
+.pv-history-shortcuts span {
+  font-size: 1rem;
+  color: #475569;
+}
+
+.pv-history-panel {
+  border-radius: 12px;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px #0f172a05;
+  margin-top: 0;
+}
+.pv-history-panel .section-heading {
+  padding: 20px 24px 14px;
+}
+.pv-history-panel h2 {
+  margin: 0;
+  font-size: 1.21429rem;
+}
+.pv-history-panel .energy-summary {
+  padding: 16px 24px 20px;
+}
+.pv-history-panel .energy-summary strong {
+  font-size: 1.85714rem;
+  letter-spacing: -0.6px;
+  color: #1e293b;
+}
+.pv-history-panel .energy-summary p strong {
+  font-size: inherit;
+}
+.pv-history-panel .history-controls select {
+  border-color: #64748b;
+  border-radius: 7px;
+}
+.pv-history-panel .table-scroll {
+  border-top: 1px solid #edf1f4;
+  padding: 14px 24px;
+  font-size: 1rem;
+}
+.pv-history-panel summary {
+  cursor: pointer;
+  color: #475569;
+  font-weight: 600;
+}
+.pv-history-period {
+  font-size: 1rem;
+  color: #475569;
+  padding: 0 24px;
+  margin: 0;
+}
 .historical-panel {
   margin-top: 1.5rem;
 }
@@ -184,5 +321,14 @@ caption {
   .energy-summary {
     flex-direction: column;
   }
+}
+/* Explicit descendants outrank the retained legacy component selectors. */
+.pv-history-panel .energy-summary small,
+.pv-history-panel .energy-summary p,
+.pv-history-panel .history-controls select,
+.pv-history-panel .history-controls button,
+.pv-history-panel .table-scroll :is(caption, th, td) {
+  font-size: 1rem;
+  color: #475569;
 }
 </style>

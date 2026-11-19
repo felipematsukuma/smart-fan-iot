@@ -3,10 +3,11 @@
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import pytest
 from smartfan_common.contracts_v2 import (
+    AlertV2,
     FrameReadyV2,
     TelemetrySampleV2,
     parse_event_v2,
@@ -93,6 +94,7 @@ def test_snapshot_origin_deduplication_and_observation_provenance(stream):
     accepted, backlog = events.receive(raw, "frame.ac_01", "inference", frame.id)
     assert accepted is not None and not backlog
     assert events.receive(raw, "frame.ac_01", "inference", frame.id) == (None, False)
+
     retimed = frame.model_dump()
     retimed["id"] = str(uuid4())
     retimed["timestamp"] = retimed["metadata"]["observed_at"]
@@ -122,6 +124,61 @@ def test_snapshot_origin_deduplication_and_observation_provenance(stream):
     assert events.receive(
         serialize_event_v2(forged), "frame.ac_01", "inference", forged.id
     ) == (None, False)
+
+
+def test_alert_snapshot_survives_reconnect_without_refreshing_its_time(
+    stream, database
+):
+    client, _, frame, _token, _ = stream
+    data = frame.model_dump()
+    identity = str(uuid4())
+    data.update(
+        id=str(uuid5(NAMESPACE_URL, "smartfan:alert-raised:" + identity)),
+        tipo="alert.raised",
+    )
+    data["metadata"].update(producer="control")
+    data["conteudo"] = {
+        "alert_id": identity,
+        "rule_id": str(uuid4()),
+        "severity": "warning",
+        "source_event_id": frame.conteudo.source_event_id,
+        "reason_code": "predictive_threshold",
+    }
+    alert = AlertV2.model_validate(data)
+    events = client.app.state.events
+    assert (
+        events.receive(serialize_event_v2(alert), "alert.warning", "control", alert.id)[
+            0
+        ]
+        == alert
+    )
+    snapshot = events.snapshot(("ac_01",))
+    assert alert in snapshot.events
+    assert events.recent_messages.snapshot()["items"][0]["type"] == "alert.raised"
+    # Upgrade recovery uses already accepted bytes, never invents an alert event.
+    with database[0].begin() as conn:
+        conn.execute(
+            text(
+                "DELETE FROM app.event_snapshots WHERE kind='alert.state' AND device_id='ac_01'"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO app.alerts(id,device_id,rule_id,severity,status,reason_code,source_event_id,raised_at,last_sample_at) VALUES(:id,'ac_01',:rule,'warning','active','predictive_threshold',:source,:stamp,:stamp)"
+            ),
+            {
+                "id": identity,
+                "rule": alert.conteudo.rule_id,
+                "source": alert.conteudo.source_event_id,
+                "stamp": datetime.fromisoformat(alert.timestamp),
+            },
+        )
+    recovered = events.snapshot(("ac_01",))
+    assert alert in recovered.events
+    assert (
+        next(item.timestamp for item in recovered.events if isinstance(item, AlertV2))
+        == alert.timestamp
+    )
 
 
 def test_ticket_second_use_and_forbidden_subscription(stream):

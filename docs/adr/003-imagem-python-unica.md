@@ -1,6 +1,6 @@
 # ADR 003 — Uma imagem Python, processos separados
 
-Status: decisão proposta; builds e limites ainda [N].
+Status: implementada; imagem Python comum e processos separados no Compose. [Evidência local](../quality/2026-11-11-m18-apresentacao.md); capacidade ampliada continua não aprovada.
 
 Contexto: API, simulador e consumidores usarão Python e o mesmo pacote de contratos/features.
 

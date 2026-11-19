@@ -18,9 +18,14 @@ ChartJS.register(
   LineElement,
   Tooltip,
 );
-const props = defineProps<{ frames: FrameReadyV2[]; field: SensorField }>();
-const label = computed(
-  () => `${sensorLabels[props.field]} (${units[props.field]})`,
+type TrendField = SensorField | 'compressor_on' | 'condenser_fan_on';
+const props = defineProps<{ frames: FrameReadyV2[]; field: TrendField }>();
+const label = computed(() =>
+  props.field === 'compressor_on'
+    ? 'Compressor (0 desligado / 1 ligado)'
+    : props.field === 'condenser_fan_on'
+      ? 'Ventilador (0 desligado / 1 ligado)'
+      : `${sensorLabels[props.field]} (${units[props.field]})`,
 );
 const data = computed(() => {
   const labels: string[] = [],
@@ -37,7 +42,12 @@ const data = computed(() => {
       values.push(null);
     }
     labels.push(at);
-    values.push(frame.conteudo.telemetry.readings[props.field]);
+    const field = props.field;
+    values.push(
+      field === 'compressor_on' || field === 'condenser_fan_on'
+        ? Number(frame.conteudo.telemetry.actuators[field])
+        : frame.conteudo.telemetry.readings[field],
+    );
   });
   return {
     labels,
@@ -58,7 +68,10 @@ const options = {
   maintainAspectRatio: false,
   animation: false as const,
   plugins: { legend: { display: false } },
-  scales: { x: { ticks: { maxTicksLimit: 4 } } },
+  scales: {
+    x: { ticks: { maxTicksLimit: 4, color: '#475569', font: { size: 14 } } },
+    y: { ticks: { color: '#475569', font: { size: 14 } } },
+  },
 };
 </script>
 <template>

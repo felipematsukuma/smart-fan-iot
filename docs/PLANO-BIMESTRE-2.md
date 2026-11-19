@@ -1,5 +1,9 @@
 # Plano técnico do 2º bimestre — índice de consolidação
 
+Atualização de 19/11/2026: [aceite integrado](aceite-integrado-2026-11-19.md) executado com interrupções documentadas e assistente ainda parcial. O responsável autorizou commit e push das mudanças acumuladas e documentação objetiva da arquitetura no [README](../README.md). Essa autorização substitui a restrição de publicação dos registros anteriores; não autoriza novas melhorias de arquitetura ou UI.
+
+Fechamento de 15/11 (histórico): [implementação de 14/11/2026](implementacao-2026-11-14.md), [cenário reproduzível](cenario-demo.md) e [ADR 009](adr/009-previas-e-estado-de-alerta.md). As etapas de planejamento abaixo preservam propostas históricas; o registro de execução e o código atual determinam o estado implementado. Naquele fechamento não havia autorização de commit, merge, push ou publicação; a rodada de UI/UX foi aprovada e encerrada, com [consolidação final](consolidacao-final-2026-11-15.md).
+
 Este índice organiza a documentação de planejamento do smart-fan-iot. Toda a documentação deve ser consolidada e revisada antes de qualquer implementação. Não é cronograma nem autorização de desenvolvimento.
 
 **Estado:** conteúdo das cinco etapas e oito ADRs consolidado documentalmente. Após a revisão final, o usuário autorizou execução contínua dos módulos conforme o plano, sem confirmação entre módulos. Branch por módulo, validação e merge local permanecem obrigatórios; push/PR continuam não autorizados. Só interromper por bloqueio que exija decisão do usuário. O aceite operacional depende dos testes reais, não da autorização de execução.

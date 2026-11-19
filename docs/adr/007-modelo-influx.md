@@ -1,6 +1,6 @@
 # ADR 007 — Separar live, lab e legado
 
-Status: decisão proposta; não altera buckets/retencões existentes.
+Status: implementada para live/legado e artefatos completos de laboratório; bucket lab separado preparado, amostra visual opcional não implementada. [Evidências](../../services/jobs/README.md) e [restauração](../quality/2026-11-11-m18-backup.md).
 
 Contexto: [V] O legado usa electrical_measurement e tag device_id em [mqtt_service.py:101](../../web-smart-fan-iot/backend/app/mqtt_service.py#L101).
 

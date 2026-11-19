@@ -50,6 +50,11 @@ export const router = createRouter({
       meta: { title: 'Usuários', roles: ['administrador'] },
     },
     {
+      path: '/interfaces',
+      component: () => import('./pages/AdminInterfacesPage.vue'),
+      meta: { title: 'Interfaces locais', roles: ['administrador'] },
+    },
+    {
       path: '/treinamento',
       component: () => import('./pages/TrainingPage.vue'),
       meta: { title: 'Treinamento', roles: ['administrador'] },

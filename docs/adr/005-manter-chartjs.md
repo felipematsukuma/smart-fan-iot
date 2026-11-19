@@ -1,6 +1,6 @@
 # ADR 005 — Manter Chart.js
 
-Status: decisão proposta; gráficos atuais preservados.
+Status: implementada; Chart.js no dashboard, histórico, treino e minigráficos. [Evidências locais](../implementacao-2026-11-14.md).
 
 Contexto: [V] Chart.js e vue-chartjs constam em [package.json:24](../../web-smart-fan-iot/frontend/package.json#L24).
 

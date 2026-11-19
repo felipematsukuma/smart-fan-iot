@@ -1,6 +1,7 @@
 """Authorized durable snapshots; only fresh, ordered frames enter the live stream."""
 
 from datetime import UTC, datetime
+from uuid import NAMESPACE_URL, uuid5
 
 from smartfan_common.contracts_v2 import (
     AlertV2,
@@ -22,6 +23,7 @@ from smartfan_common.ws_protocol import DeviceDescriptor, Snapshot, default_desc
 from sqlalchemy import text
 
 from .errors import Problem
+from .messaging import RecentMessages
 
 
 def utc_now() -> datetime:
@@ -50,6 +52,7 @@ class EventStore:
         if store.owner != "api":
             raise ValueError("API requires its own durable store")
         self.store = store
+        self.recent_messages = RecentMessages()
 
     def devices(self) -> dict[str, DeviceDescriptor]:
         with self.store.engine.connect() as conn:
@@ -92,7 +95,7 @@ class EventStore:
             rows = (
                 conn.execute(
                     text(
-                        "SELECT payload FROM app.event_snapshots WHERE device_id=ANY(:ids) ORDER BY sampled_at"
+                        "SELECT payload FROM app.event_snapshots WHERE device_id=ANY(:ids) ORDER BY CASE kind WHEN 'frame.ready' THEN 0 WHEN 'device.availability' THEN 1 WHEN 'alert.state' THEN 2 ELSE 3 END,sampled_at LIMIT 300"
                     ),
                     {"ids": list(allowed)},
                 ).all()
@@ -101,6 +104,59 @@ class EventStore:
             )
         now = utc_now()
         events = [parse_event_v2(bytes(row[0])) for row in rows]
+        # Upgrade/restart recovery: reuse the original accepted alert bytes already
+        # in this consumer's journal, never synthesize a transition from SQL state.
+        missing = [
+            identity
+            for identity in allowed
+            if not any(
+                isinstance(event, AlertV2) and event.dispositivo == identity
+                for event in events
+            )
+        ]
+        if missing:
+            with self.store.engine.connect() as conn:
+                alerts = conn.execute(
+                    text(
+                        "SELECT DISTINCT ON(device_id) id,status FROM app.alerts WHERE device_id=ANY(:ids) ORDER BY device_id,coalesce(cleared_at,raised_at) DESC,id DESC"
+                    ),
+                    {"ids": missing},
+                ).all()
+                identities = [
+                    str(
+                        uuid5(
+                            NAMESPACE_URL,
+                            "smartfan:alert-"
+                            + ("raised" if status == "active" else "cleared")
+                            + ":"
+                            + str(identity),
+                        )
+                    )
+                    for identity, status in alerts
+                ]
+                if identities:
+                    originals = conn.execute(
+                        text(
+                            "SELECT payload FROM transport.inbox WHERE owner='api' AND event_id=ANY(CAST(:ids AS uuid[])) AND state='completed'"
+                        ),
+                        {"ids": identities},
+                    ).all()
+                    for original in originals:
+                        event = parse_event_v2(bytes(original[0]))
+                        if isinstance(event, AlertV2) and event.dispositivo in missing:
+                            events.append(event)
+        events.sort(
+            key=lambda event: (
+                0
+                if isinstance(event, FrameReadyV2)
+                else 1
+                if isinstance(event, DeviceAvailabilityV2)
+                else 2
+                if isinstance(event, AlertV2)
+                else 3
+            )
+        )
+        events = events[:300]
         return Snapshot(
             server_time=wire_time(now),
             devices=[devices[identity] for identity in allowed],
@@ -110,13 +166,14 @@ class EventStore:
                 if (
                     fresh(event, now)
                     or (
-                        isinstance(event, DeviceAvailabilityV2)
+                        isinstance(event, (DeviceAvailabilityV2, AlertV2))
                         and datetime.fromisoformat(event.timestamp) <= now
                     )
                 )
                 and event.dispositivo in devices
                 and (
-                    not hasattr(event.metadata, "boot_id")
+                    isinstance(event, AlertV2)
+                    or not hasattr(event.metadata, "boot_id")
                     or event.metadata.boot_id == devices[event.dispositivo].boot_id
                 )
             ],
@@ -205,7 +262,7 @@ class EventStore:
                     ) and event.metadata.boot_id != str(device[1]):
                         recent = False
                 if recent and isinstance(
-                    event, (FrameReadyV2, DeviceStateV2, DeviceAvailabilityV2)
+                    event, (FrameReadyV2, DeviceStateV2, DeviceAvailabilityV2, AlertV2)
                 ):
                     metadata = event.metadata
                     changed = conn.execute(
@@ -216,7 +273,9 @@ class EventStore:
                       WHERE event_snapshots.sampled_at<excluded.sampled_at AND (excluded.kind='device.availability' OR event_snapshots.boot_id<>excluded.boot_id OR event_snapshots.sequence<excluded.sequence)
                       RETURNING event_id"""),
                         {
-                            "kind": event.tipo,
+                            "kind": "alert.state"
+                            if isinstance(event, AlertV2)
+                            else event.tipo,
                             "device": event.dispositivo,
                             "id": event.id,
                             "source": event.conteudo.source_event_id
@@ -238,6 +297,7 @@ class EventStore:
                     ),
                     {"id": event.id},
                 )
+            self.recent_messages.record(event)
             return event, not recent
         except ValueError:
             self.store.quarantine(payload, route[:256], "invalid_api_event")

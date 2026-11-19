@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { featureLabel } from '../job-presentation';
 import { Bar, Scatter } from 'vue-chartjs';
 import {
   Chart as ChartJS,
@@ -47,7 +48,7 @@ const scatter = computed(() => {
           { x: minimum, y: minimum },
           { x: maximum, y: maximum },
         ],
-        borderColor: '#81959e',
+        borderColor: '#64748b',
         pointRadius: 0,
         showLine: true,
       },
@@ -61,21 +62,59 @@ const scatterOptions = computed(() => ({
   scales: {
     x: {
       type: 'linear' as const,
-      title: { display: true, text: `Real (${props.unit})` },
+      ticks: { color: '#475569', font: { size: 14 } },
+      title: {
+        display: true,
+        color: '#475569',
+        font: { size: 14 },
+        text: `Real (${props.unit})`,
+      },
     },
     y: {
       type: 'linear' as const,
-      title: { display: true, text: `Previsto (${props.unit})` },
+      ticks: { color: '#475569', font: { size: 14 } },
+      title: {
+        display: true,
+        color: '#475569',
+        font: { size: 14 },
+        text: `Previsto (${props.unit})`,
+      },
     },
   },
-  plugins: { legend: { display: true } },
+  plugins: {
+    legend: { display: true, labels: { color: '#475569', font: { size: 14 } } },
+  },
 }));
-const importance = computed(() => {
-  const sorted = [...props.entry.feature_importance].sort(
+const mobile = ref(false);
+let query: MediaQueryList | undefined;
+const updateSize = () => {
+  mobile.value = query?.matches ?? false;
+};
+onMounted(() => {
+  query = matchMedia('(max-width: 600px)');
+  updateSize();
+  query.addEventListener('change', updateSize);
+});
+onBeforeUnmount(() => query?.removeEventListener('change', updateSize));
+const ranked = computed(() =>
+  [...props.entry.feature_importance].sort(
     (a, b) => b.importance - a.importance,
-  );
+  ),
+);
+const visibleImportance = computed(() =>
+  mobile.value ? ranked.value.slice(0, 5) : ranked.value,
+);
+function chartLabel(feature: string) {
+  const label = featureLabel(feature);
+  if (label.includes(' · ')) return label.split(' · ');
+  if (label === 'Diferença carcaça–exterior')
+    return ['Diferença', 'carcaça–exterior'];
+  return label;
+}
+const importance = computed(() => {
+  const sorted = visibleImportance.value;
   return {
-    labels: sorted.map((value) => value.feature),
+    labels: sorted.map((value) => chartLabel(value.feature)),
     datasets: [
       {
         label: 'Aumento do MAE ao permutar',
@@ -92,6 +131,10 @@ const importanceOptions = {
   maintainAspectRatio: false,
   animation: false as const,
   indexAxis: 'y' as const,
+  scales: {
+    x: { ticks: { color: '#475569', font: { size: 14 } } },
+    y: { ticks: { autoSkip: false, color: '#475569', font: { size: 14 } } },
+  },
   plugins: { legend: { display: false } },
 };
 </script>
@@ -133,12 +176,18 @@ const importanceOptions = {
     </section>
     <section>
       <h3>Importância dos atributos</h3>
-      <div class="plot importance">
+      <p v-if="mobile" class="tp-muted">Cinco atributos de maior importância</p>
+      <div
+        class="plot importance"
+        :style="{
+          height: `${mobile ? 340 : Math.max(430, visibleImportance.length * 42)}px`,
+        }"
+      >
         <Bar
           :data="importance"
           :options="importanceOptions"
           role="img"
-          aria-label="Importância por permutação dos 18 atributos observados"
+          :aria-label="`Importância por permutação: ${visibleImportance.length} de ${entry.feature_importance.length} atributos; lista completa em tabela`"
         />
       </div>
       <p>
@@ -154,13 +203,17 @@ const importanceOptions = {
           <thead>
             <tr>
               <th>Atributo</th>
+              <th>Nome técnico</th>
               <th>Importância</th>
               <th>Desvio</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in entry.feature_importance" :key="item.feature">
-              <td>{{ item.feature }}</td>
+              <td>{{ featureLabel(item.feature) }}</td>
+              <td>
+                <code>{{ item.feature }}</code>
+              </td>
               <td>{{ item.importance.toFixed(4) }}</td>
               <td>{{ item.std.toFixed(4) }}</td>
             </tr>
@@ -184,7 +237,7 @@ const importanceOptions = {
   height: 430px;
 }
 .training-plots p {
-  font-size: 0.8rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 details {
@@ -195,6 +248,6 @@ summary {
   cursor: pointer;
 }
 table {
-  font-size: 0.75rem;
+  font-size: 1rem;
 }
 </style>

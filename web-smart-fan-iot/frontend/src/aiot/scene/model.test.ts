@@ -40,3 +40,17 @@ it('never colors missing sensors or missing configured ranges as healthy', () =>
   expect(sensorColor(1, { minimum: 0, maximum: 3 })).toBe('#238574');
   expect(sensorColor(4, { minimum: 0, maximum: 3 })).toBe('#d38a29');
 });
+it('uses persisted alert severity without inferring recovery from missing predictions', () => {
+  const { frame, device, now } = fixture();
+  const alert = { tipo: 'alert.raised', conteudo: { severity: 'critical' } };
+  expect(state(frame, device, now, undefined, alert)?.equipmentColor).toBe(
+    '#d45c52',
+  );
+  expect(
+    state(frame, device, now, undefined, {
+      ...alert,
+      conteudo: { severity: 'warning' },
+    })?.equipmentColor,
+  ).toBe('#d38a29');
+  expect(state(frame, device, now + 6001, undefined, alert)).toBeNull();
+});

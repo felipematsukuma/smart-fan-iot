@@ -1,6 +1,6 @@
 # ADR 006 — Retry durável, idempotência e DLQ
 
-Status: decisão proposta; sem garantia operacional medida.
+Status: implementada com [integrações locais e limites](../quality/2026-11-11-m18-apresentacao.md). At-least-once não equivale a exactly-once; carga ampliada não aprovada.
 
 Contexto: MQTT, AMQP, Influx e PostgreSQL não compartilham transação distribuída; confirmações podem se perder.
 

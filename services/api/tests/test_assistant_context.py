@@ -1,14 +1,68 @@
 import asyncio
 import json
+from typing import Any
 
 import httpx
 import pytest
 from pydantic import ValidationError
 
 from services.api.assistant import sse
-from services.api.assistant_context import ChatRequest, compact, messages
+from services.api.assistant_context import (
+    ARCHITECTURE,
+    ChatRequest,
+    compact,
+    messages,
+    model_metrics,
+)
 from services.api.errors import Problem
 from services.api.ollama import MODEL, MODEL_DIGEST, Ollama
+
+
+def test_metrics_are_finite_and_tied_to_exact_version():
+    report: dict[str, Any] = {
+        "model_version": "mdl_test",
+        "targets": {
+            name: {"test": {"mae": 1.2, "rmse": 2.3, "r2": 0.8}, "private": "omit"}
+            for name in ("health_score", "rul_calendar_hours")
+        },
+    }
+    assert model_metrics(report, "mdl_other")["status"] == "unavailable"
+    result = model_metrics(report, "mdl_test")
+    assert result["status"] == "test_synthetic" and "private" not in str(result)
+    context: dict[str, Any] = {"model_metrics": result, "architecture": ARCHITECTURE}
+    prompt, _ = messages(
+        ChatRequest(
+            device_id="ac_01", question="Explique as métricas e a arquitetura."
+        ),
+        context,
+    )
+    assert "mdl_test" in prompt[1]["content"] and "RabbitMQ" in prompt[1]["content"]
+    report["targets"]["health_score"]["test"]["r2"] = float("nan")
+    assert model_metrics(report, "mdl_test")["status"] == "unavailable"
+
+
+def test_context_does_not_mix_regression_metrics_with_equipment_health():
+    context: dict[str, Any] = {
+        "prediction": {"status": "inactive"},
+        "model_metrics": {"version": "mdl_test"},
+        "architecture": ARCHITECTURE,
+        "sources": ["source"],
+        "past_5min": {"temperature_mean": 28.3},
+    }
+    messages(ChatRequest(device_id="ac_01", question="O que significa RUL?"), context)
+    assert context["prediction"]["status"] == "inactive"
+    assert "model_metrics" not in context and "architecture" not in context
+    assert "past_5min" not in context
+    assert context["sources"] == ["source"]
+    context = {
+        "prediction": {"status": "valid", "saude_compressor_percentual": 87},
+        "model_metrics": {"version": "mdl_test"},
+    }
+    messages(ChatRequest(device_id="ac_01", question="Explique MAE e RMSE."), context)
+    assert (
+        "prediction" not in context
+        and context["model_metrics"]["version"] == "mdl_test"
+    )
 
 
 def test_summary_budget_history_roles_and_unicode_question_limits():
@@ -19,7 +73,7 @@ def test_summary_budget_history_roles_and_unicode_question_limits():
             "history": [{"question": "Olá", "answer": "Resumo anterior."}],
         }
     )
-    context = {"device": "ac_01", "live": "stale", "sources": []}
+    context: dict[str, Any] = {"device": "ac_01", "live": "stale", "sources": []}
     result, turns = messages(body, context)
     assert turns == 1 and result[0]["role"] == "system"
     assert result[-1]["content"] == body.question

@@ -7,6 +7,8 @@ fica na rota lazy `/cena-3d`; Vue e Chart.js existentes atendem UI e minigráfic
 
 ## Dados e interação
 
+Fechamento funcional: aletas repetidas usam `InstancedMesh`; duas tubulações têm portas explicitamente conectadas à evaporadora e ao compressor. Estado sem dados congela transforms e muda materiais para cinza. Alertas recebidos pelo WS e preservados no snapshot da API colorem o equipamento por severidade; sensores mantêm suas faixas próprias. Mini gráficos dos atuadores usam estado binário WS; saúde/RUL e sua tendência pertencem somente ao equipamento. Controles por item reutilizam o painel existente (ventilador manual; compressor libera automático, sem burlar proteções). [Registro](../../../../../docs/implementacao-2026-11-14.md).
+
 [V] [Model](./model.ts) mapeia o ID do equipamento, cinco sensores e dois atuadores
 recebidos no escopo autorizado WS. Leituras e previsões vêm exclusivamente dos
 frames; REST fornece só faixas cadastrais e o painel operacional separado.

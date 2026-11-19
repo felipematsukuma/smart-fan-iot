@@ -56,6 +56,7 @@ export function state(
   device: DeviceDescriptor,
   now: number,
   ranges?: Ranges,
+  alert?: { tipo: string; conteudo: { severity: string } },
 ) {
   if (
     !frame ||
@@ -72,11 +73,17 @@ export function state(
     indoor: data.readings.indoor_temp_c,
     outdoor: data.readings.outdoor_temp_c,
     equipmentColor:
-      frame.conteudo.insight.status === 'valid'
-        ? frame.conteudo.insight.health_score! < 40
+      alert?.tipo === 'alert.raised'
+        ? alert.conteudo.severity === 'critical'
           ? '#d45c52'
-          : '#238574'
-        : '#8b9aab',
+          : '#d38a29'
+        : frame.conteudo.insight.status === 'valid'
+          ? Object.values(frame.conteudo.telemetry.readings).some(
+              (value) => value == null,
+            )
+            ? '#d38a29'
+            : '#238574'
+          : '#8b9aab',
     sensorColors: Object.fromEntries<string>(
       Object.entries(device.sensor_ids).map(([field, id]) => [
         id,

@@ -9,9 +9,12 @@ test('Ollama local envia fragmentos reais, apresenta fontes e cancela antes de l
   let errors = 0;
   page.on('pageerror', () => errors++);
   await page.goto('/entrar');
-  await page.getByLabel('Usuário', { exact: true }).fill('operador');
+  await page
+    .getByLabel('Usuário', { exact: true })
+    .fill(process.env.AIOT_TEST_USER ?? 'operador');
   const password = readFileSync(
-    new URL('../../../secrets/initial_operator_password', import.meta.url),
+    process.env.AIOT_TEST_PASSWORD_FILE ??
+      new URL('../../../secrets/initial_operator_password', import.meta.url),
     'utf8',
   ).trim();
   try {
@@ -26,9 +29,9 @@ test('Ollama local envia fragmentos reais, apresenta fontes e cancela antes de l
   const question = page.getByLabel('Pergunta sobre o equipamento', {
     exact: true,
   });
-  await expect(
-    page.getByLabel('Equipamento da conversa', { exact: true }),
-  ).toHaveValue('ac_01');
+  await page
+    .getByLabel('Equipamento da conversa', { exact: true })
+    .selectOption('ac_01');
   await question.fill(
     'Resuma em duas frases o estado observado e a incerteza da estimativa.',
   );
@@ -44,11 +47,20 @@ test('Ollama local envia fragmentos reais, apresenta fontes e cancela antes de l
   await expect(page.getByTestId('assistant-answer')).not.toBeEmpty();
   await expect(
     page.getByRole('heading', {
-      name: 'Assistente · llama3.2:1b-instruct-q4_K_M',
+      name: 'Resposta gerada',
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByText('Dados usados nesta resposta', { exact: true }).click();
+  await page.getByText('Detalhes da geração', { exact: true }).click();
+  await expect(
+    page.getByText('Modelo: llama3.2:1b-instruct-q4_K_M', { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByText('Dados estruturados desta resposta', { exact: true })
+    .click();
+  await page
+    .getByText('Referências técnicas do resumo', { exact: true })
+    .click();
   await expect(page.locator('.turn details pre')).toContainText('rul_unit');
   await expect(page.locator('.turn details pre')).not.toContainText('readings');
   await expect(

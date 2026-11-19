@@ -29,6 +29,12 @@ export class LiveStore {
     new Map<string, Extract<EventV2, { tipo: 'device.state' }>>(),
   );
   history = new Map<string, FrameReadyV2[]>();
+  alerts = shallowReactive(
+    new Map<
+      string,
+      Extract<EventV2, { tipo: 'alert.raised' | 'alert.cleared' }>
+    >(),
+  );
   private retired = new Map<string, Set<string>>();
 
   replaceDevices(devices: DeviceDescriptor[]) {
@@ -40,6 +46,7 @@ export class LiveStore {
         this.retired.delete(device.id);
         this.availability.delete(device.id);
         this.states.delete(device.id);
+        this.alerts.delete(device.id);
         Object.values(device.sensor_ids).forEach((id) =>
           this.sensors.delete(id),
         );
@@ -52,6 +59,18 @@ export class LiveStore {
     devices.forEach((device) => this.devices.set(device.id, device));
   }
   apply(event: EventV2, now = Date.now()) {
+    if (event.tipo === 'alert.raised' || event.tipo === 'alert.cleared') {
+      const device = this.devices.get(event.dispositivo);
+      const previous = this.alerts.get(event.dispositivo);
+      if (
+        !device ||
+        Date.parse(event.timestamp) > now ||
+        (previous && key(previous.timestamp) >= key(event.timestamp))
+      )
+        return false;
+      this.alerts.set(event.dispositivo, event);
+      return true;
+    }
     if (event.tipo === 'device.availability' || event.tipo === 'device.state') {
       const device = this.devices.get(event.dispositivo);
       const age = now - Date.parse(event.timestamp);
@@ -154,6 +173,7 @@ export class LiveStore {
     this.retired.clear();
     this.availability.clear();
     this.states.clear();
+    this.alerts.clear();
   }
   fresh(deviceId: string, now = Date.now()) {
     const frame = this.frames.get(deviceId);

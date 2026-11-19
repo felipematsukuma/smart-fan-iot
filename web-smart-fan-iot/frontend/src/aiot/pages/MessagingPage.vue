@@ -1,5 +1,25 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import {
+  DialogRoot,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from 'reka-ui';
+import { Card, Badge } from '../ui/primitives';
+import IdentifierDetails from '../components/IdentifierDetails.vue';
+import { shortId, jobDate } from '../job-presentation';
+import {
+  queueLabels,
+  eventLabels,
+  reasonLabels,
+  messagingStale,
+} from '../operations-presentation';
+import '../ui/task-page.css';
+import '../ui/operations-pages.css';
 import { api } from '../auth';
 interface Queue {
   name: string;
@@ -18,6 +38,18 @@ interface Snapshot {
   source: string;
   cache_seconds: number;
   queues: Queue[];
+  recent_messages?: {
+    items: {
+      id: string;
+      type: string;
+      producer: string;
+      device_id: string | null;
+      timestamp: string;
+      received_at: string;
+      queue: string;
+    }[];
+    note: string;
+  };
 }
 interface Failure {
   id: string;
@@ -44,6 +76,43 @@ const error = ref('');
 const notice = ref('');
 const replaying = ref('');
 const stale = ref(false);
+const journalError = ref('');
+const journalLoaded = ref(false);
+const journalAt = ref('');
+const now = ref(Date.now());
+const clock = setInterval(() => {
+  now.value = Date.now();
+}, 1000);
+const outdated = computed(
+  () =>
+    stale.value ||
+    (!!snapshot.value &&
+      messagingStale(
+        snapshot.value.sampled_at,
+        snapshot.value.cache_seconds,
+        now.value,
+      )),
+);
+const workQueues = computed(
+  () => snapshot.value?.queues.filter((q) => q.name !== 'q.dlq') ?? [],
+);
+const dlq = computed(() =>
+  snapshot.value?.queues.find((q) => q.name === 'q.dlq'),
+);
+const confirmOpen = ref(false);
+const pending = ref<Failure | null>(null);
+const noticeError = ref(false);
+let expandedJournal = false;
+function askReplay(failure: Failure) {
+  pending.value = failure;
+  confirmOpen.value = true;
+}
+async function confirmReplay() {
+  if (pending.value?.can_replay) await replay(pending.value);
+  confirmOpen.value = false;
+}
+const rate = (value: number) =>
+  value.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 let timer: ReturnType<typeof setTimeout> | undefined;
 let disposed = false;
 let controller: AbortController | undefined;
@@ -58,20 +127,39 @@ async function load(refreshJournal = true) {
   const request = new AbortController();
   controller = request;
   try {
-    const [stats, journal] = await Promise.all([
+    const [stats, journal] = await Promise.allSettled([
       api<Snapshot>('/messaging', { signal: request.signal }),
       refreshJournal
         ? api<FailurePage>('/messaging/failures', { signal: request.signal })
         : Promise.resolve(null),
     ]);
     if (disposed) return;
-    snapshot.value = stats;
-    if (journal) {
-      failures.value = journal.items;
-      cursor.value = journal.next_cursor;
+    if (stats.status === 'fulfilled') {
+      snapshot.value = stats.value;
+      error.value = '';
+      stale.value = false;
+    } else {
+      error.value =
+        stats.reason instanceof Error
+          ? stats.reason.message
+          : 'Falha ao consultar filas.';
+      stale.value = true;
     }
-    error.value = '';
-    stale.value = false;
+    if (journal.status === 'fulfilled' && journal.value) {
+      const page = journal.value;
+      const incoming = new Set(page.items.map((item) => item.id));
+      failures.value = expandedJournal
+        ? [
+            ...page.items,
+            ...failures.value.filter((item) => !incoming.has(item.id)),
+          ].slice(0, 200)
+        : page.items;
+      if (!expandedJournal) cursor.value = page.next_cursor;
+      journalLoaded.value = true;
+      journalError.value = '';
+      journalAt.value = new Date().toISOString();
+    } else if (journal.status === 'rejected')
+      journalError.value = 'Falha ao consultar o registro de falhas.';
   } catch (failure) {
     if (!disposed && !request.signal.aborted) {
       error.value =
@@ -93,14 +181,19 @@ async function more() {
       `/messaging/failures?before=${cursor.value}`,
     );
     if (!disposed) {
-      failures.value = [...failures.value, ...result.items].slice(0, 200);
+      const known = new Set(failures.value.map((item) => item.id));
+      failures.value = [
+        ...failures.value,
+        ...result.items.filter((item) => !known.has(item.id)),
+      ].slice(0, 200);
+      expandedJournal = true;
       cursor.value = result.next_cursor;
     }
   } catch (failure) {
-    error.value =
+    journalError.value =
       failure instanceof Error
         ? failure.message
-        : 'Falha ao consultar journal.';
+        : 'Falha ao consultar registro de falhas.';
   } finally {
     if (!disposed) busy.value = false;
   }
@@ -108,19 +201,26 @@ async function more() {
 async function replay(failure: Failure) {
   replaying.value = failure.id;
   notice.value = '';
+  noticeError.value = false;
   const key = requests.get(failure.id) ?? crypto.randomUUID();
   requests.set(failure.id, key);
   try {
-    await api(`/messaging/failures/${failure.id}/replay`, {
-      method: 'POST',
-      body: JSON.stringify({ request_id: key }),
-    });
+    const result = await api<{ status: string }>(
+      `/messaging/failures/${failure.id}/replay`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ request_id: key }),
+      },
+    );
     if (!disposed) {
       notice.value =
-        'Reprocessamento solicitado ao gravador. Bytes e horário originais preservados; a falha continua no journal.';
+        result.status === 'already_requested'
+          ? 'Solicitação já registrada; execução ainda não confirmada.'
+          : 'Reprocessamento solicitado ao gravador; execução ainda não confirmada.';
       await load();
     }
   } catch (problem) {
+    noticeError.value = true;
     if (!disposed)
       notice.value =
         problem instanceof Error
@@ -133,195 +233,356 @@ async function replay(failure: Failure) {
 onMounted(() => void load());
 onBeforeUnmount(() => {
   disposed = true;
+  clearInterval(clock);
   clearTimeout(timer);
   controller?.abort();
 });
 </script>
 <template>
-  <div class="page-heading">
-    <div>
-      <p class="eyebrow">TRANSPORTE E RECUPERAÇÃO</p>
+  <div class="task-page operations-page messaging-page">
+    <header class="tp-heading">
       <h1>Mensageria</h1>
-      <p>
-        Filas RabbitMQ via API do backend. Atualização a cada cinco segundos.
-      </p>
-    </div>
-    <button class="button secondary" :disabled="busy" @click="load()">
-      Atualizar mensageria
-    </button>
-  </div>
-  <p v-if="error" role="alert" class="error-box">{{ error }}</p>
-  <p v-if="notice" role="status">{{ notice }}</p>
-  <p v-if="busy && !snapshot" role="status">Consultando broker e journal…</p>
-  <p v-if="stale && snapshot" role="status">
-    Dados antigos: a última consulta falhou. Contadores abaixo não representam o
-    estado atual.
-  </p>
-  <section class="card" :aria-busy="busy">
-    <div class="section-heading">
-      <h2>Filas e consumidores</h2>
-      <small v-if="snapshot"
-        >Observado em
-        {{ new Date(snapshot.sampled_at).toLocaleString('pt-BR') }}</small
-      >
-    </div>
-    <div v-if="snapshot" class="table-scroll">
-      <table>
-        <caption>
-          Mensagens prontas aguardam consumidor; em processamento ainda não
-          receberam ACK. Taxas por segundo informadas pelo broker.
-        </caption>
-        <thead>
-          <tr>
-            <th>Fila</th>
-            <th>Prontas</th>
-            <th>Em processamento</th>
-            <th>Consumidores</th>
-            <th>Entrada/s</th>
-            <th>Entrega/s</th>
-            <th>Durabilidade</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="queue in snapshot.queues"
-            :key="queue.name"
-            :data-queue="queue.name"
-            :data-ready="queue.messages_ready"
-            :data-consumers="queue.consumers"
-          >
-            <td>
-              {{ queue.name }}<br /><small>{{ queue.consumer_service }}</small>
-            </td>
-            <td>{{ queue.messages_ready }}</td>
-            <td>{{ queue.messages_unacknowledged }}</td>
-            <td>{{ queue.consumers }}</td>
-            <td>
-              {{
-                queue.publish_rate.toLocaleString('pt-BR', {
-                  maximumFractionDigits: 1,
-                })
-              }}
-            </td>
-            <td>
-              {{
-                queue.delivery_rate.toLocaleString('pt-BR', {
-                  maximumFractionDigits: 1,
-                })
-              }}
-            </td>
-            <td>
-              {{ queue.durable ? 'Durável' : 'Não durável' }} ·
-              {{ queue.type }} · {{ queue.state }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else-if="!busy" class="table-message">
-      Sem snapshot disponível do broker.
-    </p>
-  </section>
-  <section class="card journal" :aria-busy="busy">
-    <div class="section-heading"><h2>Falhas e prévias da DLQ</h2></div>
-    <p class="explanation">
-      Prévia do journal durável, limitada às 200 falhas mais recentes por
-      serviço. Consultar não retira mensagens da DLQ. O contador da DLQ pode
-      diferir do journal. Nenhum payload bruto ou credencial é exibido.
-    </p>
-    <p class="explanation">
-      Somente telemetria original com falha terminal no gravador pode voltar à
-      sua inbox. Máximo três solicitações, intervalo de 30 segundos; comandos
-      físicos não são reprocessados. Reprocessar mantém deduplicação, identidade
-      e horário da fonte.
-    </p>
-    <p v-if="!failures.length" class="table-message">
-      Nenhuma falha no journal consultado.
-    </p>
-    <div v-else class="table-scroll">
-      <table>
-        <caption>
-          Tipo, produtor e dispositivo são apresentados somente após validação
-          do contrato.
-        </caption>
-        <thead>
-          <tr>
-            <th>Falha e serviço</th>
-            <th>Motivo</th>
-            <th>Prévia validada</th>
-            <th>Entrega</th>
-            <th>Recuperação</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="failure in failures" :key="failure.id">
-            <td>
-              {{ failure.id }}<br /><small
-                >{{ failure.owner }} ·
-                {{
-                  new Date(failure.created_at).toLocaleString('pt-BR')
-                }}</small
-              >
-            </td>
-            <td>
-              {{ failure.reason_code }}<br />{{ failure.attempts }} tentativas
-            </td>
-            <td>
-              <template v-if="failure.preview.type"
-                >{{ failure.preview.type }}<br />{{
-                  failure.preview.producer
-                }}
-                · {{ failure.preview.device_id ?? 'Sem dispositivo autorizado'
-                }}<br /><small>{{ failure.preview.timestamp }}</small></template
-              ><span v-else
-                >Payload inválido ou não reconhecido; conteúdo omitido.</span
-              >
-            </td>
-            <td>{{ failure.delivery_state ?? 'Quarentena sem inbox' }}</td>
-            <td>
-              <button
-                v-if="failure.can_replay"
-                class="button secondary"
-                :disabled="!!replaying"
-                @click="replay(failure)"
-              >
-                Reprocessar telemetria</button
-              ><span v-else>Sem replay elegível</span><br /><small
-                >{{ failure.replay_count }} solicitações</small
-              >
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <button
-      v-if="cursor && failures.length < 200"
-      class="button secondary"
-      :disabled="busy"
-      @click="more"
+      <button class="button secondary" :disabled="busy" @click="load()">
+        Atualizar mensageria
+      </button>
+    </header>
+    <p v-if="error" role="alert" class="tp-field-error">{{ error }}</p>
+    <p
+      v-if="notice"
+      :role="noticeError ? 'alert' : 'status'"
+      :class="{ 'tp-field-error': noticeError }"
     >
-      Mais falhas
-    </button>
-  </section>
+      {{ notice }}
+    </p>
+    <Card class="tp-card" :aria-busy="busy && !snapshot">
+      <div class="tp-section-heading">
+        <h2>Filas e consumidores</h2>
+        <Badge v-if="snapshot" :tone="outdated ? 'warning' : 'good'">{{
+          outdated ? 'Dados desatualizados' : 'Consulta atualizada'
+        }}</Badge>
+      </div>
+      <p v-if="snapshot" class="tp-muted">
+        Última atualização às
+        {{ new Date(snapshot.sampled_at).toLocaleTimeString('pt-BR') }}
+      </p>
+      <p v-if="outdated && snapshot" role="status">
+        Os contadores preservados não representam o estado atual.
+      </p>
+      <p v-if="!snapshot">
+        {{ busy ? 'Consultando filas…' : 'Sem dados das filas disponíveis.' }}
+      </p>
+      <div v-if="snapshot" class="tp-table ops-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Fila</th>
+              <th>Pendentes (mensagens)</th>
+              <th>Em processamento</th>
+              <th>Consumidores</th>
+              <th>Entrada (msg/s)</th>
+              <th>Entrega (msg/s)</th>
+              <th>Detalhes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="queue in workQueues"
+              :key="queue.name"
+              :data-queue="queue.name"
+              :data-ready="queue.messages_ready"
+              :data-consumers="queue.consumers"
+            >
+              <td data-label="Fila">
+                <strong>{{ queueLabels[queue.name] ?? queue.name }}</strong>
+                <div class="queue-state">
+                  <Badge v-if="queue.state !== 'running'" tone="danger"
+                    >Fila indisponível</Badge
+                  ><Badge v-else-if="!queue.consumers" tone="warning"
+                    >Consumidor ausente</Badge
+                  ><Badge
+                    v-else-if="
+                      !queue.messages_ready && !queue.messages_unacknowledged
+                    "
+                    >Fila vazia</Badge
+                  ><Badge v-else>Mensagens em trânsito</Badge>
+                </div>
+              </td>
+              <td data-label="Pendentes (mensagens)">
+                {{ queue.messages_ready }}
+              </td>
+              <td data-label="Em processamento">
+                {{ queue.messages_unacknowledged }}
+              </td>
+              <td data-label="Consumidores">{{ queue.consumers }}</td>
+              <td data-label="Entrada (msg/s)">
+                {{ rate(queue.publish_rate) }}
+              </td>
+              <td data-label="Entrega (msg/s)">
+                {{ rate(queue.delivery_rate) }}
+              </td>
+              <td class="queue-details">
+                <details>
+                  <summary>Detalhes da fila</summary>
+                  <dl class="tp-definition">
+                    <dt>Nome</dt>
+                    <dd>{{ queue.name }}</dd>
+                    <dt>Serviço</dt>
+                    <dd>{{ queue.consumer_service }}</dd>
+                    <dt>Tipo / estado</dt>
+                    <dd>{{ queue.type }} / {{ queue.state }}</dd>
+                    <dt>Persistência</dt>
+                    <dd>{{ queue.durable ? 'Durável' : 'Não durável' }}</dd>
+                  </dl>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <details v-if="snapshot">
+        <summary>Sobre os contadores</summary>
+        <p>
+          Pendentes aguardam entrega; em processamento aguardam confirmação do
+          consumidor. Taxas em mensagens por segundo.
+        </p>
+        <p>
+          Fonte: {{ snapshot.source }} · cache de
+          {{ snapshot.cache_seconds }} s.
+        </p>
+      </details>
+    </Card>
+    <Card class="tp-card recent-messages"
+      ><h2>Mensagens recentes</h2>
+      <p v-if="!snapshot?.recent_messages">Prévia de mensagens indisponível.</p>
+      <p v-else-if="!snapshot.recent_messages.items.length">
+        Nenhuma mensagem observada nesta sessão da API.
+      </p>
+      <div
+        v-else
+        class="tp-table ops-table bounded-records"
+        tabindex="0"
+        role="region"
+        aria-label="Mensagens recentes"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Recebida em</th>
+              <th>Evento</th>
+              <th>Dispositivo</th>
+              <th>Detalhes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in snapshot.recent_messages.items" :key="item.id">
+              <td data-label="Recebida em">
+                {{ new Date(item.received_at).toLocaleString('pt-BR') }}
+              </td>
+              <td data-label="Evento">
+                {{ eventLabels[item.type] ?? 'Outro evento' }}
+              </td>
+              <td data-label="Dispositivo">{{ item.device_id ?? 'Global' }}</td>
+              <td>
+                <details>
+                  <summary>Detalhes da mensagem</summary>
+                  <IdentifierDetails :value="item.id" />
+                  <p>
+                    Tipo: {{ item.type }} · produtor: {{ item.producer }} ·
+                    fila: {{ item.queue }}
+                  </p>
+                  <p>
+                    Origem:
+                    {{ new Date(item.timestamp).toLocaleString('pt-BR') }}
+                  </p>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <details>
+        <summary>Sobre as prévias</summary>
+        <p>
+          Até 100 metadados por cinco minutos, sem conteúdo bruto. Consultar
+          esta página não consome mensagens das filas de trabalho.
+        </p>
+        <p v-if="snapshot?.recent_messages">
+          {{ snapshot.recent_messages.note }}
+        </p>
+      </details>
+    </Card>
+    <Card class="tp-card journal"
+      ><div class="tp-section-heading">
+        <h2>Falhas e DLQ</h2>
+        <Badge v-if="dlq" :tone="dlq.messages_ready ? 'warning' : 'neutral'"
+          >{{ dlq.messages_ready }} mensagens pendentes na DLQ</Badge
+        >
+      </div>
+      <details v-if="dlq">
+        <summary>Estatísticas da DLQ</summary>
+        <dl class="tp-definition">
+          <dt>Nome</dt>
+          <dd>{{ dlq.name }}</dd>
+          <dt>Pendentes</dt>
+          <dd>{{ dlq.messages_ready }} mensagens</dd>
+          <dt>Em processamento</dt>
+          <dd>{{ dlq.messages_unacknowledged }} mensagens</dd>
+          <dt>Consumidores</dt>
+          <dd>{{ dlq.consumers }}</dd>
+          <dt>Entrada / entrega</dt>
+          <dd>
+            {{ rate(dlq.publish_rate) }} / {{ rate(dlq.delivery_rate) }} msg/s
+          </dd>
+          <dt>Serviço</dt>
+          <dd>{{ dlq.consumer_service }}</dd>
+          <dt>Tipo / estado</dt>
+          <dd>{{ dlq.type }} / {{ dlq.state }}</dd>
+          <dt>Persistência</dt>
+          <dd>{{ dlq.durable ? 'Durável' : 'Não durável' }}</dd>
+        </dl>
+      </details>
+      <p v-if="journalAt" class="tp-muted">
+        Registro consultado em {{ new Date(journalAt).toLocaleString('pt-BR') }}
+      </p>
+      <p v-if="journalError" role="alert" class="tp-field-error">
+        {{ journalError
+        }}{{ journalLoaded ? ' Registros anteriores preservados.' : '' }}
+      </p>
+      <p v-if="!journalLoaded && !journalError">Consultando falhas…</p>
+      <p v-else-if="journalLoaded && !failures.length && !journalError">
+        Nenhuma falha no registro consultado.
+      </p>
+      <div
+        v-if="failures.length"
+        class="tp-table ops-table bounded-records"
+        tabindex="0"
+        role="region"
+        aria-label="Falhas registradas"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th>Data / serviço</th>
+              <th>Motivo</th>
+              <th>Entrega</th>
+              <th>Recuperação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="failure in failures"
+              :key="failure.id"
+              :data-failure-id="failure.id"
+            >
+              <td data-label="Data / serviço">
+                {{ jobDate(failure.created_at) }}
+                <p>{{ failure.owner }}</p>
+              </td>
+              <td data-label="Motivo">
+                {{
+                  reasonLabels[failure.reason_code] ??
+                  'Motivo não traduzido; consulte os detalhes'
+                }}
+              </td>
+              <td data-label="Entrega">
+                {{
+                  failure.delivery_state === 'failed'
+                    ? 'Falhou'
+                    : failure.delivery_state === 'completed'
+                      ? 'Concluída'
+                      : failure.delivery_state === 'pending'
+                        ? 'Pendente'
+                        : (failure.delivery_state ?? 'Quarentena sem inbox')
+                }}
+              </td>
+              <td>
+                <button
+                  v-if="failure.can_replay"
+                  class="button secondary"
+                  :disabled="!!replaying"
+                  @click="askReplay(failure)"
+                >
+                  Reprocessar telemetria</button
+                ><span v-else>Reprocessamento indisponível</span>
+                <p class="tp-muted">{{ failure.replay_count }} solicitações</p>
+                <details>
+                  <summary>Detalhes da falha</summary>
+                  <IdentifierDetails
+                    :value="failure.id"
+                    label="Identificação da falha"
+                  /><IdentifierDetails
+                    :value="failure.source_event_id"
+                    label="Evento original"
+                  />
+                  <p>
+                    Código: {{ failure.reason_code }} ·
+                    {{ failure.attempts }} tentativas
+                  </p>
+                  <p v-if="failure.preview.type">
+                    {{ failure.preview.type }} ·
+                    {{ failure.preview.producer }} ·
+                    {{
+                      failure.preview.device_id ?? 'Dispositivo não disponível'
+                    }}
+                  </p>
+                  <p v-if="failure.preview.timestamp">
+                    Horário de origem: {{ failure.preview.timestamp }}
+                  </p>
+                  <p v-if="!failure.preview.type">
+                    Prévia indisponível; conteúdo omitido.
+                  </p>
+                </details>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <button
+        v-if="cursor && failures.length < 200"
+        class="button secondary"
+        :disabled="busy"
+        @click="more"
+      >
+        Mais falhas
+      </button>
+      <details>
+        <summary>Restrições de recuperação</summary>
+        <p>
+          Registro durável limitado a 200 falhas. O total pode diferir da DLQ. A
+          consulta não retira mensagens de nenhuma fila.
+        </p>
+        <p>
+          Somente telemetria original com falha terminal no gravador é elegível.
+          Até três solicitações, com intervalo de 30 segundos. Comandos físicos
+          não são reprocessados. Identidade, horário e deduplicação são
+          preservados.
+        </p>
+      </details>
+    </Card>
+  </div>
+  <DialogRoot v-model:open="confirmOpen"
+    ><DialogPortal
+      ><DialogOverlay class="ops-confirm-overlay" /><DialogContent
+        class="ops-confirm"
+        ><DialogTitle>Confirmar reprocessamento</DialogTitle
+        ><DialogDescription
+          >Solicitar nova tentativa para a telemetria
+          {{ pending ? shortId(pending.id) : '' }}? A solicitação não confirma a
+          execução nem remove a falha do registro. O servidor mantém os limites
+          de elegibilidade e intervalo.</DialogDescription
+        >
+        <div class="tp-actions">
+          <DialogClose class="button secondary" :disabled="!!replaying"
+            >Cancelar</DialogClose
+          ><button
+            class="button primary"
+            :disabled="!!replaying"
+            @click="confirmReplay"
+          >
+            {{ replaying ? 'Solicitando…' : 'Confirmar reprocessamento' }}
+          </button>
+        </div></DialogContent
+      ></DialogPortal
+    ></DialogRoot
+  >
 </template>
-<style scoped>
-.journal {
-  margin-top: 1.5rem;
-}
-.explanation {
-  padding: 0 1.4rem;
-  font-size: 0.85rem;
-  line-height: 1.6;
-}
-caption {
-  padding: 1rem;
-  text-align: left;
-  font-size: 0.8rem;
-}
-td {
-  overflow-wrap: anywhere;
-}
-td:first-child {
-  max-width: 250px;
-}
-</style>

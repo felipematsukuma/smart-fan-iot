@@ -862,7 +862,10 @@ def create_app(
             raise Problem(
                 503, "messaging_unavailable", "Mensageria temporariamente indisponível."
             )
-        return monitor.snapshot()
+        return {
+            **monitor.snapshot(),
+            "recent_messages": events.recent_messages.snapshot(),
+        }
 
     @application.get("/api/v1/messaging/failures")
     def messaging_failures(
