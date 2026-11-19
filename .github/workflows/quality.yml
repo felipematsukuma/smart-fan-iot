@@ -66,11 +66,12 @@ jobs:
         with: {python-version: '3.11.18'}
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with: {node-version: '24.22.2', cache: npm, cache-dependency-path: web-smart-fan-iot/frontend/package-lock.json}
-      - name: Install pinned application and quality dependencies
-        run: |
-          python -m pip install -r web-smart-fan-iot/backend/requirements-dev.txt -e './packages/smartfan_common[reliability]'
-          npm ci --prefix web-smart-fan-iot/frontend
-          npx --prefix web-smart-fan-iot/frontend playwright install --with-deps chromium
+      - name: Install Python application and quality dependencies
+        run: python -m pip install -r web-smart-fan-iot/backend/requirements-dev.txt -e './packages/smartfan_common[reliability]'
+      - name: Install frontend dependencies from lockfile
+        run: npm ci --prefix web-smart-fan-iot/frontend
+      - name: Install Chromium and system dependencies
+        run: npx --prefix web-smart-fan-iot/frontend playwright install --with-deps chromium
       - name: Lint, types and generated contracts
         run: python tools/quality/check.py lint
       - name: Exercise failing gates locally

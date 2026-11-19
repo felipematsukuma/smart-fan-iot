@@ -6,11 +6,24 @@ seria mais fácil, mas então os testes não exercitariam a lógica de verdade �
 o erro mais comum em suítes que "passam" sem testar nada.
 """
 
+import secrets
 import sys
 import types
 from datetime import datetime, timedelta, timezone
 
 import pytest
+
+# Settings is instantiated during collection, before fixtures can run. These
+# process-local values never authenticate against a real service: I/O is faked
+# below. Override inherited credentials and restore the environment on teardown.
+_test_environment = pytest.MonkeyPatch()
+for _name in ("POSTGRES_PASSWORD", "INFLUXDB_TOKEN"):
+    _test_environment.setenv(_name, secrets.token_urlsafe(32))
+
+
+def pytest_unconfigure(config):
+    _test_environment.undo()
+
 
 published_commands = []
 published_configs = []
