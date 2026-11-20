@@ -1,3 +1,5 @@
+Integrantes: Felipe Ribeiro Matsuguma e Breno Ceribeli
+
 # Smart Fan IoT — Ventora AIoT
 
 Monitoramento e controle de um ar-condicionado split simulado, com foco em desperdício de energia e manutenção preditiva do compressor. Evolução acadêmica do ventilador do primeiro bimestre, preservado em [ESP32/Wokwi](esp32-simulador/README.md) e no [Compose legado](web-smart-fan-iot/docker-compose.yml).
