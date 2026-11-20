@@ -190,13 +190,24 @@ test('fixture: estados, dados estruturados e Markdown seguro com capturas', asyn
   ).toHaveCount(0);
   await capture(page, 'fixture-assistant-desktop');
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page
-      .locator('.conversation')
-      .evaluate((el) => el.getBoundingClientRect().bottom),
-  ).toBeLessThanOrEqual(
-    (await page.locator('.question-form').boundingBox())!.y,
-  );
+  // visualViewport resize updates the workbench asynchronously. Read both
+  // rectangles in one frame, and require the composer to fit after resizing.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const conversation = document
+          .querySelector('.conversation')!
+          .getBoundingClientRect();
+        const form = document
+          .querySelector('.question-form')!
+          .getBoundingClientRect();
+        return {
+          overlaps: conversation.bottom > form.top,
+          composerWithinViewport: form.top >= 0 && form.bottom <= innerHeight,
+        };
+      }),
+    )
+    .toEqual({ overlaps: false, composerWithinViewport: true });
   await capture(page, 'fixture-assistant-mobile');
   await page
     .getByText('Dados estruturados desta resposta', { exact: true })
